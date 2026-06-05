@@ -19,6 +19,15 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      "expo-image",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "GeoConnect uses your location only after you enable nearby features."
+        }
+      ]
+    ]
   }
 }

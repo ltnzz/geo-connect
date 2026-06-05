@@ -1,6 +1,6 @@
 # GeoConnect Mobile
 
-Starter project for the GeoConnect Expo mobile app. This repo only contains the lead setup: app bootstrap, Firebase foundation, Auth starter, Firestore schema notes, location privacy guard, and geo utility helpers.
+Starter project for the GeoConnect Expo mobile app. The `main` branch is intentionally kept minimal so each team member can build their feature from a clean base.
 
 ## Stack
 
@@ -28,17 +28,25 @@ npm install
 npm start
 ```
 
-## Prepared by Lead
+## Folder Ownership
 
-- Expo app bootstrap with Gesture Handler and Reanimated config.
-- Auth navigator with Login and Register placeholder screens.
-- Firebase initialization for Auth, Firestore, and Storage.
-- Auth service for email login, register, and logout.
-- User service that creates privacy-safe default user documents.
-- Location service that asks permission only when called by the user flow.
-- Zustand stores for auth and location state.
-- Geo helpers for distance checks and nearby filtering.
-- Firestore collection and field constants in `src/types/schema.js`.
+- `src/navigation`: app navigation setup.
+- `src/screens`: feature screens.
+- `src/screens/auth`: login and registration screens.
+- `src/screens/home`: feed, post, and post detail screens.
+- `src/screens/map`: map, venue, and event screens.
+- `src/screens/profile`: profile and edit profile screens.
+- `src/screens/search`: search screens.
+- `src/screens/notification`: notification screens.
+- `src/screens/settings`: privacy and settings screens.
+- `src/components/common`: shared UI components.
+- `src/components/post`: post and comment components.
+- `src/components/map`: map marker components.
+- `src/services`: Firebase, API, and platform services.
+- `src/stores`: Zustand stores.
+- `src/hooks`: reusable hooks.
+- `src/utils`: helpers and constants.
+- `src/types`: schema notes or shared model docs.
 
 ## Privacy Notes
 

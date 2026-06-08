@@ -4,13 +4,15 @@ Starter project for the GeoConnect Expo mobile app. The `main` branch is intenti
 
 ## Stack
 
-- Expo SDK 56
-- React Native 0.85
+- Expo SDK 54
+- React Native 0.81
+- React 19.1
 - React Navigation
 - Zustand
 - Firebase Auth, Firestore, and Storage
-- expo-location, expo-image, react-native-maps
-- Reanimated and Gesture Handler
+- expo-location, expo-image, and react-native-maps
+- Reanimated, Worklets, and Gesture Handler
+- New Architecture disabled for broader Expo Go compatibility
 
 ## Setup
 

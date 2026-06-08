@@ -3,6 +3,7 @@
     "name": "aroundu",
     "slug": "aroundu",
     "version": "1.0.0",
+    "newArchEnabled": false,
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -21,7 +22,6 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-image",
       [
         "expo-location",
         {

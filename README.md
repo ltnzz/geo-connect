@@ -56,5 +56,5 @@ Location sharing must stay off by default. Only request foreground location perm
 
 - Latanza: template, Firebase, schema, auth, geo query.
 - Dika: feed, post, like, comment, follow.
-- Zidan: UI, theme, notification, testing, docs.
+- Zidan: UI, notification.
 - Zanet: map, marker, venue, check-in.

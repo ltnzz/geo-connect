@@ -11,6 +11,7 @@
       "supportsTablet": true
     },
     "android": {
+      "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -27,7 +28,8 @@
         {
           "locationWhenInUsePermission": "GeoConnect uses your location only after you enable nearby features."
         }
-      ]
+      ],
+      "expo-font"
     ]
   }
 }

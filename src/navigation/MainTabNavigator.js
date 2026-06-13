@@ -40,38 +40,36 @@ function CameraTabButton({ accessibilityState, onPress }) {
 
 export default function MainTabNavigator() {
   return (
-    <NavigationContainer>
-      <Tab.Navigator
-        screenOptions={({ route }) => ({
-          headerShown: false,
-          tabBarActiveTintColor: colors.primary,
-          tabBarInactiveTintColor: colors.neutral,
-          tabBarIcon: ({ color, focused, size }) => {
-            if (route.name === 'Create') {
-              return null;
-            }
+    <Tab.Navigator
+      screenOptions={({ route }) => ({
+        headerShown: false,
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.neutral,
+        tabBarIcon: ({ color, focused, size }) => {
+          if (route.name === 'Create') {
+            return null;
+          }
 
-            const [activeIcon, inactiveIcon] = TAB_ICONS[route.name];
-            return <Ionicons color={color} name={focused ? activeIcon : inactiveIcon} size={size} />;
-          },
-          tabBarLabelStyle: styles.tabLabel,
-          tabBarStyle: styles.tabBar,
-        })}
-      >
-        <Tab.Screen component={HomeScreen} name="Home" />
-        <Tab.Screen component={EventScreen} name="Events" />
-        <Tab.Screen
-          component={CreatePostScreen}
-          name="Create"
-          options={{
-            tabBarButton: (props) => <CameraTabButton {...props} />,
-            tabBarLabel: '',
-          }}
-        />
-        <Tab.Screen component={MapScreen} name="Maps" />
-        <Tab.Screen component={ProfileScreen} name="Profile" />
-      </Tab.Navigator>
-    </NavigationContainer>
+          const [activeIcon, inactiveIcon] = TAB_ICONS[route.name];
+          return <Ionicons color={color} name={focused ? activeIcon : inactiveIcon} size={size} />;
+        },
+        tabBarLabelStyle: styles.tabLabel,
+        tabBarStyle: styles.tabBar,
+      })}
+    >
+      <Tab.Screen component={HomeScreen} name="Home" />
+      <Tab.Screen component={EventScreen} name="Events" />
+      <Tab.Screen
+        component={CreatePostScreen}
+        name="Create"
+        options={{
+          tabBarButton: (props) => <CameraTabButton {...props} />,
+          tabBarLabel: '',
+        }}
+      />
+      <Tab.Screen component={MapScreen} name="Maps" />
+      <Tab.Screen component={ProfileScreen} name="Profile" />
+    </Tab.Navigator>
   );
 }
 

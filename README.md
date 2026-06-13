@@ -31,8 +31,10 @@ npm install
 npm start
 ```
 
-Firebase deployment and Cloudinary configuration are documented in
-`docs/FIREBASE_CLOUDINARY_SETUP.md`.
+Backend setup and data modeling are documented in:
+
+- `docs/FIREBASE_CLOUDINARY_SETUP.md`
+- `docs/FIRESTORE_SCHEMA.md`
 
 ## Folder Ownership
 

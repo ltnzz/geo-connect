@@ -9,7 +9,8 @@ Starter project for the GeoConnect Expo mobile app. The `main` branch is intenti
 - React 19.1
 - React Navigation
 - Zustand
-- Firebase Auth, Firestore, and Storage
+- Firebase Auth and Firestore
+- Cloudinary image hosting
 - expo-location, expo-image, and react-native-maps
 - Reanimated, Worklets, and Gesture Handler
 - New Architecture disabled for broader Expo Go compatibility
@@ -29,6 +30,11 @@ npm install
 ```bash
 npm start
 ```
+
+Backend setup and data modeling are documented in:
+
+- `docs/FIREBASE_CLOUDINARY_SETUP.md`
+- `docs/FIRESTORE_SCHEMA.md`
 
 ## Folder Ownership
 

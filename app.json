@@ -29,6 +29,14 @@
           "locationWhenInUsePermission": "GeoConnect uses your location only after you enable nearby features."
         }
       ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "AroundU accesses your photos only when you choose an image to share.",
+          "cameraPermission": "AroundU uses your camera only when you choose to take a photo.",
+          "microphonePermission": false
+        }
+      ],
       "expo-font"
     ]
   }

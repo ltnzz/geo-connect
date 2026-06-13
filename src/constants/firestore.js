@@ -1,7 +1,6 @@
 export const COLLECTIONS = Object.freeze({
   users: 'users',
   userLocations: 'userLocations',
-  usernames: 'usernames',
   posts: 'posts',
   follows: 'follows',
   categories: 'categories',

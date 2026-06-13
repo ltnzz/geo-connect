@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import * as Google from 'expo-auth-session/providers/google';
-import * as WebBrowser from 'expo-web-browser';
+import {
+  GoogleSignin,
+  isSuccessResponse,
+  statusCodes,
+} from '@react-native-google-signin/google-signin';
 import {
   ActivityIndicator,
   Keyboard,
@@ -19,11 +22,17 @@ import BrandMark from '../../components/common/BrandMark';
 import { useAuthStore } from '../../stores/authStore';
 import {
   googleAuthConfig,
+  hasGoogleProjectMismatch,
+  isExpoGo,
   isGoogleAuthConfigured,
 } from '../../config/googleAuth';
 import { colors, radius, spacing } from '../../utils/theme';
 
-WebBrowser.maybeCompleteAuthSession();
+if (isGoogleAuthConfigured && !isExpoGo) {
+  GoogleSignin.configure({
+    webClientId: googleAuthConfig.webClientId,
+  });
+}
 
 const AUTH_MODES = {
   login: 'login',
@@ -31,7 +40,6 @@ const AUTH_MODES = {
 };
 
 const initialForm = {
-  displayName: '',
   username: '',
   email: '',
   password: '',
@@ -39,10 +47,6 @@ const initialForm = {
 };
 
 const validateForm = (form, isRegister) => {
-  if (isRegister && form.displayName.trim().length < 2) {
-    return 'Display name must be at least 2 characters.';
-  }
-
   if (isRegister && !/^[a-zA-Z0-9_]{3,20}$/.test(form.username.trim())) {
     return 'Username must be 3-20 letters, numbers, or underscores.';
   }
@@ -74,8 +78,6 @@ export default function AuthScreen() {
   const emailRef = useRef(null);
   const passwordRef = useRef(null);
   const confirmPasswordRef = useRef(null);
-  const processedGoogleResponseRef = useRef(null);
-
   const login = useAuthStore((state) => state.login);
   const loginWithGoogle = useAuthStore((state) => state.loginWithGoogle);
   const register = useAuthStore((state) => state.register);
@@ -85,11 +87,6 @@ export default function AuthScreen() {
 
   const isRegister = mode === AUTH_MODES.register;
   const error = localError || storeError;
-  const [googleRequest, googleResponse, promptGoogleAsync] =
-    Google.useIdTokenAuthRequest({
-      ...googleAuthConfig,
-      selectAccount: true,
-    });
 
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
@@ -105,32 +102,6 @@ export default function AuthScreen() {
       hideSubscription.remove();
     };
   }, []);
-
-  useEffect(() => {
-    if (!googleResponse || processedGoogleResponseRef.current === googleResponse) {
-      return;
-    }
-
-    processedGoogleResponseRef.current = googleResponse;
-
-    if (googleResponse.type === 'success') {
-      const idToken =
-        googleResponse.authentication?.idToken || googleResponse.params?.id_token;
-      const accessToken =
-        googleResponse.authentication?.accessToken || googleResponse.params?.access_token;
-
-      loginWithGoogle({ idToken, accessToken });
-      return;
-    }
-
-    if (googleResponse.type === 'error') {
-      setLocalError(
-        googleResponse.error?.description ||
-          googleResponse.params?.error_description ||
-          'Google Sign-In failed. Please try again.',
-      );
-    }
-  }, [googleResponse, loginWithGoogle]);
 
   const updateField = (field, value) => {
     if (error) {
@@ -178,7 +149,21 @@ export default function AuthScreen() {
     setLocalError(null);
     clearError();
 
+    if (isExpoGo) {
+      setLocalError(
+        'Google Sign-In tidak mendukung Expo Go. Jalankan npm run android lalu buka aplikasi AroundU.',
+      );
+      return;
+    }
+
     if (!isGoogleAuthConfigured) {
+      if (hasGoogleProjectMismatch) {
+        setLocalError(
+          'Google Client ID berasal dari project lain. Gunakan Web dan Android Client ID milik Firebase project aroundu-96361.',
+        );
+        return;
+      }
+
       setLocalError(
         `Google Sign-In belum dikonfigurasi untuk ${Platform.OS}. Isi Google OAuth client ID di .env.`,
       );
@@ -186,8 +171,36 @@ export default function AuthScreen() {
     }
 
     try {
-      await promptGoogleAsync();
+      await GoogleSignin.hasPlayServices({
+        showPlayServicesUpdateDialog: true,
+      });
+      await GoogleSignin.signOut().catch(() => {});
+
+      const response = await GoogleSignin.signIn();
+      if (!isSuccessResponse(response)) {
+        return;
+      }
+
+      await loginWithGoogle({
+        idToken: response.data.idToken,
+      });
     } catch (googleError) {
+      if (googleError.code === statusCodes.SIGN_IN_CANCELLED) {
+        return;
+      }
+
+      if (String(googleError.code) === '10') {
+        setLocalError(
+          'Google OAuth belum cocok. Daftarkan package com.aroundu.app dan SHA-1 debug di Firebase/Google Console, lalu gunakan Web client ID di .env.',
+        );
+        return;
+      }
+
+      if (googleError.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+        setLocalError('Google Play Services tidak tersedia atau perlu diperbarui.');
+        return;
+      }
+
       setLocalError(googleError.message || 'Unable to open Google Sign-In.');
     }
   };
@@ -247,49 +260,25 @@ export default function AuthScreen() {
             <Text style={styles.title}>{isRegister ? 'Create your account' : 'Welcome back'}</Text>
 
             {isRegister ? (
-              <>
-                <View style={styles.fieldGroup}>
-                  <Text style={styles.label}>Display name</Text>
-                  <TextInput
-                    autoCapitalize="words"
-                    autoComplete="name"
-                    blurOnSubmit={false}
-                    editable={!isLoading}
-                    onBlur={() => setFocusedField(null)}
-                    onChangeText={(value) => updateField('displayName', value)}
-                    onFocus={() => setFocusedField('displayName')}
-                    onSubmitEditing={() => usernameRef.current?.focus()}
-                    placeholder="Latanza"
-                    placeholderTextColor={colors.neutral}
-                    returnKeyType="next"
-                    style={[
-                      styles.input,
-                      focusedField === 'displayName' && styles.inputFocused,
-                    ]}
-                    value={form.displayName}
-                  />
-                </View>
-
-                <View style={styles.fieldGroup}>
-                  <Text style={styles.label}>Username</Text>
-                  <TextInput
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    blurOnSubmit={false}
-                    editable={!isLoading}
-                    onBlur={() => setFocusedField(null)}
-                    onChangeText={(value) => updateField('username', value)}
-                    onFocus={() => setFocusedField('username')}
-                    onSubmitEditing={() => emailRef.current?.focus()}
-                    placeholder="latanza"
-                    placeholderTextColor={colors.neutral}
-                    ref={usernameRef}
-                    returnKeyType="next"
-                    style={[styles.input, focusedField === 'username' && styles.inputFocused]}
-                    value={form.username}
-                  />
-                </View>
-              </>
+              <View style={styles.fieldGroup}>
+                <Text style={styles.label}>Username</Text>
+                <TextInput
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  blurOnSubmit={false}
+                  editable={!isLoading}
+                  onBlur={() => setFocusedField(null)}
+                  onChangeText={(value) => updateField('username', value)}
+                  onFocus={() => setFocusedField('username')}
+                  onSubmitEditing={() => emailRef.current?.focus()}
+                  placeholder="latanza"
+                  placeholderTextColor={colors.neutral}
+                  ref={usernameRef}
+                  returnKeyType="next"
+                  style={[styles.input, focusedField === 'username' && styles.inputFocused]}
+                  value={form.username}
+                />
+              </View>
             ) : null}
 
             <View style={styles.fieldGroup}>
@@ -422,13 +411,12 @@ export default function AuthScreen() {
 
             <Pressable
               accessibilityRole="button"
-              disabled={isLoading || !googleRequest || !isGoogleAuthConfigured}
+              disabled={isLoading}
               onPress={handleGooglePress}
               style={({ pressed }) => [
                 styles.googleButton,
                 pressed && styles.buttonPressed,
-                (isLoading || !googleRequest || !isGoogleAuthConfigured) &&
-                  styles.buttonDisabled,
+                isLoading && styles.buttonDisabled,
               ]}
             >
               <View style={styles.googleMark}>

@@ -2,15 +2,21 @@
   "expo": {
     "name": "aroundu",
     "slug": "aroundu",
+    "scheme": [
+      "aroundu",
+      "com.aroundu.app"
+    ],
     "version": "1.0.0",
     "newArchEnabled": false,
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
+      "bundleIdentifier": "com.aroundu.app",
       "supportsTablet": true
     },
     "android": {
+      "package": "com.aroundu.app",
       "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
@@ -29,15 +35,8 @@
           "locationWhenInUsePermission": "GeoConnect uses your location only after you enable nearby features."
         }
       ],
-      [
-        "expo-image-picker",
-        {
-          "photosPermission": "AroundU accesses your photos only when you choose an image to share.",
-          "cameraPermission": "AroundU uses your camera only when you choose to take a photo.",
-          "microphonePermission": false
-        }
-      ],
-      "expo-font"
+      "expo-font",
+      "expo-web-browser"
     ]
   }
 }

@@ -1,0 +1,36 @@
+export const DUMMY_POSTS = Object.freeze([
+  {
+    id: 'senopati-coffee',
+    author: 'Dimas Pratama',
+    location: 'Kopi Nako, Senopati',
+    distance: '858m away',
+    likes: 24,
+    comments: 5,
+    caption:
+      'Found this hidden gem in Senopati. The pour-over here is incredible. Perfect spot for afternoon deep work.',
+    time: '2h ago',
+    color: '#D8C7B4',
+  },
+  {
+    id: 'gbk-afternoon',
+    author: 'Dimas Pratama',
+    location: 'Gelora Bung Karno',
+    distance: '1.2km away',
+    likes: 42,
+    comments: 8,
+    caption: 'A quiet afternoon walk around GBK before the city gets busy.',
+    time: '5h ago',
+    color: '#A9C4AA',
+  },
+  {
+    id: 'blok-m-night',
+    author: 'Dimas Pratama',
+    location: 'Blok M, Jakarta',
+    distance: '2.4km away',
+    likes: 67,
+    comments: 12,
+    caption: 'Neon lights, good food, and the best late-night atmosphere.',
+    time: '1d ago',
+    color: '#8296B5',
+  },
+]);

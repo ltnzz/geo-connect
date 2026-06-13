@@ -3,11 +3,14 @@ import {
   deleteDoc,
   doc,
   getDoc,
+  getDocs,
   increment,
+  query,
   runTransaction,
   serverTimestamp,
   setDoc,
   updateDoc,
+  where,
 } from 'firebase/firestore';
 
 import { assertFirebaseConfigured, db } from '../config/firebase';
@@ -47,7 +50,7 @@ export const firestoreService = {
   async updateUser(userId, updates) {
     assertFirebaseConfigured();
     const allowedFields = [
-      'fullName',
+      'username',
       'avatarUrl',
       'bio',
       'isPublic',
@@ -195,6 +198,31 @@ export const firestoreService = {
     }
   },
 
+  async getBookmarkedPosts(userId) {
+    assertFirebaseConfigured();
+
+    const bookmarksSnapshot = await getDocs(
+      collection(
+        db,
+        COLLECTIONS.users,
+        userId,
+        SUBCOLLECTIONS.bookmarks,
+      ),
+    );
+    const bookmarkedPosts = await Promise.all(
+      bookmarksSnapshot.docs.map(async (bookmarkDocument) => {
+        const postId = bookmarkDocument.data().postId || bookmarkDocument.id;
+        const postSnapshot = await getDoc(doc(db, COLLECTIONS.posts, postId));
+
+        return postSnapshot.exists()
+          ? { id: postSnapshot.id, ...postSnapshot.data() }
+          : null;
+      }),
+    );
+
+    return bookmarkedPosts.filter(Boolean);
+  },
+
   async setFollowing(followerId, followingId, shouldFollow) {
     if (followerId === followingId) {
       throw new Error('You cannot follow yourself.');
@@ -237,6 +265,35 @@ export const firestoreService = {
         });
       }
     });
+  },
+
+  async getConnections(userId, type) {
+    assertFirebaseConfigured();
+
+    const isFollowers = type === 'followers';
+    const followsSnapshot = await getDocs(
+      query(
+        collection(db, COLLECTIONS.follows),
+        where(isFollowers ? 'followingId' : 'followerId', '==', userId),
+      ),
+    );
+    const userIds = followsSnapshot.docs.map((followDocument) => {
+      const follow = followDocument.data();
+      return isFollowers ? follow.followerId : follow.followingId;
+    });
+    const profiles = await Promise.all(
+      userIds.map(async (connectedUserId) => {
+        const userSnapshot = await getDoc(
+          doc(db, COLLECTIONS.users, connectedUserId),
+        );
+
+        return userSnapshot.exists()
+          ? { id: userSnapshot.id, ...userSnapshot.data() }
+          : null;
+      }),
+    );
+
+    return profiles.filter(Boolean);
   },
 
   async createPlace(data) {

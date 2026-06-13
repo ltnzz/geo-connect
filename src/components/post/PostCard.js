@@ -2,8 +2,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { colors, radius, spacing } from '../../utils/theme';
+import { DUMMY_POSTS } from '../../data/dummyPosts';
 
-export default function PostCard() {
+export default function PostCard({ post = DUMMY_POSTS[0] }) {
   return (
     <View style={styles.card}>
       {/* Header */}
@@ -11,38 +12,36 @@ export default function PostCard() {
         <View style={styles.userInfo}>
           <View style={styles.avatar} />
           <View>
-            <Text style={styles.userName}>Dimas Pratama</Text>
+            <Text style={styles.userName}>{post.author}</Text>
             <View style={styles.locationRow}>
               <Ionicons color={colors.primary} name="location-outline" size={12} />
-              <Text style={styles.locationText}>Kopi Nako, Senopati</Text>
+              <Text style={styles.locationText}>{post.location}</Text>
             </View>
           </View>
         </View>
         <View style={styles.distanceBadge}>
-          <Text style={styles.distanceText}>858m away</Text>
+          <Text style={styles.distanceText}>{post.distance}</Text>
         </View>
       </View>
 
       {/* Image Placeholder */}
-      <View style={styles.imagePlaceholder} />
+      <View style={[styles.imagePlaceholder, { backgroundColor: post.color }]} />
 
       {/* Footer */}
       <View style={styles.footer}>
         <View style={styles.actionsRow}>
           <View style={styles.actionItem}>
             <Ionicons color={colors.text} name="heart-outline" size={20} />
-            <Text style={styles.actionText}>24</Text>
+            <Text style={styles.actionText}>{post.likes}</Text>
           </View>
           <View style={styles.actionItem}>
             <Ionicons color={colors.text} name="chatbubble-outline" size={20} />
-            <Text style={styles.actionText}>5</Text>
+            <Text style={styles.actionText}>{post.comments}</Text>
           </View>
         </View>
-        <Text style={styles.description}>
-          Found this hidden gem in Senopati. The pour-over here is incredible. Perfect spot for afternoon deep work.
-        </Text>
+        <Text style={styles.description}>{post.caption}</Text>
         <View style={styles.timeBadge}>
-          <Text style={styles.timeText}>2h ago</Text>
+          <Text style={styles.timeText}>{post.time}</Text>
         </View>
       </View>
     </View>

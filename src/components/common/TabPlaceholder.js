@@ -4,10 +4,10 @@ import { StyleSheet, Text, View } from 'react-native';
 import ScreenHeader from './ScreenHeader';
 import { colors, spacing } from '../../utils/theme';
 
-export default function TabPlaceholder({ icon, title, subtitle }) {
+export default function TabPlaceholder({ icon, title, subtitle, showBack = false }) {
   return (
     <View style={styles.screen}>
-      <ScreenHeader title={title} />
+      <ScreenHeader title={title} showBack={showBack} />
 
       <View style={styles.content}>
         <Ionicons color={colors.neutral} name={icon} size={40} />

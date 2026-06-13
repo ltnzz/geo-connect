@@ -12,7 +12,7 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import AuthScreen from './src/screens/auth/AuthScreen';
-import MainTabNavigator from './src/navigation/MainTabNavigator';
+import AppNavigator from './src/navigation/AppNavigator';
 import SplashScreen from './src/screens/splash/SplashScreen';
 import { useAuthStore } from './src/stores/authStore';
 
@@ -40,7 +40,7 @@ export default function App() {
     return null;
   }
 
-  const content = user ? <MainTabNavigator /> : <AuthScreen />;
+  const content = user ? <AppNavigator /> : <AuthScreen />;
 
   return (
     <SafeAreaProvider>

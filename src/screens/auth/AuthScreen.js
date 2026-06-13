@@ -1,21 +1,29 @@
 import { useEffect, useRef, useState } from 'react';
+import * as Google from 'expo-auth-session/providers/google';
+import * as WebBrowser from 'expo-web-browser';
 import {
   ActivityIndicator,
-  Alert,
   Keyboard,
   KeyboardAvoidingView,
   Platform,
   Pressable,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
+import BrandMark from '../../components/common/BrandMark';
 import { useAuthStore } from '../../stores/authStore';
+import {
+  googleAuthConfig,
+  isGoogleAuthConfigured,
+} from '../../config/googleAuth';
 import { colors, radius, spacing } from '../../utils/theme';
+
+WebBrowser.maybeCompleteAuthSession();
 
 const AUTH_MODES = {
   login: 'login',
@@ -27,6 +35,7 @@ const initialForm = {
   username: '',
   email: '',
   password: '',
+  confirmPassword: '',
 };
 
 const validateForm = (form, isRegister) => {
@@ -46,6 +55,10 @@ const validateForm = (form, isRegister) => {
     return 'Password must be at least 6 characters.';
   }
 
+  if (isRegister && form.password !== form.confirmPassword) {
+    return 'Passwords do not match.';
+  }
+
   return null;
 };
 
@@ -60,8 +73,11 @@ export default function AuthScreen() {
   const usernameRef = useRef(null);
   const emailRef = useRef(null);
   const passwordRef = useRef(null);
+  const confirmPasswordRef = useRef(null);
+  const processedGoogleResponseRef = useRef(null);
 
   const login = useAuthStore((state) => state.login);
+  const loginWithGoogle = useAuthStore((state) => state.loginWithGoogle);
   const register = useAuthStore((state) => state.register);
   const isLoading = useAuthStore((state) => state.isLoading);
   const storeError = useAuthStore((state) => state.error);
@@ -69,6 +85,11 @@ export default function AuthScreen() {
 
   const isRegister = mode === AUTH_MODES.register;
   const error = localError || storeError;
+  const [googleRequest, googleResponse, promptGoogleAsync] =
+    Google.useIdTokenAuthRequest({
+      ...googleAuthConfig,
+      selectAccount: true,
+    });
 
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
@@ -84,6 +105,32 @@ export default function AuthScreen() {
       hideSubscription.remove();
     };
   }, []);
+
+  useEffect(() => {
+    if (!googleResponse || processedGoogleResponseRef.current === googleResponse) {
+      return;
+    }
+
+    processedGoogleResponseRef.current = googleResponse;
+
+    if (googleResponse.type === 'success') {
+      const idToken =
+        googleResponse.authentication?.idToken || googleResponse.params?.id_token;
+      const accessToken =
+        googleResponse.authentication?.accessToken || googleResponse.params?.access_token;
+
+      loginWithGoogle({ idToken, accessToken });
+      return;
+    }
+
+    if (googleResponse.type === 'error') {
+      setLocalError(
+        googleResponse.error?.description ||
+          googleResponse.params?.error_description ||
+          'Google Sign-In failed. Please try again.',
+      );
+    }
+  }, [googleResponse, loginWithGoogle]);
 
   const updateField = (field, value) => {
     if (error) {
@@ -126,13 +173,27 @@ export default function AuthScreen() {
     });
   };
 
-  const handleGooglePress = () => {
+  const handleGooglePress = async () => {
     Keyboard.dismiss();
-    Alert.alert('Google Sign-In', 'Google Sign-In will be connected when Firebase is ready.');
+    setLocalError(null);
+    clearError();
+
+    if (!isGoogleAuthConfigured) {
+      setLocalError(
+        `Google Sign-In belum dikonfigurasi untuk ${Platform.OS}. Isi Google OAuth client ID di .env.`,
+      );
+      return;
+    }
+
+    try {
+      await promptGoogleAsync();
+    } catch (googleError) {
+      setLocalError(googleError.message || 'Unable to open Google Sign-In.');
+    }
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView edges={['top', 'right', 'bottom', 'left']} style={styles.safeArea}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 8 : 0}
@@ -147,8 +208,8 @@ export default function AuthScreen() {
         >
           <Pressable onPress={Keyboard.dismiss} style={styles.dismissArea}>
             <View style={[styles.hero, keyboardVisible && styles.heroKeyboardVisible]}>
-              <View style={styles.logoMark}>
-                <Text style={styles.logoText}>A</Text>
+              <View style={styles.logo}>
+                <BrandMark size={68} />
               </View>
               {!keyboardVisible ? (
                 <>
@@ -269,11 +330,13 @@ export default function AuthScreen() {
                   onBlur={() => setFocusedField(null)}
                   onChangeText={(value) => updateField('password', value)}
                   onFocus={() => setFocusedField('password')}
-                  onSubmitEditing={handleSubmit}
+                  onSubmitEditing={() =>
+                    isRegister ? confirmPasswordRef.current?.focus() : handleSubmit()
+                  }
                   placeholder="Minimum 6 characters"
                   placeholderTextColor={colors.neutral}
                   ref={passwordRef}
-                  returnKeyType="done"
+                  returnKeyType={isRegister ? 'next' : 'done'}
                   secureTextEntry={!passwordVisible}
                   style={styles.passwordInput}
                   textContentType={isRegister ? 'newPassword' : 'password'}
@@ -290,6 +353,47 @@ export default function AuthScreen() {
                 </Pressable>
               </View>
             </View>
+
+            {isRegister ? (
+              <View style={styles.fieldGroup}>
+                <Text style={styles.label}>Confirm password</Text>
+                <View
+                  style={[
+                    styles.passwordField,
+                    focusedField === 'confirmPassword' && styles.inputFocused,
+                  ]}
+                >
+                  <TextInput
+                    autoCapitalize="none"
+                    autoComplete="new-password"
+                    editable={!isLoading}
+                    onBlur={() => setFocusedField(null)}
+                    onChangeText={(value) => updateField('confirmPassword', value)}
+                    onFocus={() => setFocusedField('confirmPassword')}
+                    onSubmitEditing={handleSubmit}
+                    placeholder="Repeat your password"
+                    placeholderTextColor={colors.neutral}
+                    ref={confirmPasswordRef}
+                    returnKeyType="done"
+                    secureTextEntry={!passwordVisible}
+                    style={styles.passwordInput}
+                    textContentType="newPassword"
+                    value={form.confirmPassword}
+                  />
+                  <Pressable
+                    accessibilityLabel={passwordVisible ? 'Hide password' : 'Show password'}
+                    accessibilityRole="button"
+                    hitSlop={8}
+                    onPress={() => setPasswordVisible((visible) => !visible)}
+                    style={styles.passwordToggle}
+                  >
+                    <Text style={styles.passwordToggleText}>
+                      {passwordVisible ? 'Hide' : 'Show'}
+                    </Text>
+                  </Pressable>
+                </View>
+              </View>
+            ) : null}
 
             {error ? (
               <View accessibilityLiveRegion="polite" style={styles.errorBox}>
@@ -318,10 +422,18 @@ export default function AuthScreen() {
 
             <Pressable
               accessibilityRole="button"
-              disabled={isLoading}
+              disabled={isLoading || !googleRequest || !isGoogleAuthConfigured}
               onPress={handleGooglePress}
-              style={({ pressed }) => [styles.googleButton, pressed && styles.buttonPressed]}
+              style={({ pressed }) => [
+                styles.googleButton,
+                pressed && styles.buttonPressed,
+                (isLoading || !googleRequest || !isGoogleAuthConfigured) &&
+                  styles.buttonDisabled,
+              ]}
             >
+              <View style={styles.googleMark}>
+                <Text style={styles.googleMarkText}>G</Text>
+              </View>
               <Text style={styles.googleButtonText}>Continue with Google</Text>
             </Pressable>
 
@@ -346,6 +458,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: spacing.lg,
     paddingBottom: spacing.xl,
+    paddingTop: spacing.xl,
   },
   dismissArea: {
     alignSelf: 'stretch',
@@ -357,19 +470,8 @@ const styles = StyleSheet.create({
   heroKeyboardVisible: {
     marginBottom: spacing.md,
   },
-  logoMark: {
-    alignItems: 'center',
-    backgroundColor: colors.primary,
-    borderRadius: radius.lg,
-    height: 64,
-    justifyContent: 'center',
+  logo: {
     marginBottom: spacing.md,
-    width: 64,
-  },
-  logoText: {
-    color: colors.surface,
-    fontFamily: 'Poppins_700Bold',
-    fontSize: 32,
   },
   brand: {
     color: colors.text,
@@ -511,9 +613,26 @@ const styles = StyleSheet.create({
     borderColor: colors.secondary,
     borderRadius: radius.sm,
     borderWidth: 1,
+    flexDirection: 'row',
+    gap: spacing.sm,
     justifyContent: 'center',
     marginTop: spacing.md,
     minHeight: 52,
+  },
+  googleMark: {
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: radius.full,
+    borderWidth: 1,
+    height: 24,
+    justifyContent: 'center',
+    width: 24,
+  },
+  googleMarkText: {
+    color: '#4285F4',
+    fontFamily: 'Poppins_700Bold',
+    fontSize: 14,
   },
   googleButtonText: {
     color: colors.text,

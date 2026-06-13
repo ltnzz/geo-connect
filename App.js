@@ -3,9 +3,13 @@ import {
   Poppins_400Regular,
   Poppins_600SemiBold,
   Poppins_700Bold,
-  useFonts,
 } from '@expo-google-fonts/poppins';
+import {
+  Inter_700Bold,
+  useFonts,
+} from '@expo-google-fonts/inter';
 import { StatusBar } from 'expo-status-bar';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import AuthScreen from './src/screens/auth/AuthScreen';
 import MainTabNavigator from './src/navigation/MainTabNavigator';
@@ -21,6 +25,7 @@ export default function App() {
     Poppins_400Regular,
     Poppins_600SemiBold,
     Poppins_700Bold,
+    Inter_700Bold,
   });
 
   const handleSplashFinish = useCallback(() => {
@@ -38,13 +43,13 @@ export default function App() {
   const content = user ? <MainTabNavigator /> : <AuthScreen />;
 
   return (
-    <>
+    <SafeAreaProvider>
       {isSplashVisible || !isInitialized ? (
         <SplashScreen onFinish={handleSplashFinish} />
       ) : (
         content
       )}
       <StatusBar style={isSplashVisible ? 'light' : 'auto'} />
-    </>
+    </SafeAreaProvider>
   );
 }

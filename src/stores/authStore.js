@@ -48,6 +48,19 @@ export const useAuthStore = create((set) => ({
     }
   },
 
+  loginWithGoogle: async (tokens) => {
+    set({ isLoading: true, error: null });
+
+    try {
+      const user = await authService.loginWithGoogle(tokens);
+      set({ user, isLoading: false });
+      return true;
+    } catch (error) {
+      set({ error: error.message, isLoading: false });
+      return false;
+    }
+  },
+
   logout: async () => {
     set({ isLoading: true, error: null });
 

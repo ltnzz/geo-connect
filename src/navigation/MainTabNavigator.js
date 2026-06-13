@@ -29,9 +29,9 @@ function CameraTabButton({ accessibilityState, onPress }) {
       onPress={onPress}
       style={({ pressed }) => [styles.cameraButtonSlot, pressed && styles.pressed]}
     >
-      <View style={styles.centerCutout}>
+      <View style={styles.createButtonShell}>
         <View style={[styles.createButton, isSelected && styles.createButtonSelected]}>
-          <Ionicons color={colors.surface} name="add" size={34} />
+          <Ionicons color={colors.surface} name="add" size={28} />
         </View>
       </View>
     </Pressable>
@@ -53,7 +53,7 @@ export default function MainTabNavigator() {
           const [activeIcon, inactiveIcon] = TAB_ICONS[route.name];
           return <Ionicons color={color} name={focused ? activeIcon : inactiveIcon} size={size} />;
         },
-        tabBarLabelStyle: styles.tabLabel,
+        tabBarShowLabel: false,
         tabBarStyle: styles.tabBar,
       })}
     >
@@ -78,51 +78,51 @@ const styles = StyleSheet.create({
     backgroundColor: '#FCFCFD',
     borderTopColor: '#D8DEE8',
     borderTopWidth: StyleSheet.hairlineWidth,
+    bottom: 0,
     elevation: 14,
-    height: 72,
+    height: 66,
     paddingBottom: 8,
     paddingTop: 8,
     shadowColor: '#0F172A',
     shadowOffset: {
-      height: -4,
+      height: -3,
       width: 0,
     },
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-  },
-  tabLabel: {
-    fontFamily: 'Poppins_600SemiBold',
-    fontSize: 11,
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    overflow: 'visible',
   },
   cameraButtonSlot: {
     alignItems: 'center',
     flex: 1,
     overflow: 'visible',
+    position: 'relative',
   },
-  centerCutout: {
+  createButtonShell: {
     alignItems: 'center',
-    backgroundColor: colors.background,
-    borderRadius: 39,
-    height: 78,
+    backgroundColor: 'transparent',
+    height: 42,
     justifyContent: 'center',
-    marginTop: -31,
-    width: 78,
+    position: 'absolute',
+    top: -17,
+    width: 42,
+    zIndex: 2,
   },
   createButton: {
     alignItems: 'center',
     backgroundColor: colors.primary,
-    borderRadius: 29,
+    borderRadius: 21,
     elevation: 8,
-    height: 58,
+    height: 42,
     justifyContent: 'center',
     shadowColor: '#0F172A',
     shadowOffset: {
       height: 4,
       width: 0,
     },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    width: 58,
+    shadowOpacity: 0.22,
+    shadowRadius: 7,
+    width: 42,
   },
   createButtonSelected: {
     backgroundColor: colors.tertiary,

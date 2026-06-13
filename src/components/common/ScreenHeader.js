@@ -5,7 +5,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { colors, spacing } from '../../utils/theme';
 
-export default function ScreenHeader({ title, showBack = false }) {
+export default function ScreenHeader({
+  title,
+  showBack = false,
+  rightIcon = 'notifications-outline',
+  rightLabel = 'Notifications',
+  onRightPress,
+}) {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
 
@@ -23,16 +29,19 @@ export default function ScreenHeader({ title, showBack = false }) {
         )}
 
         <Text numberOfLines={1} style={styles.title}>
-          {showBack ? title : 'AroundU'}
+          {title || 'AroundU'}
         </Text>
 
-        <Pressable 
-          accessibilityRole="button" 
+        <Pressable
+          accessibilityLabel={rightLabel}
+          accessibilityRole="button"
           disabled={showBack}
-          onPress={() => navigation.navigate('Notification')}
+          onPress={
+            onRightPress || (() => navigation.navigate('Notification'))
+          }
           style={[styles.iconButton, showBack && { opacity: 0 }]}
         >
-          <Ionicons color={colors.text} name="notifications-outline" size={24} />
+          <Ionicons color={colors.text} name={rightIcon} size={24} />
         </Pressable>
       </View>
     </View>

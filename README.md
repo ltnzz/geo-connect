@@ -36,6 +36,9 @@ Backend setup and data modeling are documented in:
 - `docs/FIREBASE_CLOUDINARY_SETUP.md`
 - `docs/FIRESTORE_SCHEMA.md`
 
+Google OAuth requires an Android development build; Expo Go cannot run the
+native Google Sign-In module used by this app.
+
 ## Folder Ownership
 
 - `src/navigation`: app navigation setup.

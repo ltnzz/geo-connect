@@ -5,6 +5,8 @@ import {
   Poppins_700Bold,
 } from '@expo-google-fonts/poppins';
 import {
+  Inter_400Regular,
+  Inter_600SemiBold,
   Inter_700Bold,
   useFonts,
 } from '@expo-google-fonts/inter';
@@ -15,6 +17,9 @@ import AuthScreen from './src/screens/auth/AuthScreen';
 import AppNavigator from './src/navigation/AppNavigator';
 import SplashScreen from './src/screens/splash/SplashScreen';
 import { useAuthStore } from './src/stores/authStore';
+import { notificationService } from './src/services/notificationService';
+
+notificationService.configureForegroundNotifications();
 
 export default function App() {
   const [isSplashVisible, setIsSplashVisible] = useState(true);
@@ -25,6 +30,8 @@ export default function App() {
     Poppins_400Regular,
     Poppins_600SemiBold,
     Poppins_700Bold,
+    Inter_400Regular,
+    Inter_600SemiBold,
     Inter_700Bold,
   });
 
@@ -35,6 +42,20 @@ export default function App() {
   useEffect(() => {
     initialize();
   }, [initialize]);
+
+  useEffect(() => {
+    if (!user?.uid) {
+      return undefined;
+    }
+
+    notificationService.registerDevice(user.uid).catch((error) => {
+      if (__DEV__) {
+        console.warn('Unable to register FCM token:', error.message);
+      }
+    });
+
+    return undefined;
+  }, [user?.uid]);
 
   if (!fontsLoaded) {
     return null;
@@ -49,7 +70,7 @@ export default function App() {
       ) : (
         content
       )}
-      <StatusBar style={isSplashVisible ? 'light' : 'auto'} />
+      <StatusBar style={isSplashVisible ? 'dark' : 'auto'} />
     </SafeAreaProvider>
   );
 }

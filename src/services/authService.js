@@ -6,20 +6,17 @@ import {
   signInWithCredential,
   signInWithEmailAndPassword,
   signOut,
-  updateProfile,
 } from 'firebase/auth';
 import {
   doc,
   getDoc,
-  runTransaction,
   serverTimestamp,
+  setDoc,
 } from 'firebase/firestore';
 
 import { assertFirebaseConfigured, db } from '../config/firebase';
 import { auth } from '../config/firebaseAuth';
-
-const COLLECTIONS = Object.freeze({ users: 'users', usernames: 'usernames' });
-const LOCATION_SHARING = Object.freeze({ hidden: 'hidden' });
+import { COLLECTIONS, LOCATION_SHARING } from '../constants/firestore';
 
 const normalizeEmail = (email) => email.trim().toLowerCase();
 const normalizeUsername = (username) => username.trim().toLowerCase();
@@ -44,8 +41,6 @@ const toPublicUser = (firebaseUser, profile = {}) => ({
   id: firebaseUser.uid,
   uid: firebaseUser.uid,
   email: firebaseUser.email,
-  displayName: profile.fullName || firebaseUser.displayName || '',
-  fullName: profile.fullName || firebaseUser.displayName || '',
   username: profile.username || '',
   avatarUrl: profile.avatarUrl || firebaseUser.photoURL || '',
   bio: profile.bio || '',
@@ -65,11 +60,17 @@ const getUserProfile = async (firebaseUser) => {
 };
 
 const withFriendlyAuthError = (error) => {
-  if (error.message === 'Username is already taken.') {
-    return error;
+  return new Error(authErrorMessages[error.code] || error.message || 'Authentication failed.');
+};
+
+const withFriendlyGoogleAuthError = (error) => {
+  if (error.code === 'auth/invalid-credential') {
+    return new Error(
+      'Google credential ditolak Firebase. Pastikan Google Client ID berasal dari project Firebase yang sama.',
+    );
   }
 
-  return new Error(authErrorMessages[error.code] || error.message || 'Authentication failed.');
+  return withFriendlyAuthError(error);
 };
 
 const ensureGoogleUserProfile = async (firebaseUser) => {
@@ -81,41 +82,21 @@ const ensureGoogleUserProfile = async (firebaseUser) => {
   }
 
   const username = createGoogleUsername(firebaseUser);
-  const usernameRef = doc(db, COLLECTIONS.usernames, username);
-
-  await runTransaction(db, async (transaction) => {
-    const currentUserSnapshot = await transaction.get(userRef);
-
-    if (currentUserSnapshot.exists()) {
-      return;
-    }
-
-    const usernameSnapshot = await transaction.get(usernameRef);
-    if (usernameSnapshot.exists() && usernameSnapshot.data().uid !== firebaseUser.uid) {
-      throw new Error('Unable to reserve a username for this Google account.');
-    }
-
-    transaction.set(usernameRef, {
-      uid: firebaseUser.uid,
-      createdAt: serverTimestamp(),
-    });
-    transaction.set(userRef, {
-      uid: firebaseUser.uid,
-      username,
-      email: firebaseUser.email || '',
-      fullName: firebaseUser.displayName || '',
-      avatarUrl: firebaseUser.photoURL || '',
-      bio: '',
-      isPublic: true,
-      invisibleMode: false,
-      locationSharing: LOCATION_SHARING.hidden,
-      city: '',
-      followersCount: 0,
-      followingCount: 0,
-      postsCount: 0,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    });
+  await setDoc(userRef, {
+    uid: firebaseUser.uid,
+    username,
+    email: firebaseUser.email || '',
+    avatarUrl: firebaseUser.photoURL || '',
+    bio: '',
+    isPublic: true,
+    invisibleMode: false,
+    locationSharing: LOCATION_SHARING.hidden,
+    city: '',
+    followersCount: 0,
+    followingCount: 0,
+    postsCount: 0,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
   });
 
   return getUserProfile(firebaseUser);
@@ -140,49 +121,32 @@ export const authService = {
     return getUserProfile(firebaseUser);
   },
 
-  async register({ displayName, username, email, password }) {
+  async register({ username, email, password }) {
     assertFirebaseConfigured();
 
-    const fullName = displayName.trim();
     const normalizedEmail = normalizeEmail(email);
     const normalizedUsername = normalizeUsername(username);
     let credential;
 
     try {
       credential = await createUserWithEmailAndPassword(auth, normalizedEmail, password);
-      await updateProfile(credential.user, { displayName: fullName });
 
       const userRef = doc(db, COLLECTIONS.users, credential.user.uid);
-      const usernameRef = doc(db, COLLECTIONS.usernames, normalizedUsername);
-
-      await runTransaction(db, async (transaction) => {
-        const usernameSnapshot = await transaction.get(usernameRef);
-
-        if (usernameSnapshot.exists()) {
-          throw new Error('Username is already taken.');
-        }
-
-        transaction.set(usernameRef, {
-          uid: credential.user.uid,
-          createdAt: serverTimestamp(),
-        });
-        transaction.set(userRef, {
-          uid: credential.user.uid,
-          username: normalizedUsername,
-          email: normalizedEmail,
-          fullName,
-          avatarUrl: '',
-          bio: '',
-          isPublic: true,
-          invisibleMode: false,
-          locationSharing: LOCATION_SHARING.hidden,
-          city: '',
-          followersCount: 0,
-          followingCount: 0,
-          postsCount: 0,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        });
+      await setDoc(userRef, {
+        uid: credential.user.uid,
+        username: normalizedUsername,
+        email: normalizedEmail,
+        avatarUrl: '',
+        bio: '',
+        isPublic: true,
+        invisibleMode: false,
+        locationSharing: LOCATION_SHARING.hidden,
+        city: '',
+        followersCount: 0,
+        followingCount: 0,
+        postsCount: 0,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
       });
 
       return getUserProfile(credential.user);
@@ -222,7 +186,7 @@ export const authService = {
       const result = await signInWithCredential(auth, credential);
       return await ensureGoogleUserProfile(result.user);
     } catch (error) {
-      throw withFriendlyAuthError(error);
+      throw withFriendlyGoogleAuthError(error);
     }
   },
 

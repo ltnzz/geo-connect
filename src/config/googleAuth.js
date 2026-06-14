@@ -1,3 +1,4 @@
+import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { Platform } from 'react-native';
 
 const googleClientIds = Object.freeze({
@@ -5,6 +6,9 @@ const googleClientIds = Object.freeze({
   android: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
   ios: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
 });
+const firebaseProjectNumber =
+  process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID;
+const getClientProjectNumber = (clientId) => clientId?.split('-')[0];
 
 const currentPlatformClientId = Platform.select({
   android: googleClientIds.android,
@@ -13,9 +17,22 @@ const currentPlatformClientId = Platform.select({
 });
 
 export const googleAuthConfig = Object.freeze({
-  webClientId: googleClientIds.web || 'missing-google-web-client-id',
-  androidClientId: googleClientIds.android || 'missing-google-android-client-id',
-  iosClientId: googleClientIds.ios || 'missing-google-ios-client-id',
+  webClientId: googleClientIds.web,
+  androidClientId: googleClientIds.android,
+  iosClientId: googleClientIds.ios,
 });
 
-export const isGoogleAuthConfigured = Boolean(currentPlatformClientId);
+export const isExpoGo =
+  Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+export const hasGoogleProjectMismatch = Boolean(
+  firebaseProjectNumber &&
+    [googleClientIds.web, currentPlatformClientId]
+      .filter(Boolean)
+      .some(
+        (clientId) =>
+          getClientProjectNumber(clientId) !== firebaseProjectNumber,
+      ),
+);
+export const isGoogleAuthConfigured = Boolean(
+  googleClientIds.web && currentPlatformClientId && !hasGoogleProjectMismatch,
+);

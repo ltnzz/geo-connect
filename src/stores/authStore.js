@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 
 import { authService } from '../services/authService';
+import { notificationService } from '../services/notificationService';
 
 export const useAuthStore = create((set) => ({
   user: null,
@@ -21,6 +22,10 @@ export const useAuthStore = create((set) => ({
   },
 
   clearError: () => set({ error: null }),
+  updateCurrentUser: (updates) =>
+    set((state) => ({
+      user: state.user ? { ...state.user, ...updates } : state.user,
+    })),
 
   login: async (credentials) => {
     set({ isLoading: true, error: null });
@@ -65,10 +70,19 @@ export const useAuthStore = create((set) => ({
     set({ isLoading: true, error: null });
 
     try {
+      const currentUser = useAuthStore.getState().user;
+      if (currentUser?.uid) {
+        await Promise.race([
+          notificationService.unregisterDevice(currentUser.uid),
+          new Promise((resolve) => setTimeout(resolve, 1500)),
+        ]).catch(() => {});
+      }
       await authService.logout();
       set({ user: null, isLoading: false });
+      return true;
     } catch {
       set({ error: 'Unable to log out. Please try again.', isLoading: false });
+      return false;
     }
   },
 }));

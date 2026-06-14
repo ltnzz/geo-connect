@@ -21,7 +21,7 @@ import {
   createBlockId,
   createFollowId,
 } from '../constants/firestore';
-import { createGeoPointData } from '../utils/geo';
+import { blurCoordinate, createGeoPointData } from '../utils/geo';
 import { getNearbyDocuments } from './geoFirestoreService';
 
 const createLocation = ({ latitude, longitude, ...metadata }) => ({
@@ -97,15 +97,27 @@ export const firestoreService = {
     assertFirebaseConfigured();
     const postRef = doc(collection(db, COLLECTIONS.posts));
     const userRef = doc(db, COLLECTIONS.users, authorId);
-    const postLocation =
-      location && location.visibility !== POST_LOCATION_VISIBILITY.hidden
-        ? createLocation(location)
-        : location
-          ? {
-              address: location.address || '',
-              visibility: POST_LOCATION_VISIBILITY.hidden,
-            }
-          : null;
+    let postLocation = null;
+
+    if (location?.visibility === POST_LOCATION_VISIBILITY.exact) {
+      postLocation = createLocation(location);
+    } else if (location?.visibility === POST_LOCATION_VISIBILITY.blurred) {
+      postLocation = createLocation({
+        ...location,
+        ...blurCoordinate(location, 500),
+      });
+    } else if (location?.visibility === POST_LOCATION_VISIBILITY.city) {
+      postLocation = {
+        address: location.address || location.city || '',
+        city: location.city || '',
+        visibility: POST_LOCATION_VISIBILITY.city,
+      };
+    } else if (location) {
+      postLocation = {
+        address: location.address || '',
+        visibility: POST_LOCATION_VISIBILITY.hidden,
+      };
+    }
 
     await runTransaction(db, async (transaction) => {
       transaction.set(postRef, {

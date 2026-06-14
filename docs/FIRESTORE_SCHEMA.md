@@ -8,7 +8,7 @@ the returned HTTPS URLs.
 ### `users/{userId}`
 
 ```txt
-uid, username, email, fullName, avatarUrl, bio
+uid, username, email, avatarUrl, bio
 isPublic, invisibleMode, locationSharing, city
 followersCount, followingCount, postsCount
 createdAt, updatedAt
@@ -24,15 +24,6 @@ userId, latitude, longitude, geohash, updatedAt
 
 Only the owner can read or write this document. This separation is required because
 Firestore Security Rules protect documents, not individual fields.
-
-### `usernames/{normalizedUsername}` (internal uniqueness index)
-
-```txt
-uid, createdAt
-```
-
-Registration reserves this document in the same transaction that creates the user
-profile.
 
 ### `posts/{postId}`
 
@@ -59,6 +50,15 @@ posts/{postId}/likes/{userId}
 ```txt
 postId, createdAt
 ```
+
+### `users/{userId}/pushTokens/{tokenHash}` (private)
+
+```txt
+token, platform, deviceName, updatedAt
+```
+
+Only the owner can read or write device tokens. Cloud Functions read these tokens
+through the Admin SDK when sending FCM messages.
 
 ### `follows/{followerId_followingId}`
 
@@ -113,10 +113,18 @@ events/{eventId}/participants/{userId}
 
 ```txt
 eventPromptLogs/{logId}
-notifications/{notificationId}
 reports/{reportId}
 blocks/{blockerId_blockedId}
 ```
+
+### `notifications/{notificationId}`
+
+```txt
+recipientId, actorId, actorUsername, type, postId, read, createdAt
+```
+
+The Admin SDK creates notification documents. Mobile clients can only read their own
+notifications and update the `read` field.
 
 See `src/constants/firestore.js` for canonical collection names and enum values.
 

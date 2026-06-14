@@ -72,3 +72,30 @@ Restart Expo after changing `.env`:
 ```bash
 npm start -- --clear
 ```
+
+## 4. FCM Notifications
+
+The Android app is registered in Firebase with package `com.aroundu.app`.
+`google-services.json` is bundled into the Android app and contains public client
+configuration, not a Firebase Admin private key.
+
+The app stores native FCM tokens under:
+
+```txt
+users/{userId}/pushTokens/{tokenHash}
+```
+
+Cloud Functions create notification documents and send FCM messages when a comment,
+like, or follow document is created. Deploy the backend after enabling billing and
+the Cloud Functions API:
+
+```bash
+firebase deploy --only firestore:rules,firestore:indexes
+firebase deploy --only functions
+```
+
+Push notifications require a development build; they do not use Expo Go:
+
+```bash
+npm run android:rebuild
+```

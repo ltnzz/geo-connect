@@ -1,114 +1,135 @@
-import { useEffect, useRef, useState } from 'react';
-import { Animated, SafeAreaView, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useRef } from 'react';
+import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { colors, radius, spacing } from '../../utils/theme';
+import BrandMark from '../../components/common/BrandMark';
+import { spacing } from '../../utils/theme';
 
 const BRAND_TEXT = 'AroundU';
 const TAGLINE_TEXT = "Discover What's Happening Around You";
-const TYPE_SPEED = 72;
 
 export default function SplashScreen({ onFinish }) {
   const logoOpacity = useRef(new Animated.Value(0)).current;
-  const logoScale = useRef(new Animated.Value(0.88)).current;
-  const textOpacity = useRef(new Animated.Value(0)).current;
-  const [brandText, setBrandText] = useState('');
-  const [taglineText, setTaglineText] = useState('');
+  const logoScale = useRef(new Animated.Value(0.92)).current;
+  const logoTranslateY = useRef(new Animated.Value(12)).current;
+  const brandOpacity = useRef(new Animated.Value(0)).current;
+  const brandTranslateY = useRef(new Animated.Value(10)).current;
+  const taglineOpacity = useRef(new Animated.Value(0)).current;
+  const taglineTranslateY = useRef(new Animated.Value(8)).current;
 
   useEffect(() => {
-    Animated.parallel([
-      Animated.timing(logoOpacity, {
-        toValue: 1,
-        duration: 650,
-        useNativeDriver: true,
-      }),
-      Animated.spring(logoScale, {
-        toValue: 1,
-        damping: 12,
-        stiffness: 110,
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      Animated.timing(textOpacity, {
-        toValue: 1,
-        duration: 240,
-        useNativeDriver: true,
-      }).start();
+    const animation = Animated.sequence([
+      Animated.parallel([
+        Animated.timing(logoOpacity, {
+          toValue: 1,
+          duration: 420,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.spring(logoScale, {
+          toValue: 1,
+          damping: 16,
+          stiffness: 130,
+          mass: 0.8,
+          useNativeDriver: true,
+        }),
+        Animated.timing(logoTranslateY, {
+          toValue: 0,
+          duration: 420,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+      ]),
+      Animated.parallel([
+        Animated.timing(brandOpacity, {
+          toValue: 1,
+          duration: 280,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.timing(brandTranslateY, {
+          toValue: 0,
+          duration: 280,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+      ]),
+      Animated.parallel([
+        Animated.timing(taglineOpacity, {
+          toValue: 1,
+          duration: 260,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.timing(taglineTranslateY, {
+          toValue: 0,
+          duration: 260,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+      ]),
+      Animated.delay(900),
+    ]);
+
+    animation.start(({ finished }) => {
+      if (finished) {
+        onFinish();
+      }
     });
-  }, [logoOpacity, logoScale, textOpacity]);
 
-  useEffect(() => {
-    const timers = [];
-
-    timers.push(
-      setTimeout(() => {
-        let brandIndex = 0;
-        const brandTimer = setInterval(() => {
-          brandIndex += 1;
-          setBrandText(BRAND_TEXT.slice(0, brandIndex));
-
-          if (brandIndex === BRAND_TEXT.length) {
-            clearInterval(brandTimer);
-
-            let taglineIndex = 0;
-            const taglineTimer = setInterval(() => {
-              taglineIndex += 1;
-              setTaglineText(TAGLINE_TEXT.slice(0, taglineIndex));
-
-              if (taglineIndex === TAGLINE_TEXT.length) {
-                clearInterval(taglineTimer);
-                timers.push(setTimeout(onFinish, 850));
-              }
-            }, TYPE_SPEED);
-
-            timers.push(taglineTimer);
-          }
-        }, TYPE_SPEED);
-
-        timers.push(brandTimer);
-      }, 900),
-    );
-
-    return () => {
-      timers.forEach((timer) => clearTimeout(timer));
-    };
-  }, [onFinish]);
+    return () => animation.stop();
+  }, [
+    brandOpacity,
+    brandTranslateY,
+    logoOpacity,
+    logoScale,
+    logoTranslateY,
+    onFinish,
+    taglineOpacity,
+    taglineTranslateY,
+  ]);
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.content}>
         <Animated.View
           style={[
-            styles.logoMark,
+            styles.logoContainer,
             {
               opacity: logoOpacity,
-              transform: [{ scale: logoScale }],
+              transform: [
+                { translateY: logoTranslateY },
+                { scale: logoScale },
+              ],
             },
           ]}
         >
-          <Text style={styles.logoText}>A</Text>
+          <BrandMark size={104} />
         </Animated.View>
 
-        <Animated.View style={[styles.textGroup, { opacity: textOpacity }]}>
-          <View style={styles.brandLine}>
-            <Text style={[styles.brand, styles.hiddenText]}>{BRAND_TEXT}</Text>
-            <Text style={[styles.brand, styles.typedText]}>
-              {brandText}
-              <Text style={styles.cursor}>{brandText.length < BRAND_TEXT.length ? '|' : ''}</Text>
-            </Text>
-          </View>
+        <Animated.Text
+          style={[
+            styles.brand,
+            {
+              opacity: brandOpacity,
+              transform: [{ translateY: brandTranslateY }],
+            },
+          ]}
+        >
+          {BRAND_TEXT}
+        </Animated.Text>
 
-          <View style={styles.taglineLine}>
-            <Text style={[styles.tagline, styles.hiddenText]}>{TAGLINE_TEXT}</Text>
-            <Text style={[styles.tagline, styles.typedText]}>
-              {taglineText}
-              <Text style={styles.cursor}>
-                {brandText.length === BRAND_TEXT.length && taglineText.length < TAGLINE_TEXT.length
-                  ? '|'
-                  : ''}
-              </Text>
-            </Text>
-          </View>
-        </Animated.View>
+        <Animated.Text
+          style={[
+            styles.tagline,
+            {
+              opacity: taglineOpacity,
+              transform: [{ translateY: taglineTranslateY }],
+            },
+          ]}
+        >
+          {TAGLINE_TEXT}
+        </Animated.Text>
       </View>
     </SafeAreaView>
   );
@@ -116,64 +137,34 @@ export default function SplashScreen({ onFinish }) {
 
 const styles = StyleSheet.create({
   safeArea: {
+    backgroundColor: '#F8F9FF',
     flex: 1,
-    backgroundColor: colors.primary,
   },
   content: {
     alignItems: 'center',
     flex: 1,
     justifyContent: 'center',
-    padding: spacing.xl,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.xl,
   },
-  logoMark: {
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    height: 88,
-    justifyContent: 'center',
-    marginBottom: spacing.xl,
-    width: 88,
-  },
-  logoText: {
-    color: colors.primary,
-    fontSize: 44,
-    fontWeight: '700',
-  },
-  textGroup: {
-    alignItems: 'center',
-    minHeight: 92,
-  },
-  brandLine: {
-    position: 'relative',
+  logoContainer: {
+    marginBottom: spacing.lg,
   },
   brand: {
-    color: colors.surface,
-    fontFamily: 'Poppins_700Bold',
+    color: '#0B1C30',
+    fontFamily: 'Inter_700Bold',
     fontSize: 32,
-    lineHeight: 48,
-  },
-  taglineLine: {
-    marginTop: spacing.sm,
-    maxWidth: 320,
-    position: 'relative',
+    letterSpacing: -0.32,
+    lineHeight: 40,
+    textAlign: 'center',
   },
   tagline: {
-    color: '#DBEAFE',
-    fontFamily: 'Poppins_400Regular',
+    color: '#434655',
+    fontFamily: 'Inter_400Regular',
     fontSize: 16,
     lineHeight: 24,
-    minHeight: 48,
-  },
-  hiddenText: {
-    opacity: 0,
-  },
-  typedText: {
-    left: 0,
-    position: 'absolute',
-    top: 0,
-  },
-  cursor: {
-    color: colors.secondary,
-    fontFamily: 'Poppins_400Regular',
+    marginTop: spacing.sm,
+    maxWidth: 320,
+    textAlign: 'center',
   },
 });

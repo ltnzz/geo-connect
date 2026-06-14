@@ -25,6 +25,12 @@ expo-env.d.ts
 npm-debug.*
 yarn-debug.*
 yarn-error.*
+.android-build.log
+.expo-export-check/
+.expo-web-*.log
+firebase-debug.log
+functions/.firebase/
+functions/lib/
 
 # macOS
 .DS_Store
@@ -35,6 +41,7 @@ yarn-error.*
 .env.*
 !.env.example
 .env*.local
+google-services.json
 
 # typescript
 *.tsbuildinfo

@@ -7,7 +7,7 @@
       "com.aroundu.app"
     ],
     "version": "1.0.0",
-    "newArchEnabled": false,
+    "newArchEnabled": true,
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -17,6 +17,7 @@
     },
     "android": {
       "package": "com.aroundu.app",
+      "googleServicesFile": "./google-services.json",
       "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
@@ -32,11 +33,24 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "GeoConnect uses your location only after you enable nearby features."
+          "locationWhenInUsePermission": "AroundU uses your location only while you explore nearby public posts, places, and events."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "AroundU accesses your photos only when you choose an image to share.",
+          "cameraPermission": "AroundU uses your camera only when you choose to take a photo.",
+          "microphonePermission": false
         }
       ],
       "expo-font",
-      "@react-native-google-signin/google-signin"
+      [
+        "expo-notifications",
+        {
+          "defaultChannel": "social"
+        }
+      ]
     ]
   }
 }

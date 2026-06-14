@@ -1,10 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  GoogleSignin,
-  isSuccessResponse,
-  statusCodes,
-} from '@react-native-google-signin/google-signin';
-import {
   ActivityIndicator,
   Keyboard,
   KeyboardAvoidingView,
@@ -28,7 +23,18 @@ import {
 } from '../../config/googleAuth';
 import { colors, radius, spacing } from '../../utils/theme';
 
+let googleSigninModule;
+
+const getGoogleSigninModule = () => {
+  if (!googleSigninModule) {
+    googleSigninModule = require('@react-native-google-signin/google-signin');
+  }
+
+  return googleSigninModule;
+};
+
 if (isGoogleAuthConfigured && !isExpoGo) {
+  const { GoogleSignin } = getGoogleSigninModule();
   GoogleSignin.configure({
     webClientId: googleAuthConfig.webClientId,
   });
@@ -171,6 +177,9 @@ export default function AuthScreen() {
     }
 
     try {
+      const { GoogleSignin, isSuccessResponse, statusCodes } =
+        getGoogleSigninModule();
+
       await GoogleSignin.hasPlayServices({
         showPlayServicesUpdateDialog: true,
       });
@@ -185,6 +194,8 @@ export default function AuthScreen() {
         idToken: response.data.idToken,
       });
     } catch (googleError) {
+      const { statusCodes } = getGoogleSigninModule();
+
       if (googleError.code === statusCodes.SIGN_IN_CANCELLED) {
         return;
       }

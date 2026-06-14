@@ -43,7 +43,6 @@ const getPostLocationLabel = (post) => {
 export default function ProfileScreen() {
   const navigation = useNavigation();
   const user = useAuthStore((state) => state.user);
-  const logout = useAuthStore((state) => state.logout);
   const [activeSegment, setActiveSegment] = useState('posts');
   const [savedPosts, setSavedPosts] = useState([]);
   const [isSavedLoading, setIsSavedLoading] = useState(false);
@@ -86,13 +85,6 @@ export default function ProfileScreen() {
     };
   }, [activeSegment, user?.uid]);
 
-  const confirmLogout = () => {
-    Alert.alert('Account', 'Do you want to log out from AroundU?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Logout', onPress: logout, style: 'destructive' },
-    ]);
-  };
-
   const showEditUnavailable = () => {
     Alert.alert('Edit Profile', 'Profile editing will be available soon.');
   };
@@ -100,7 +92,7 @@ export default function ProfileScreen() {
   return (
     <View style={styles.screen}>
       <ScreenHeader
-        onRightPress={confirmLogout}
+        onRightPress={() => navigation.navigate('Settings')}
         rightIcon="settings-outline"
         rightLabel="Account settings"
         title="Profile"

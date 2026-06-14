@@ -10,10 +10,11 @@ Starter project for the GeoConnect Expo mobile app. The `main` branch is intenti
 - React Navigation
 - Zustand
 - Firebase Auth and Firestore
+- Foursquare Places API for nearby venue discovery
 - Cloudinary image hosting
 - expo-location, expo-image, and react-native-maps
 - Reanimated, Worklets, and Gesture Handler
-- New Architecture disabled for broader Expo Go compatibility
+- New Architecture enabled for Reanimated 4 compatibility
 
 ## Setup
 
@@ -34,7 +35,12 @@ npm start
 Backend setup and data modeling are documented in:
 
 - `docs/FIREBASE_CLOUDINARY_SETUP.md`
+- `docs/FOURSQUARE_SETUP.md`
 - `docs/FIRESTORE_SCHEMA.md`
+- `docs/LOCATION_PRIVACY.md`
+
+Google OAuth requires an Android development build; Expo Go cannot receive the
+custom OAuth callback used by this app.
 
 ## Folder Ownership
 

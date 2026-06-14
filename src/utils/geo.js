@@ -37,3 +37,26 @@ export const getDistanceMeters = (from, to) =>
     [from.latitude, from.longitude],
     [to.latitude, to.longitude],
   ) * 1000;
+
+export const blurCoordinate = (
+  { latitude, longitude },
+  maxRadiusMeters = 500,
+) => {
+  assertCoordinate(latitude, 'latitude', -90, 90);
+  assertCoordinate(longitude, 'longitude', -180, 180);
+
+  const distance = Math.sqrt(Math.random()) * maxRadiusMeters;
+  const angle = Math.random() * Math.PI * 2;
+  const latitudeOffset = (distance * Math.cos(angle)) / 111320;
+  const longitudeScale = Math.max(
+    Math.cos((latitude * Math.PI) / 180),
+    0.01,
+  );
+  const longitudeOffset =
+    (distance * Math.sin(angle)) / (111320 * longitudeScale);
+
+  return {
+    latitude: latitude + latitudeOffset,
+    longitude: longitude + longitudeOffset,
+  };
+};

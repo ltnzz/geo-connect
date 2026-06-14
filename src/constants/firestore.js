@@ -1,7 +1,6 @@
 export const COLLECTIONS = Object.freeze({
   users: 'users',
   userLocations: 'userLocations',
-  usernames: 'usernames',
   posts: 'posts',
   follows: 'follows',
   categories: 'categories',
@@ -18,8 +17,15 @@ export const SUBCOLLECTIONS = Object.freeze({
   comments: 'comments',
   likes: 'likes',
   bookmarks: 'bookmarks',
+  pushTokens: 'pushTokens',
   registrations: 'registrations',
   participants: 'participants',
+});
+
+export const NOTIFICATION_TYPES = Object.freeze({
+  comment: 'comment',
+  like: 'like',
+  follow: 'follow',
 });
 
 export const LOCATION_SHARING = Object.freeze({

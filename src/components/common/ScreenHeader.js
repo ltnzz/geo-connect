@@ -16,6 +16,9 @@ export default function ScreenHeader({
   rightLabel = 'Notifications',
   onRightPress,
   showRightOnBack = false,
+  leftIcon,
+  onLeftPress,
+  rightComponent,
 }) {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
@@ -59,9 +62,17 @@ export default function ScreenHeader({
               />
             </Pressable>
           </View>
-        ) : showBack ? (
-          <Pressable accessibilityRole="button" onPress={() => navigation.goBack()} style={styles.iconButton}>
-            <Ionicons color={colors.text} name="arrow-back-outline" size={24} />
+        ) : showBack || leftIcon ? (
+          <Pressable
+            accessibilityRole="button"
+            onPress={onLeftPress || (() => navigation.goBack())}
+            style={styles.iconButton}
+          >
+            <Ionicons
+              color={colors.text}
+              name={leftIcon || 'arrow-back-outline'}
+              size={24}
+            />
           </Pressable>
         ) : (
           <Pressable
@@ -80,20 +91,24 @@ export default function ScreenHeader({
           </Text>
         ) : null}
 
-        <Pressable
-          accessibilityLabel={rightLabel}
-          accessibilityRole="button"
-          disabled={showBack && !showRightOnBack}
-          onPress={
-            onRightPress || (() => navigation.navigate('Notification'))
-          }
-          style={[
-            styles.iconButton,
-            showBack && !showRightOnBack && { opacity: 0 },
-          ]}
-        >
-          <Ionicons color={colors.text} name={rightIcon} size={24} />
-        </Pressable>
+        {rightComponent ? (
+          rightComponent
+        ) : (
+          <Pressable
+            accessibilityLabel={rightLabel}
+            accessibilityRole="button"
+            disabled={(showBack || leftIcon) && !showRightOnBack}
+            onPress={
+              onRightPress || (() => navigation.navigate('Notification'))
+            }
+            style={[
+              styles.iconButton,
+              (showBack || leftIcon) && !showRightOnBack && { opacity: 0 },
+            ]}
+          >
+            <Ionicons color={colors.text} name={rightIcon} size={24} />
+          </Pressable>
+        )}
       </View>
     </View>
   );

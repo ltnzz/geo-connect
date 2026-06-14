@@ -63,6 +63,7 @@ export default function MainTabNavigator() {
         component={CreatePostScreen}
         name="Create"
         options={{
+          tabBarStyle: { display: 'none' },
           tabBarButton: (props) => <CameraTabButton {...props} />,
           tabBarLabel: '',
         }}

@@ -42,6 +42,9 @@ Backend setup and data modeling are documented in:
 Google OAuth requires an Android development build; Expo Go cannot receive the
 custom OAuth callback used by this app.
 
+Google OAuth requires an Android development build; Expo Go cannot run the
+native Google Sign-In module used by this app.
+
 ## Folder Ownership
 
 - `src/navigation`: app navigation setup.

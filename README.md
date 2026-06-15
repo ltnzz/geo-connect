@@ -38,6 +38,7 @@ Backend setup and data modeling are documented in:
 - `docs/FOURSQUARE_SETUP.md`
 - `docs/FIRESTORE_SCHEMA.md`
 - `docs/LOCATION_PRIVACY.md`
+- `docs/CODE_STRUCTURE_GUIDE.md`
 
 Google OAuth requires an Android development build; Expo Go cannot receive the
 custom OAuth callback used by this app.

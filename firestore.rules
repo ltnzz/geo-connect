@@ -10,6 +10,16 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
+    function isMutualConnection(userId) {
+      return isSignedIn()
+        && exists(
+          /databases/$(database)/documents/follows/$(request.auth.uid + "_" + userId)
+        )
+        && exists(
+          /databases/$(database)/documents/follows/$(userId + "_" + request.auth.uid)
+        );
+    }
+
     match /users/{userId} {
       allow read: if isSignedIn();
       allow create: if isOwner(userId)
@@ -41,6 +51,31 @@ service cloud.firestore {
 
     match /userLocations/{userId} {
       allow read, create, update, delete: if isOwner(userId);
+    }
+
+    match /sharedLocations/{userId} {
+      allow read: if isOwner(userId)
+        || (
+          isMutualConnection(userId)
+          && get(
+            /databases/$(database)/documents/users/$(userId)
+          ).data.invisibleMode == false
+          && get(
+            /databases/$(database)/documents/users/$(userId)
+          ).data.locationSharing in ['exact', 'neighborhood']
+        );
+      allow create, update: if isOwner(userId)
+        && request.resource.data.userId == request.auth.uid
+        && get(
+          /databases/$(database)/documents/users/$(userId)
+        ).data.invisibleMode == false
+        && get(
+          /databases/$(database)/documents/users/$(userId)
+        ).data.locationSharing in ['exact', 'neighborhood']
+        && request.resource.data.precision == get(
+          /databases/$(database)/documents/users/$(userId)
+        ).data.locationSharing;
+      allow delete: if isOwner(userId);
     }
 
     match /posts/{postId} {

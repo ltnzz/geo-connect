@@ -101,11 +101,20 @@ export default function SettingsScreen() {
 
   const changeInvisibleMode = (value) => {
     setInvisibleMode(value);
+    if (value && user?.uid) {
+      firestoreService.clearSharedLocation(user.uid).catch(() => {});
+    }
     savePrivacySetting({ invisibleMode: value }).catch(() => {});
   };
 
   const changeLocationSharing = (value) => {
     setLocationSharing(value);
+    if (
+      user?.uid &&
+      [LOCATION_SHARING.city, LOCATION_SHARING.hidden].includes(value)
+    ) {
+      firestoreService.clearSharedLocation(user.uid).catch(() => {});
+    }
     savePrivacySetting({ locationSharing: value }).catch(() => {});
   };
 
@@ -126,6 +135,7 @@ export default function SettingsScreen() {
             setIsSaving(true);
             try {
               await firestoreService.clearPrivateLocation(user.uid);
+              await firestoreService.clearSharedLocation(user.uid);
               await firestoreService.updateUser(user.uid, {
                 invisibleMode: true,
                 locationSharing: LOCATION_SHARING.hidden,

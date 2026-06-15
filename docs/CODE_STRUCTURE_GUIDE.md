@@ -446,15 +446,12 @@ locationService.js
     v
 MapScreen.native.js
     |
-    | meminta post, place, dan event
+    | meminta mutual connections dan event
     v
-firestoreService.js + foursquareService.js
+firestoreService.js + data/dummyEvents.js
     |
     v
-geoFirestoreService.js / Cloudflare Worker
-    |
-    v
-Data marker ditampilkan pada react-native-maps
+Marker user dan event ditampilkan pada react-native-maps
 ```
 
 ## 14. Menentukan Lokasi File Baru

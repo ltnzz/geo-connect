@@ -25,6 +25,17 @@ userId, latitude, longitude, geohash, updatedAt
 Only the owner can read or write this document. This separation is required because
 Firestore Security Rules protect documents, not individual fields.
 
+### `sharedLocations/{userId}` (mutual connections only)
+
+```txt
+userId, latitude, longitude, geohash, precision, updatedAt
+```
+
+This document exists only while location sharing is set to `exact` or
+`neighborhood` and Invisible Mode is off. Only the owner and users who follow
+each other in both directions can read it. Neighborhood coordinates are
+generalized before being written.
+
 ### `posts/{postId}`
 
 ```txt

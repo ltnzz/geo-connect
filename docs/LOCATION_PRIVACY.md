@@ -25,10 +25,12 @@ City/Hidden.
 
 ## Battery Trade-off
 
-Explore Map requests one foreground location fix. It first accepts a recent
-last-known position and otherwise requests balanced accuracy. AroundU does not
-use `watchPositionAsync` or background location for ordinary discovery, avoiding
-continuous GPS usage.
+Explore Map first accepts a recent last-known position and otherwise requests
+balanced accuracy. While the Map tab is focused and the app is in the
+foreground, AroundU refreshes location and mutual-connection markers every two
+minutes. The timer stops when the user leaves the tab or the app enters the
+background. AroundU does not use `watchPositionAsync` or background location for
+ordinary discovery.
 
 Background location should only be introduced for a clearly explained feature,
 requested separately, and configured with distance/time thresholds. It must

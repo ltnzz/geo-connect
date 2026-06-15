@@ -11,6 +11,7 @@ export const DUMMY_EVENTS = Object.freeze([
     host: 'Kopi Nako Community',
     description:
       'Join us for an intimate evening of acoustic music featuring local artists. Unwind with good coffee and a warm community atmosphere in the heart of Senopati.',
+    coordinate: { latitude: -6.2356, longitude: 106.813 },
     color: '#DCE7F8',
     featured: true,
   },
@@ -26,6 +27,7 @@ export const DUMMY_EVENTS = Object.freeze([
     host: 'Gelora Community',
     description:
       'Spend the golden hour with an easy community walk, live conversations, and a relaxed sunset gathering around Gelora Bung Karno.',
+    coordinate: { latitude: -6.219, longitude: 106.8018 },
     color: '#E7D7C9',
   },
   {
@@ -40,6 +42,7 @@ export const DUMMY_EVENTS = Object.freeze([
     host: 'Jakarta Food Walk',
     description:
       'Explore selected food stalls around Blok M with local guides and meet other food lovers along the way.',
+    coordinate: { latitude: -6.2441, longitude: 106.7987 },
     color: '#D8E8D9',
   },
   {
@@ -54,6 +57,7 @@ export const DUMMY_EVENTS = Object.freeze([
     host: 'Jakarta Creative Hub',
     description:
       'Discover local makers, independent brands, workshops, and creative performances in a full-day city market.',
+    coordinate: { latitude: -6.1871, longitude: 106.823 },
     color: '#DED9ED',
   },
 ]);

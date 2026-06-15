@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -13,13 +14,11 @@ import {
 } from 'react-native';
 
 import ScreenHeader from '../../components/common/ScreenHeader';
-import {
-  DEFAULT_MAP_CENTER,
-  MAP_DISCOVERY_ITEMS,
-} from '../../data/mapDiscoveryData';
-import { foursquareService } from '../../services/foursquareService';
+import { DUMMY_EVENTS } from '../../data/dummyEvents';
+import { DEFAULT_MAP_CENTER } from '../../data/mapDiscoveryData';
 import { firestoreService } from '../../services/firestoreService';
 import { locationService } from '../../services/locationService';
+import { useAuthStore } from '../../stores/authStore';
 import { getDistanceMeters } from '../../utils/geo';
 import { clusterMapItems } from '../../utils/mapCluster';
 import { colors, radius, spacing } from '../../utils/theme';
@@ -41,44 +40,41 @@ const RADIUS_OPTIONS = [
 
 const TYPE_OPTIONS = [
   { label: 'All', value: 'all' },
-  { label: 'Posts', value: 'post' },
-  { label: 'Places', value: 'place' },
+  { label: 'People', value: 'user' },
   { label: 'Events', value: 'event' },
 ];
 
 const TYPE_META = {
-  post: { color: colors.primary, icon: 'images' },
-  place: { color: colors.secondary, icon: 'storefront' },
+  user: { color: colors.tertiary, icon: 'person' },
   event: { color: '#7C3AED', icon: 'calendar' },
 };
 
-const normalizeDocument = (document, type) => ({
-  id: document.id,
-  type,
-  title:
-    document.title ||
-    document.name ||
-    document.caption ||
-    `${type[0].toUpperCase()}${type.slice(1)} around you`,
-  subtitle:
-    document.location?.address ||
-    document.address ||
-    document.city ||
-    document.category ||
-    'Nearby',
+const normalizeConnection = (connection) => ({
+  id: `user-${connection.id}`,
+  type: 'user',
+  title: connection.displayName,
+  subtitle: `@${connection.username}${
+    connection.city ? ` - ${connection.city}` : ''
+  }`,
   coordinate: {
-    latitude: document.location.latitude,
-    longitude: document.location.longitude,
+    latitude: connection.location.latitude,
+    longitude: connection.location.longitude,
   },
 });
 
-const getDemoItems = (center, radiusMeters) => {
-  const nearby = MAP_DISCOVERY_ITEMS.filter(
-    (item) => getDistanceMeters(center, item.coordinate) <= radiusMeters,
-  );
-
-  return nearby.length ? nearby : MAP_DISCOVERY_ITEMS;
-};
+const getEventItems = (center, radiusMeters) =>
+  DUMMY_EVENTS.filter(
+    (event) =>
+      event.coordinate &&
+      getDistanceMeters(center, event.coordinate) <= radiusMeters,
+  ).map((event) => ({
+    id: `event-${event.id}`,
+    type: 'event',
+    sourceId: event.id,
+    title: event.title,
+    subtitle: `${event.schedule} - ${event.venue}`,
+    coordinate: event.coordinate,
+  }));
 
 function DiscoveryMarker({ cluster, onPress }) {
   const isCluster = cluster.items.length > 1;
@@ -128,12 +124,13 @@ function PermissionIntro({ visible, onCancel, onContinue }) {
           <Text style={styles.permissionTitle}>Explore what is nearby</Text>
           <Text style={styles.permissionText}>
             AroundU uses your location only while you explore the map. Your
-            position is not published, and background tracking stays off.
+            sharing preference controls whether mutual connections can see you.
+            Background tracking stays off.
           </Text>
           <View style={styles.permissionFacts}>
-            <Text style={styles.permissionFact}>• Foreground access only</Text>
-            <Text style={styles.permissionFact}>• No continuous tracking</Text>
-            <Text style={styles.permissionFact}>• Disable anytime</Text>
+            <Text style={styles.permissionFact}>- Foreground access only</Text>
+            <Text style={styles.permissionFact}>- No continuous tracking</Text>
+            <Text style={styles.permissionFact}>- Disable anytime</Text>
           </View>
           <Pressable
             accessibilityRole="button"
@@ -156,11 +153,14 @@ function PermissionIntro({ visible, onCancel, onContinue }) {
 }
 
 export default function MapScreen() {
+  const navigation = useNavigation();
   const mapRef = useRef(null);
   const viewport = useWindowDimensions();
+  const user = useAuthStore((state) => state.user);
   const [isEnabled, setIsEnabled] = useState(false);
   const [showPermissionIntro, setShowPermissionIntro] = useState(false);
   const [isLoadingLocation, setIsLoadingLocation] = useState(true);
+  const [hasResolvedLocation, setHasResolvedLocation] = useState(false);
   const [isLoadingData, setIsLoadingData] = useState(false);
   const [locationError, setLocationError] = useState('');
   const [center, setCenter] = useState(DEFAULT_MAP_CENTER);
@@ -168,7 +168,6 @@ export default function MapScreen() {
   const [radiusMeters, setRadiusMeters] = useState(5000);
   const [activeType, setActiveType] = useState('all');
   const [items, setItems] = useState([]);
-  const [hasFoursquarePlaces, setHasFoursquarePlaces] = useState(false);
   const [selectedCluster, setSelectedCluster] = useState(null);
 
   const loadCurrentLocation = async () => {
@@ -189,6 +188,7 @@ export default function MapScreen() {
 
       setCenter(nextCenter);
       setRegion(nextRegion);
+      setHasResolvedLocation(true);
       mapRef.current?.animateToRegion?.(nextRegion, 500);
     } catch {
       setLocationError('Unable to get your current location.');
@@ -223,45 +223,51 @@ export default function MapScreen() {
   }, []);
 
   useEffect(() => {
+    if (!isEnabled || !hasResolvedLocation || !user?.uid) {
+      return;
+    }
+
+    firestoreService.syncSharedLocation(user, center).catch(() => {});
+  }, [
+    center,
+    hasResolvedLocation,
+    isEnabled,
+    user?.invisibleMode,
+    user?.locationSharing,
+    user?.uid,
+  ]);
+
+  useEffect(() => {
     if (!isEnabled) {
       setItems([]);
-      setHasFoursquarePlaces(false);
       return;
     }
 
     let isActive = true;
     setIsLoadingData(true);
 
-    Promise.allSettled([
-      firestoreService.getNearbyPosts(center, radiusMeters),
-      foursquareService.getNearbyPlaces(center, radiusMeters),
-      firestoreService.getNearbyEvents(center, radiusMeters),
-    ])
-      .then(([postsResult, placesResult, eventsResult]) => {
+    firestoreService
+      .getMutualConnectionLocations(user?.uid)
+      .then((connections) => {
         if (!isActive) {
           return;
         }
 
-        const posts =
-          postsResult.status === 'fulfilled' ? postsResult.value : [];
-        const places =
-          placesResult.status === 'fulfilled' ? placesResult.value : [];
-        const events =
-          eventsResult.status === 'fulfilled' ? eventsResult.value : [];
-        const documents = [
-          ...posts.map((item) => normalizeDocument(item, 'post')),
-          ...places.map((item) => normalizeDocument(item, 'place')),
-          ...events.map((item) => normalizeDocument(item, 'event')),
-        ];
-        setHasFoursquarePlaces(places.length > 0);
-        setItems(
-          documents.length ? documents : getDemoItems(center, radiusMeters),
-        );
+        const nearbyConnections = connections
+          .filter(
+            (connection) =>
+              getDistanceMeters(center, connection.location) <= radiusMeters,
+          )
+          .map(normalizeConnection);
+
+        setItems([
+          ...nearbyConnections,
+          ...getEventItems(center, radiusMeters),
+        ]);
       })
       .catch(() => {
         if (isActive) {
-          setHasFoursquarePlaces(false);
-          setItems(getDemoItems(center, radiusMeters));
+          setItems(getEventItems(center, radiusMeters));
         }
       })
       .finally(() => {
@@ -273,7 +279,7 @@ export default function MapScreen() {
     return () => {
       isActive = false;
     };
-  }, [center, isEnabled, radiusMeters]);
+  }, [center, isEnabled, radiusMeters, user?.uid]);
 
   const visibleItems = useMemo(
     () =>
@@ -291,6 +297,7 @@ export default function MapScreen() {
   const enableNearby = async () => {
     setShowPermissionIntro(false);
     setIsLoadingLocation(true);
+    setHasResolvedLocation(false);
 
     try {
       const permission = await locationService.requestForegroundPermission();
@@ -314,7 +321,11 @@ export default function MapScreen() {
 
   const disableNearby = async () => {
     await locationService.setNearbyEnabled(false);
+    if (user?.uid) {
+      await firestoreService.clearSharedLocation(user.uid).catch(() => {});
+    }
     setIsEnabled(false);
+    setHasResolvedLocation(false);
     setSelectedCluster(null);
   };
 
@@ -366,8 +377,8 @@ export default function MapScreen() {
             </View>
             <Text style={styles.gateTitle}>Nearby discovery is off</Text>
             <Text style={styles.gateText}>
-              Enable location when you want to discover public posts, places,
-              and events around you.
+              Enable location to find mutual connections who share their
+              location and events from the Events page.
             </Text>
             {locationError ? (
               <Text style={styles.errorText}>{locationError}</Text>
@@ -485,14 +496,21 @@ export default function MapScreen() {
             {isLoadingData ? (
               <View style={styles.loadingBadge}>
                 <ActivityIndicator color={colors.primary} size="small" />
-                <Text style={styles.loadingText}>Finding nearby activity</Text>
+                <Text style={styles.loadingText}>
+                  Finding connections and events
+                </Text>
               </View>
             ) : null}
 
-            {!isLoadingData && hasFoursquarePlaces ? (
-              <View style={styles.foursquareCredit}>
-                <Text style={styles.foursquareCreditText}>
-                  Places by Foursquare
+            {!isLoadingData && visibleItems.length === 0 ? (
+              <View style={styles.emptyBadge}>
+                <Ionicons
+                  color={colors.neutral}
+                  name="information-circle-outline"
+                  size={17}
+                />
+                <Text style={styles.loadingText}>
+                  No shared connections or events in this radius
                 </Text>
               </View>
             ) : null}
@@ -509,7 +527,17 @@ export default function MapScreen() {
                   const meta = TYPE_META[item.type];
 
                   return (
-                    <View key={item.id} style={styles.clusterItem}>
+                    <Pressable
+                      accessibilityRole={item.type === 'event' ? 'button' : 'text'}
+                      disabled={item.type !== 'event'}
+                      key={item.id}
+                      onPress={() =>
+                        navigation.navigate('EventDetail', {
+                          eventId: item.sourceId,
+                        })
+                      }
+                      style={styles.clusterItem}
+                    >
                       <View
                         style={[
                           styles.clusterItemIcon,
@@ -529,7 +557,7 @@ export default function MapScreen() {
                           {item.subtitle}
                         </Text>
                       </View>
-                    </View>
+                    </Pressable>
                   );
                 })}
               </View>
@@ -738,19 +766,17 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_600SemiBold',
     fontSize: 10,
   },
-  foursquareCredit: {
-    backgroundColor: 'rgba(255,255,255,0.94)',
-    borderRadius: radius.sm,
-    bottom: spacing.sm,
-    left: spacing.sm,
-    paddingHorizontal: 8,
-    paddingVertical: 5,
+  emptyBadge: {
+    alignItems: 'center',
+    alignSelf: 'center',
+    backgroundColor: 'rgba(255,255,255,0.96)',
+    borderRadius: radius.full,
+    bottom: 24,
+    flexDirection: 'row',
+    gap: spacing.sm,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
     position: 'absolute',
-  },
-  foursquareCreditText: {
-    color: '#526173',
-    fontFamily: 'Inter_600SemiBold',
-    fontSize: 9,
   },
   clusterSheet: {
     backgroundColor: colors.surface,

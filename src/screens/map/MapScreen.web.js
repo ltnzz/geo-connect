@@ -12,8 +12,8 @@ export default function MapScreen() {
         <Ionicons color={colors.primary} name="map-outline" size={46} />
         <Text style={styles.title}>Map preview is mobile-only</Text>
         <Text style={styles.description}>
-          Open the Android or iOS build to explore nearby posts, Foursquare
-          places, and events on the interactive map.
+          Open the Android or iOS build to find mutual connections who share
+          their location and events from the Events page.
         </Text>
       </View>
     </View>

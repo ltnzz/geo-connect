@@ -17,6 +17,12 @@ The exact device position used to center Explore Map remains on the device.
 AroundU only writes a private location document when a feature explicitly calls
 `updatePrivateLocation`. Firestore rules restrict that document to its owner.
 
+Explore Map may also write `sharedLocations/{userId}` when the user selects
+Exact or Neighborhood sharing and Invisible Mode is off. That document can only
+be read by accounts that follow each other in both directions. It is deleted
+when nearby discovery is disabled, the user logs out, or sharing is changed to
+City/Hidden.
+
 ## Battery Trade-off
 
 Explore Map requests one foreground location fix. It first accepts a recent

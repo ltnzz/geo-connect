@@ -16,6 +16,7 @@ import {
 import { assertFirebaseConfigured, db } from '../config/firebase';
 import {
   COLLECTIONS,
+  LOCATION_SHARING,
   POST_LOCATION_VISIBILITY,
   SUBCOLLECTIONS,
   createBlockId,
@@ -84,6 +85,47 @@ export const firestoreService = {
   async clearPrivateLocation(userId) {
     assertFirebaseConfigured();
     await deleteDoc(doc(db, COLLECTIONS.userLocations, userId));
+  },
+
+  async syncSharedLocation(user, { latitude, longitude }) {
+    assertFirebaseConfigured();
+
+    if (
+      !user?.uid ||
+      user.invisibleMode ||
+      ![
+        LOCATION_SHARING.exact,
+        LOCATION_SHARING.neighborhood,
+      ].includes(user.locationSharing)
+    ) {
+      if (user?.uid) {
+        await deleteDoc(
+          doc(db, COLLECTIONS.sharedLocations, user.uid),
+        ).catch(() => {});
+      }
+      return;
+    }
+
+    const coordinate =
+      user.locationSharing === LOCATION_SHARING.neighborhood
+        ? blurCoordinate({ latitude, longitude }, 500)
+        : { latitude, longitude };
+
+    await setDoc(
+      doc(db, COLLECTIONS.sharedLocations, user.uid),
+      {
+        userId: user.uid,
+        ...createGeoPointData(coordinate.latitude, coordinate.longitude),
+        precision: user.locationSharing,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true },
+    );
+  },
+
+  async clearSharedLocation(userId) {
+    assertFirebaseConfigured();
+    await deleteDoc(doc(db, COLLECTIONS.sharedLocations, userId));
   },
 
   async createPost({
@@ -306,6 +348,79 @@ export const firestoreService = {
     );
 
     return profiles.filter(Boolean);
+  },
+
+  async getMutualConnectionLocations(userId) {
+    assertFirebaseConfigured();
+
+    if (!userId) {
+      return [];
+    }
+
+    const [followersSnapshot, followingSnapshot] = await Promise.all([
+      getDocs(
+        query(
+          collection(db, COLLECTIONS.follows),
+          where('followingId', '==', userId),
+        ),
+      ),
+      getDocs(
+        query(
+          collection(db, COLLECTIONS.follows),
+          where('followerId', '==', userId),
+        ),
+      ),
+    ]);
+    const followerIds = new Set(
+      followersSnapshot.docs.map(
+        (followDocument) => followDocument.data().followerId,
+      ),
+    );
+    const mutualIds = followingSnapshot.docs
+      .map((followDocument) => followDocument.data().followingId)
+      .filter((connectedUserId) => followerIds.has(connectedUserId));
+    const connections = await Promise.all(
+      mutualIds.map(async (connectedUserId) => {
+        const [userSnapshot, locationSnapshot] = await Promise.all([
+          getDoc(doc(db, COLLECTIONS.users, connectedUserId)),
+          getDoc(doc(db, COLLECTIONS.sharedLocations, connectedUserId)),
+        ]);
+
+        if (!userSnapshot.exists() || !locationSnapshot.exists()) {
+          return null;
+        }
+
+        const profile = userSnapshot.data();
+        const location = locationSnapshot.data();
+
+        if (
+          profile.invisibleMode ||
+          ![
+            LOCATION_SHARING.exact,
+            LOCATION_SHARING.neighborhood,
+          ].includes(profile.locationSharing) ||
+          !Number.isFinite(location.latitude) ||
+          !Number.isFinite(location.longitude)
+        ) {
+          return null;
+        }
+
+        return {
+          id: connectedUserId,
+          username: profile.username || 'aroundu',
+          displayName:
+            profile.displayName ||
+            profile.fullName ||
+            profile.username ||
+            'AroundU user',
+          city: profile.city || '',
+          avatarUrl: profile.avatarUrl || '',
+          location,
+        };
+      }),
+    );
+
+    return connections.filter(Boolean);
   },
 
   async createPlace(data) {

@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 
 import { authService } from '../services/authService';
+import { firestoreService } from '../services/firestoreService';
 import { notificationService } from '../services/notificationService';
 
 export const useAuthStore = create((set) => ({
@@ -76,6 +77,9 @@ export const useAuthStore = create((set) => ({
           notificationService.unregisterDevice(currentUser.uid),
           new Promise((resolve) => setTimeout(resolve, 1500)),
         ]).catch(() => {});
+        await firestoreService
+          .clearSharedLocation(currentUser.uid)
+          .catch(() => {});
       }
       await authService.logout();
       set({ user: null, isLoading: false });

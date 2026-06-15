@@ -1,9 +1,16 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
   ActivityIndicator,
   Alert,
+  AppState,
   Modal,
   Pressable,
   ScrollView,
@@ -24,6 +31,8 @@ import { clusterMapItems } from '../../utils/mapCluster';
 import { colors, radius, spacing } from '../../utils/theme';
 
 import MapView, { Callout, Marker } from 'react-native-maps';
+
+const LOCATION_REFRESH_INTERVAL = 2 * 60 * 1000;
 
 const INITIAL_REGION = {
   ...DEFAULT_MAP_CENTER,
@@ -155,6 +164,7 @@ function PermissionIntro({ visible, onCancel, onContinue }) {
 export default function MapScreen() {
   const navigation = useNavigation();
   const mapRef = useRef(null);
+  const isLocationRefreshInFlight = useRef(false);
   const viewport = useWindowDimensions();
   const user = useAuthStore((state) => state.user);
   const [isEnabled, setIsEnabled] = useState(false);
@@ -168,34 +178,52 @@ export default function MapScreen() {
   const [radiusMeters, setRadiusMeters] = useState(5000);
   const [activeType, setActiveType] = useState('all');
   const [items, setItems] = useState([]);
+  const [refreshVersion, setRefreshVersion] = useState(0);
   const [selectedCluster, setSelectedCluster] = useState(null);
 
-  const loadCurrentLocation = async () => {
-    setIsLoadingLocation(true);
-    setLocationError('');
+  const loadCurrentLocation = useCallback(
+    async ({ animate = true, showLoading = true } = {}) => {
+      if (isLocationRefreshInFlight.current) {
+        return;
+      }
 
-    try {
-      const position = await locationService.getCurrentPosition();
-      const nextCenter = {
-        latitude: position.coords.latitude,
-        longitude: position.coords.longitude,
-      };
-      const nextRegion = {
-        ...nextCenter,
-        latitudeDelta: 0.1,
-        longitudeDelta: 0.1,
-      };
+      isLocationRefreshInFlight.current = true;
+      if (showLoading) {
+        setIsLoadingLocation(true);
+      }
+      setLocationError('');
 
-      setCenter(nextCenter);
-      setRegion(nextRegion);
-      setHasResolvedLocation(true);
-      mapRef.current?.animateToRegion?.(nextRegion, 500);
-    } catch {
-      setLocationError('Unable to get your current location.');
-    } finally {
-      setIsLoadingLocation(false);
-    }
-  };
+      try {
+        const position = await locationService.getCurrentPosition();
+        const nextCenter = {
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+        };
+        const nextRegion = {
+          ...nextCenter,
+          latitudeDelta: 0.1,
+          longitudeDelta: 0.1,
+        };
+
+        setCenter(nextCenter);
+        setHasResolvedLocation(true);
+        setRefreshVersion((current) => current + 1);
+
+        if (animate) {
+          setRegion(nextRegion);
+          mapRef.current?.animateToRegion?.(nextRegion, 500);
+        }
+      } catch {
+        setLocationError('Unable to get your current location.');
+      } finally {
+        isLocationRefreshInFlight.current = false;
+        if (showLoading) {
+          setIsLoadingLocation(false);
+        }
+      }
+    },
+    [],
+  );
 
   useEffect(() => {
     let isActive = true;
@@ -220,7 +248,61 @@ export default function MapScreen() {
     return () => {
       isActive = false;
     };
-  }, []);
+  }, [loadCurrentLocation]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!isEnabled) {
+        return undefined;
+      }
+
+      let refreshTimer = null;
+      let appState = AppState.currentState;
+
+      const stopRefreshTimer = () => {
+        if (refreshTimer) {
+          clearInterval(refreshTimer);
+          refreshTimer = null;
+        }
+      };
+      const refreshLocation = () =>
+        loadCurrentLocation({ animate: false, showLoading: false });
+      const startRefreshTimer = () => {
+        stopRefreshTimer();
+        refreshTimer = setInterval(
+          refreshLocation,
+          LOCATION_REFRESH_INTERVAL,
+        );
+      };
+
+      if (appState === 'active') {
+        startRefreshTimer();
+      }
+
+      const subscription = AppState.addEventListener(
+        'change',
+        (nextAppState) => {
+          const returnedToForeground =
+            appState !== 'active' && nextAppState === 'active';
+          appState = nextAppState;
+
+          if (nextAppState === 'active') {
+            if (returnedToForeground) {
+              refreshLocation();
+            }
+            startRefreshTimer();
+          } else {
+            stopRefreshTimer();
+          }
+        },
+      );
+
+      return () => {
+        stopRefreshTimer();
+        subscription.remove();
+      };
+    }, [isEnabled, loadCurrentLocation]),
+  );
 
   useEffect(() => {
     if (!isEnabled || !hasResolvedLocation || !user?.uid) {
@@ -232,6 +314,7 @@ export default function MapScreen() {
     center,
     hasResolvedLocation,
     isEnabled,
+    refreshVersion,
     user?.invisibleMode,
     user?.locationSharing,
     user?.uid,
@@ -279,7 +362,7 @@ export default function MapScreen() {
     return () => {
       isActive = false;
     };
-  }, [center, isEnabled, radiusMeters, user?.uid]);
+  }, [center, isEnabled, radiusMeters, refreshVersion, user?.uid]);
 
   const visibleItems = useMemo(
     () =>

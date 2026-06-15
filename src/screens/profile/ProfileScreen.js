@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
-import { useEffect, useState } from 'react';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -43,6 +43,7 @@ const getPostLocationLabel = (post) => {
 export default function ProfileScreen() {
   const navigation = useNavigation();
   const user = useAuthStore((state) => state.user);
+  const updateCurrentUser = useAuthStore((state) => state.updateCurrentUser);
   const [activeSegment, setActiveSegment] = useState('posts');
   const [savedPosts, setSavedPosts] = useState([]);
   const [isSavedLoading, setIsSavedLoading] = useState(false);
@@ -52,6 +53,33 @@ export default function ProfileScreen() {
   const displayName = user?.displayName || user?.fullName || username;
   const city = user?.city || 'Jakarta';
   const visiblePosts = activeSegment === 'posts' ? DUMMY_POSTS : savedPosts;
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!user?.uid) {
+        return undefined;
+      }
+
+      let isActive = true;
+
+      firestoreService
+        .getUser(user.uid)
+        .then((profile) => {
+          if (isActive && profile) {
+            updateCurrentUser({
+              followersCount: profile.followersCount ?? 0,
+              followingCount: profile.followingCount ?? 0,
+              postsCount: profile.postsCount ?? 0,
+            });
+          }
+        })
+        .catch(() => {});
+
+      return () => {
+        isActive = false;
+      };
+    }, [updateCurrentUser, user?.uid]),
+  );
 
   useEffect(() => {
     if (activeSegment !== 'saved' || !user?.uid) {
@@ -135,7 +163,7 @@ export default function ProfileScreen() {
 
         <View style={styles.statsCard}>
           <View style={styles.stat}>
-            <Text style={styles.statValue}>{formatCount(DUMMY_POSTS.length)}</Text>
+            <Text style={styles.statValue}>{formatCount(user?.postsCount)}</Text>
             <Text style={styles.statLabel}>Posts</Text>
           </View>
           <View style={styles.divider} />
@@ -296,7 +324,7 @@ const styles = StyleSheet.create({
   content: {
     alignItems: 'center',
     paddingBottom: spacing.xl,
-    paddingHorizontal: 28,
+    paddingHorizontal: spacing.md,
     position: 'relative',
   },
   avatar: {
@@ -434,15 +462,15 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 5,
-    marginTop: 10,
+    gap: 6,
+    marginTop: 12,
   },
   feedItem: {
     aspectRatio: 1,
     borderRadius: radius.sm,
     justifyContent: 'flex-end',
     overflow: 'hidden',
-    width: '32%',
+    width: '32.15%',
   },
   feedImage: {
     ...StyleSheet.absoluteFillObject,

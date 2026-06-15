@@ -19,6 +19,7 @@ export default function ScreenHeader({
   leftIcon,
   onLeftPress,
   rightComponent,
+  onSearchIconPress,
 }) {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
@@ -78,7 +79,7 @@ export default function ScreenHeader({
           <Pressable
             accessibilityLabel="Open search"
             accessibilityRole="button"
-            onPress={() => showSearch && setIsSearchOpen(true)}
+            onPress={onSearchIconPress || (() => showSearch && setIsSearchOpen(true))}
             style={styles.iconButton}
           >
             <Ionicons color={colors.text} name="search-outline" size={24} />

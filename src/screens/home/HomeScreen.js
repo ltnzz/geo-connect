@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, View } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 
 import ScreenHeader from '../../components/common/ScreenHeader';
 import HomeSkeleton from '../../components/home/HomeSkeleton';
@@ -17,10 +18,10 @@ const createPostPage = (page) =>
   }));
 
 export default function HomeScreen() {
+  const navigation = useNavigation();
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [posts, setPosts] = useState(() => createPostPage(1));
-  const [searchQuery, setSearchQuery] = useState('');
   const pageRef = useRef(1);
   const isLoadingMoreRef = useRef(false);
   const loadMoreTimerRef = useRef(null);
@@ -58,25 +59,14 @@ export default function HomeScreen() {
     return <HomeSkeleton />;
   }
 
-  const normalizedSearch = searchQuery.trim().toLowerCase();
-  const visiblePosts = normalizedSearch
-    ? posts.filter((post) =>
-        [post.author, post.location, post.caption].some((value) =>
-          value.toLowerCase().includes(normalizedSearch),
-        ),
-      )
-    : posts;
-
   return (
     <View style={styles.screen}>
       <ScreenHeader
-        onSearchChange={setSearchQuery}
-        searchValue={searchQuery}
-        showSearch
+        onSearchIconPress={() => navigation.navigate('Search')}
       />
       <FlatList
         contentContainerStyle={styles.listContent}
-        data={visiblePosts}
+        data={posts}
         keyExtractor={(post) => post.id}
         ListFooterComponent={
           isLoadingMore ? (
@@ -86,7 +76,7 @@ export default function HomeScreen() {
             />
           ) : null
         }
-        onEndReached={normalizedSearch ? undefined : loadMorePosts}
+        onEndReached={loadMorePosts}
         onEndReachedThreshold={0.4}
         renderItem={({ item }) => <PostCard post={item} />}
         showsVerticalScrollIndicator={false}

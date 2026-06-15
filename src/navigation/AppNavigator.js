@@ -7,6 +7,7 @@ import NotificationScreen from '../screens/notification/NotificationScreen';
 import PostDetailScreen from '../screens/post/PostDetailScreen';
 import SettingsScreen from '../screens/settings/SettingsScreen';
 import EventDetailScreen from '../screens/event/EventDetailScreen';
+import SearchScreen from '../screens/search/SearchScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -20,6 +21,7 @@ export default function AppNavigator() {
         <Stack.Screen name="PostDetail" component={PostDetailScreen} />
         <Stack.Screen name="Settings" component={SettingsScreen} />
         <Stack.Screen name="EventDetail" component={EventDetailScreen} />
+        <Stack.Screen name="Search" component={SearchScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

@@ -5,6 +5,8 @@ param(
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $androidRoot = Join-Path $projectRoot 'android'
+$googleServicesSource = Join-Path $projectRoot 'google-services.json'
+$googleServicesTarget = Join-Path $androidRoot 'app\google-services.json'
 $gradleWrapper = Join-Path $androidRoot 'gradlew.bat'
 $apkPath = Join-Path $androidRoot 'app\build\outputs\apk\debug\app-debug.apk'
 $logPath = Join-Path $projectRoot '.android-build.log'
@@ -12,6 +14,28 @@ $maxAttempts = 5
 
 $env:CMAKE_BUILD_PARALLEL_LEVEL = '1'
 $env:NODE_ENV = 'development'
+
+if (!(Test-Path -LiteralPath $googleServicesSource)) {
+  throw "Firebase Android config was not found at $googleServicesSource"
+}
+
+if ($Rebuild -or !(Test-Path -LiteralPath $gradleWrapper)) {
+  Write-Host 'Generating the Android project from the Expo configuration...'
+  Push-Location $projectRoot
+  try {
+    & npx expo prebuild --platform android --clean
+    if ($LASTEXITCODE -ne 0) {
+      throw 'Expo Android prebuild failed.'
+    }
+  } finally {
+    Pop-Location
+  }
+}
+
+Copy-Item `
+  -LiteralPath $googleServicesSource `
+  -Destination $googleServicesTarget `
+  -Force
 
 if ($Rebuild -or !(Test-Path -LiteralPath $apkPath)) {
   for ($attempt = 1; $attempt -le $maxAttempts; $attempt += 1) {

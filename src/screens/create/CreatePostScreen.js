@@ -1,16 +1,143 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useState } from 'react';
-import { Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import * as Location from 'expo-location';
+import {ActivityIndicator,Image,Pressable,ScrollView,StyleSheet,Text,TextInput,View,} from 'react-native';
 
 import CreateEventScreen from './CreateEventScreen';
 import ScreenHeader from '../../components/common/ScreenHeader';
+import { cloudinaryService } from '../../services/cloudinaryService';
+import { firestoreService } from '../../services/firestoreService';
+import { imagePickerService } from '../../services/imagePickerService';
+import { useAuthStore } from '../../stores/authStore';
+import { useFeedStore } from '../../stores/feedstore';
 import { colors, radius, spacing } from '../../utils/theme';
+
+const RADIUS_OPTIONS = [1, 5, 10, 25, 50];
 
 export default function CreatePostScreen() {
   const navigation = useNavigation();
+  const user = useAuthStore((s) => s.user);
+  const prependPost = useFeedStore((s) => s.prependPost);
+
   const [activeTab, setActiveTab] = useState('POST');
   const [content, setContent] = useState('');
+  const [asset, setAsset] = useState(null);
+  
+  const [location, setLocation] = useState(null); 
+  const [isFetchingLocation, setIsFetchingLocation] = useState(false);
+  const [postRadius, setPostRadius] = useState(5); // Default 5 km
+  
+  const [isPosting, setIsPosting] = useState(false);
+  const [error, setError] = useState(null);
+
+  const handlePickImage = async () => {
+    setError(null);
+    try {
+      const picked = await imagePickerService.fromLibrary();
+      if (picked) setAsset(picked);
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const handleRemoveImage = () => setAsset(null);
+
+  const handleGetLocation = async () => {
+    setIsFetchingLocation(true);
+    setError(null);
+    try {
+      let { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        setError('Izin akses lokasi ditolak. Aktifkan di pengaturan HP.');
+        setIsFetchingLocation(false);
+        return;
+      }
+
+      let currentPos = await Location.getCurrentPositionAsync({});
+      let geocode = await Location.reverseGeocodeAsync({
+        latitude: currentPos.coords.latitude,
+        longitude: currentPos.coords.longitude,
+      });
+
+      if (geocode.length > 0) {
+        const place = geocode[0];
+        setLocation({
+          latitude: currentPos.coords.latitude,
+          longitude: currentPos.coords.longitude,
+          city: place.city || place.subregion,
+          address: place.street || place.name || 'Lokasi Terkini',
+        });
+      }
+    } catch (err) {
+      setError('Gagal mendapatkan lokasi. Pastikan GPS menyala.');
+    } finally {
+      setIsFetchingLocation(false);
+    }
+  };
+
+  const handleToggleRadius = () => {
+    const currentIndex = RADIUS_OPTIONS.indexOf(postRadius);
+    const nextIndex = (currentIndex + 1) % RADIUS_OPTIONS.length;
+    setPostRadius(RADIUS_OPTIONS[nextIndex]);
+  };
+
+  const handleSubmitPost = async () => {
+    if (!content.trim() && !asset) {
+      setError('Tambahin caption atau foto dulu.');
+      return;
+    }
+
+    if (!location) {
+      setError('Kamu harus menambahkan lokasi terlebih dahulu.');
+      return;
+    }
+
+    setError(null);
+    setIsPosting(true);
+
+    try {
+      let imageUrl = '';
+
+      if (asset) {
+        const uploaded = await cloudinaryService.uploadImage(asset, { folder: 'posts' });
+        imageUrl = uploaded.secureUrl;
+      }
+
+      const postId = await firestoreService.createPost({
+        authorId: user.uid,
+        caption: content,
+        imageUrl,
+        location: location,
+        radius: postRadius, 
+      });
+
+
+      prependPost({
+        id: postId,
+        authorId: user.uid,
+        caption: content.trim(),
+        imageUrl,
+        location: location,
+        radius: postRadius,
+        likesCount: 0,
+        commentsCount: 0,
+        createdAt: new Date(),
+      });
+
+      setContent('');
+      setAsset(null);
+      setLocation(null);
+      setPostRadius(5);
+      navigation.goBack();
+    } catch (err) {
+      setError(err.message || 'Gagal membuat post. Coba lagi.');
+    } finally {
+      setIsPosting(false);
+    }
+  };
+
+  const canSubmit = (content.trim().length > 0 || !!asset) && !isPosting;
 
   return (
     <View style={styles.screen}>
@@ -26,7 +153,6 @@ export default function CreatePostScreen() {
       />
 
       <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-        {/* Tabs */}
         <View style={styles.tabContainer}>
           <Pressable
             onPress={() => setActiveTab('POST')}
@@ -44,7 +170,6 @@ export default function CreatePostScreen() {
 
         {activeTab === 'POST' ? (
           <>
-            {/* Input */}
             <TextInput
               multiline
               onChangeText={setContent}
@@ -54,43 +179,71 @@ export default function CreatePostScreen() {
               value={content}
             />
 
-            {/* Image Grid */}
             <View style={styles.imageGrid}>
-              <Pressable style={styles.addImageButton}>
-                <Ionicons color={colors.primary} name="add" size={24} />
-              </Pressable>
-              <View style={styles.imageContainer}>
-                <Image
-                  source={{ uri: 'https://picsum.photos/400/400' }}
-                  style={styles.selectedImage}
-                />
-                <Pressable style={styles.removeImageButton}>
-                  <Ionicons color={colors.text} name="close-circle" size={20} />
+              {!asset ? (
+                <Pressable onPress={handlePickImage} style={styles.addImageButton}>
+                  <Ionicons color={colors.primary} name="add" size={24} />
                 </Pressable>
-              </View>
+              ) : (
+                <View style={styles.imageContainer}>
+                  <Image source={{ uri: asset.uri }} style={styles.selectedImage} />
+                  <Pressable onPress={handleRemoveImage} style={styles.removeImageButton}>
+                    <Ionicons color={colors.text} name="close-circle" size={20} />
+                  </Pressable>
+                </View>
+              )}
             </View>
 
-            {/* Location Box */}
-            <View style={styles.locationBox}>
-              <Ionicons color={colors.primary} name="location" size={20} />
-              <View style={styles.locationTextContainer}>
-                <Text style={styles.locationTitle}>Current Location: East</Text>
-                <Text style={styles.locationTitle}>Jakarta</Text>
+            <Pressable 
+              onPress={handleGetLocation} 
+              style={styles.actionRow}
+              disabled={isFetchingLocation}
+            >
+              <View style={styles.iconContainer}>
+                <Ionicons name="location" size={20} color={colors.primary} />
               </View>
-              <View style={styles.accuracyBadge}>
-                <Text style={styles.accuracyText}>±5m</Text>
-                <Text style={styles.accuracyText}>exact</Text>
+              <View style={styles.textContainer}>
+                {isFetchingLocation ? (
+                  <Text style={styles.mainText}>Mencari lokasi kamu...</Text>
+                ) : location ? (
+                  <>
+                    <Text style={styles.mainText}>{location.address}</Text>
+                    <Text style={styles.subText}>{location.city}</Text>
+                  </>
+                ) : (
+                  <Text style={styles.mainText}>Tambahkan Lokasi</Text>
+                )}
               </View>
-            </View>
+              {location && (
+                <Ionicons name="checkmark-circle" size={20} color={colors.primary} style={{marginLeft: 'auto'}} />
+              )}
+            </Pressable>
 
-            {/* Visibility */}
-            <View style={styles.visibilityContainer}>
-              <Text style={styles.visibilityLabel}>Visibility:</Text>
-              <Pressable style={styles.visibilityPill}>
-                <Ionicons color={colors.primary} name="earth" size={16} />
-                <Text style={styles.visibilityPillText}>Public (5km radius)</Text>
+            {location && (
+              <Pressable 
+                onPress={handleToggleRadius} 
+                style={styles.actionRow}
+              >
+                <View style={[styles.iconContainer, { backgroundColor: '#FCE7F3' }]}>
+                  <Ionicons 
+                    name="radio-outline" 
+                    size={20} 
+                    color="#DB2777" 
+                  />
+                </View>
+                <View style={styles.textContainer}>
+                  <Text style={styles.mainText}>
+                    Radius: {postRadius} km
+                  </Text>
+                  <Text style={styles.subText}>
+                    Terlihat oleh orang dalam jangkauan {postRadius} km
+                  </Text>
+                </View>
+                <Ionicons name="sync" size={18} color={colors.neutral} style={{marginLeft: 'auto'}} />
               </Pressable>
-            </View>
+            )}
+
+            {error ? <Text style={styles.errorText}>{error}</Text> : null}
           </>
         ) : (
           <CreateEventScreen />
@@ -98,14 +251,27 @@ export default function CreatePostScreen() {
 
       </ScrollView>
 
-      {/* Footer Button */}
-      <View style={styles.footer}>
-        <Pressable style={styles.submitButton}>
-          <Text style={styles.submitButtonText}>
-            {activeTab === 'POST' ? 'CREATE POST' : 'CREATE EVENT'}
-          </Text>
-        </Pressable>
-      </View>
+      {activeTab === 'POST' ? (
+        <View style={styles.footer}>
+          <Pressable
+            disabled={!canSubmit}
+            onPress={handleSubmitPost}
+            style={[styles.submitButton, !canSubmit && styles.submitButtonDisabled]}
+          >
+            {isPosting ? (
+              <ActivityIndicator color={colors.surface} />
+            ) : (
+              <Text style={styles.submitButtonText}>CREATE POST</Text>
+            )}
+          </Pressable>
+        </View>
+      ) : (
+        <View style={styles.footer}>
+          <Pressable style={styles.submitButton}>
+            <Text style={styles.submitButtonText}>CREATE EVENT</Text>
+          </Pressable>
+        </View>
+      )}
     </View>
   );
 }
@@ -169,7 +335,7 @@ const styles = StyleSheet.create({
   imageGrid: {
     flexDirection: 'row',
     gap: spacing.md,
-    marginBottom: spacing.xl,
+    marginBottom: spacing.md, 
   },
   addImageButton: {
     alignItems: 'center',
@@ -197,58 +363,40 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.8)',
     borderRadius: 10,
   },
-  locationBox: {
-    alignItems: 'center',
-    borderColor: colors.border,
-    borderRadius: radius.sm,
-    borderWidth: 1,
+  actionRow: {
     flexDirection: 'row',
-    marginBottom: spacing.xl,
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
     padding: spacing.md,
+    borderRadius: radius.md,
+    marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
-  locationTextContainer: {
+  iconContainer: {
+    backgroundColor: '#DBEAFE',
+    padding: 8,
+    borderRadius: radius.full,
+    marginRight: spacing.sm,
+  },
+  textContainer: {
     flex: 1,
-    marginLeft: spacing.sm,
   },
-  locationTitle: {
+  mainText: {
     color: colors.text,
-    fontFamily: 'Poppins_400Regular',
-    fontSize: 15,
-  },
-  accuracyBadge: {
-    alignItems: 'center',
-  },
-  accuracyText: {
-    color: colors.neutral,
-    fontFamily: 'Poppins_400Regular',
-    fontSize: 11,
-  },
-  visibilityContainer: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: spacing.xl,
-  },
-  visibilityLabel: {
-    color: colors.neutral,
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: 'Poppins_500Medium',
     fontSize: 14,
   },
-  visibilityPill: {
-    alignItems: 'center',
-    backgroundColor: '#F1F5F9', // light gray
-    borderColor: '#E2E8F0',
-    borderRadius: 20,
-    borderWidth: 1,
-    flexDirection: 'row',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  visibilityPillText: {
-    color: colors.text,
-    fontFamily: 'Poppins_400Regular', // Courier/Monospace look for the (5km radius) could be done if needed, keeping simple
+  subText: {
+    color: colors.mutedText,
+    fontFamily: 'Poppins_400Regular',
     fontSize: 12,
+  },
+  errorText: {
+    color: colors.danger,
+    fontFamily: 'Poppins_400Regular',
+    fontSize: 12,
+    marginBottom: spacing.md,
   },
   footer: {
     borderTopColor: colors.border,
@@ -260,6 +408,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     borderRadius: radius.sm,
     paddingVertical: 14,
+  },
+  submitButtonDisabled: {
+    backgroundColor: colors.border,
   },
   submitButtonText: {
     color: colors.surface,

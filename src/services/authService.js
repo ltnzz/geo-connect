@@ -48,6 +48,9 @@ const toPublicUser = (firebaseUser, profile = {}) => ({
   isPublic: profile.isPublic ?? true,
   invisibleMode: profile.invisibleMode ?? false,
   locationSharing: profile.locationSharing || LOCATION_SHARING.hidden,
+  followersCount: profile.followersCount ?? 0,
+  followingCount: profile.followingCount ?? 0,
+  postsCount: profile.postsCount ?? 0,
 });
 
 const getUserProfile = async (firebaseUser) => {

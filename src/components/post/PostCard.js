@@ -1,50 +1,89 @@
 import { Ionicons } from '@expo/vector-icons';
-import { StyleSheet, Text, View } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { useAuthStore } from '../../stores/authStore';
+import { useFeedStore } from '../../stores/feedstore';
 import { colors, radius, spacing } from '../../utils/theme';
-import { DUMMY_POSTS } from '../../data/dummyPosts';
+import { formatCount, formatRelativeTime } from '../../utils/format';
 
-export default function PostCard({ post = DUMMY_POSTS[0] }) {
+export default function PostCard({ post }) {
+  const navigation = useNavigation();
+  const currentUserId = useAuthStore((s) => s.user?.uid);
+  const toggleLike = useFeedStore((s) => s.toggleLike);
+
+  if (!post) return null;
+
+  const locationLabel =
+    post.location?.address || post.location?.city || 'Around you';
+
+  const handleLike = () => {
+    if (!currentUserId) return;
+    toggleLike(post.id, currentUserId);
+  };
+
+  const handleOpenDetail = () => {
+    navigation.navigate('PostDetail', { postId: post.id });
+  };
+
   return (
-    <View style={styles.card}>
-      {/* Header */}
+    <Pressable onPress={handleOpenDetail} style={styles.card}>
       <View style={styles.header}>
         <View style={styles.userInfo}>
-          <View style={styles.avatar} />
+          
+          {post.authorAvatar ? (
+            <Image source={{ uri: post.authorAvatar }} style={styles.avatar} />
+          ) : (
+            <View style={[styles.avatar, styles.avatarPlaceholder]}>
+              <Ionicons name="person" size={20} color={colors.mutedText} />
+            </View>
+          )}
+
           <View>
-            <Text style={styles.userName}>{post.author}</Text>
+            <Text style={styles.userName}>{post.authorName}</Text>
+            
             <View style={styles.locationRow}>
               <Ionicons color={colors.primary} name="location-outline" size={12} />
-              <Text style={styles.locationText}>{post.location}</Text>
+              <Text style={styles.locationText}>{locationLabel}</Text>
             </View>
           </View>
         </View>
+
         <View style={styles.distanceBadge}>
-          <Text style={styles.distanceText}>{post.distance}</Text>
+          <Text style={styles.distanceText}>{post.distance ?? '0 km'}</Text>
         </View>
       </View>
 
-      {/* Image Placeholder */}
-      <View style={[styles.imagePlaceholder, { backgroundColor: post.color }]} />
+      {post.imageUrl ? (
+        <Image source={{ uri: post.imageUrl }} style={styles.image} />
+      ) : (
+        <View style={[styles.imagePlaceholder, { backgroundColor: post.color ?? '#E2E8F0' }]} />
+      )}
 
-      {/* Footer */}
       <View style={styles.footer}>
         <View style={styles.actionsRow}>
-          <View style={styles.actionItem}>
-            <Ionicons color={colors.text} name="heart-outline" size={20} />
-            <Text style={styles.actionText}>{post.likes}</Text>
-          </View>
-          <View style={styles.actionItem}>
+          <Pressable hitSlop={8} onPress={handleLike} style={styles.actionItem}>
+            <Ionicons
+              color={post.isLiked ? colors.danger : colors.text}
+              name={post.isLiked ? 'heart' : 'heart-outline'}
+              size={20}
+            />
+            <Text style={styles.actionText}>{formatCount(post.likesCount || 0)}</Text>
+          </Pressable>
+
+          <Pressable hitSlop={8} onPress={handleOpenDetail} style={styles.actionItem}>
             <Ionicons color={colors.text} name="chatbubble-outline" size={20} />
-            <Text style={styles.actionText}>{post.comments}</Text>
-          </View>
+            <Text style={styles.actionText}>{formatCount(post.commentsCount || 0)}</Text>
+          </Pressable>
         </View>
+
         <Text style={styles.description}>{post.caption}</Text>
+
         <View style={styles.timeBadge}>
-          <Text style={styles.timeText}>{post.time}</Text>
+          <Text style={styles.timeText}>{formatRelativeTime(post.createdAt)}</Text>
         </View>
       </View>
-    </View>
+    </Pressable>
   );
 }
 
@@ -75,6 +114,11 @@ const styles = StyleSheet.create({
     height: 40,
     width: 40,
   },
+  avatarPlaceholder: {
+    backgroundColor: '#F1F5F9',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   userName: {
     color: colors.text,
     fontFamily: 'Poppins_400Regular',
@@ -104,6 +148,11 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   imagePlaceholder: {
+    backgroundColor: '#E2E8F0',
+    height: 240,
+    width: '100%',
+  },
+  image: {
     backgroundColor: '#E2E8F0',
     height: 240,
     width: '100%',

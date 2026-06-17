@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { NavigationContainer } from '@react-navigation/native';
 import { Pressable, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import CreatePostScreen from '../screens/create/CreatePostScreen';
 import EventScreen from '../screens/event/EventScreen';
@@ -39,6 +40,8 @@ function CameraTabButton({ accessibilityState, onPress }) {
 }
 
 export default function MainTabNavigator() {
+  const insets = useSafeAreaInsets();
+  
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -54,7 +57,13 @@ export default function MainTabNavigator() {
           return <Ionicons color={color} name={focused ? activeIcon : inactiveIcon} size={size} />;
         },
         tabBarShowLabel: false,
-        tabBarStyle: styles.tabBar,
+        tabBarStyle: [
+          styles.tabBar,
+          {
+            height: 60 + insets.bottom,
+            paddingBottom: insets.bottom > 0 ? insets.bottom : 8,
+          }
+        ],
       })}
     >
       <Tab.Screen component={HomeScreen} name="Home" />

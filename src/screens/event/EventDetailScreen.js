@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Share, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useState } from 'react';
 
 import ScreenHeader from '../../components/common/ScreenHeader';
@@ -8,6 +8,7 @@ import { DUMMY_EVENTS } from '../../data/dummyEvents';
 import { colors, radius, spacing } from '../../utils/theme';
 
 export default function EventDetailScreen({ route }) {
+  const insets = useSafeAreaInsets();
   const event =
     DUMMY_EVENTS.find((item) => item.id === route.params?.eventId) ||
     DUMMY_EVENTS[0];
@@ -20,7 +21,7 @@ export default function EventDetailScreen({ route }) {
     });
 
   return (
-    <SafeAreaView edges={['bottom']} style={styles.screen}>
+    <View style={styles.screen}>
       <ScreenHeader
         onRightPress={shareEvent}
         rightIcon="share-social-outline"
@@ -84,7 +85,7 @@ export default function EventDetailScreen({ route }) {
         </View>
       </ScrollView>
 
-      <View style={styles.footer}>
+      <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, spacing.md) }]}>
         <Pressable
           accessibilityRole="button"
           onPress={() =>
@@ -141,7 +142,7 @@ export default function EventDetailScreen({ route }) {
           </Text>
         </Pressable>
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
 

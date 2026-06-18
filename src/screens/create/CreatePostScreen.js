@@ -3,6 +3,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useState } from 'react';
 import * as Location from 'expo-location';
 import {ActivityIndicator,Image,Pressable,ScrollView,StyleSheet,Text,TextInput,View,} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import CreateEventScreen from './CreateEventScreen';
 import ScreenHeader from '../../components/common/ScreenHeader';
@@ -16,6 +17,7 @@ import { colors, radius, spacing } from '../../utils/theme';
 const RADIUS_OPTIONS = [1, 5, 10, 25, 50];
 
 export default function CreatePostScreen() {
+  const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const user = useAuthStore((s) => s.user);
   const prependPost = useFeedStore((s) => s.prependPost);
@@ -252,7 +254,7 @@ export default function CreatePostScreen() {
       </ScrollView>
 
       {activeTab === 'POST' ? (
-        <View style={styles.footer}>
+        <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, spacing.md) }]}>
           <Pressable
             disabled={!canSubmit}
             onPress={handleSubmitPost}
@@ -266,7 +268,7 @@ export default function CreatePostScreen() {
           </Pressable>
         </View>
       ) : (
-        <View style={styles.footer}>
+        <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, spacing.md) }]}>
           <Pressable style={styles.submitButton}>
             <Text style={styles.submitButtonText}>CREATE EVENT</Text>
           </Pressable>

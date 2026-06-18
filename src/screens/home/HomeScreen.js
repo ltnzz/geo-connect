@@ -61,7 +61,7 @@ export default function HomeScreen() {
       <FlatList
         contentContainerStyle={styles.listContent}
         data={posts}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) => item._listKey || item.id}
         onEndReached={handleEndReached}
         onEndReachedThreshold={0.4}
         onRefresh={() => refreshFeed(currentUserId)}

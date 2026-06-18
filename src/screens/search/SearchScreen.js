@@ -10,11 +10,12 @@ import PostCard from '../../components/post/PostCard';
 import { db } from '../../config/firebase';
 import { COLLECTIONS } from '../../constants/firestore';
 import { DUMMY_EVENTS } from '../../data/dummyEvents';
-import { DUMMY_POSTS } from '../../data/dummyPosts';
+import { useFeedStore } from '../../stores/feedstore';
 import { colors, radius, spacing } from '../../utils/theme';
 
 export default function SearchScreen() {
   const navigation = useNavigation();
+  const feedPosts = useFeedStore((s) => s.posts);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeSearchTab, setActiveSearchTab] = useState('PEOPLE');
   const [searchedUsers, setSearchedUsers] = useState([]);
@@ -61,9 +62,14 @@ export default function SearchScreen() {
   const normalizedSearch = searchQuery.trim().toLowerCase();
 
   const visiblePosts = normalizedSearch
-    ? DUMMY_POSTS.filter((post) =>
-        [post.author, post.location, post.caption].some((value) =>
-          value.toLowerCase().includes(normalizedSearch),
+    ? feedPosts.filter((post) =>
+        [
+          post.authorName,
+          post.caption,
+          post.location?.address,
+          post.location?.city,
+        ].some((value) =>
+          value?.toLowerCase().includes(normalizedSearch),
         ),
       )
     : [];

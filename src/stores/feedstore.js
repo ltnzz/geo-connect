@@ -4,6 +4,12 @@ import { firestoreService } from '../services/firestoreService';
 
 const PAGE_SIZE = 10;
 
+const createLoopedPosts = (posts, loopPage) =>
+  posts.slice(0, PAGE_SIZE).map((post, index) => ({
+    ...post,
+    _listKey: `${post.id}-loop-${loopPage}-${index}`,
+  }));
+
 const enrichPostsWithUserData = async (posts) => {
   return await Promise.all(
     posts.map(async (post) => {
@@ -33,6 +39,7 @@ export const useFeedStore = create((set, get) => ({
   isRefreshing: false,
   isLoadingMore: false,
   hasMore: true,
+  loopPage: 0,
   error: null,
 
   commentsByPost: {},
@@ -54,6 +61,7 @@ export const useFeedStore = create((set, get) => ({
         posts: enrichedPosts.map((p) => ({ ...p, isLiked: likedIds.has(p.id) })),
         lastDoc,
         hasMore: posts.length === PAGE_SIZE,
+        loopPage: 0,
         isLoading: false,
       });
     } catch (err) {
@@ -76,6 +84,7 @@ export const useFeedStore = create((set, get) => ({
         posts: enrichedPosts.map((p) => ({ ...p, isLiked: likedIds.has(p.id) })),
         lastDoc,
         hasMore: posts.length === PAGE_SIZE,
+        loopPage: 0,
         isRefreshing: false,
       });
     } catch (err) {
@@ -84,16 +93,37 @@ export const useFeedStore = create((set, get) => ({
   },
 
   fetchMorePosts: async (currentUserId) => {
-    const { lastDoc, hasMore, isLoadingMore } = get();
-    if (!hasMore || isLoadingMore || !lastDoc) return;
+    const { lastDoc, hasMore, isLoadingMore, posts, loopPage } = get();
+    if (isLoadingMore || posts.length === 0) return;
 
     set({ isLoadingMore: true });
+
+    if (!hasMore || !lastDoc) {
+      const nextLoopPage = loopPage + 1;
+      set((s) => ({
+        posts: [...s.posts, ...createLoopedPosts(s.posts, nextLoopPage)],
+        loopPage: nextLoopPage,
+        isLoadingMore: false,
+      }));
+      return;
+    }
+
     try {
       const { posts: newPosts, lastDoc: nextLastDoc } = await firestoreService.getFeedPosts({
         pageSize: PAGE_SIZE,
         cursor: lastDoc,
       });
 
+      if (newPosts.length === 0) {
+        const nextLoopPage = loopPage + 1;
+        set((s) => ({
+          posts: [...s.posts, ...createLoopedPosts(s.posts, nextLoopPage)],
+          hasMore: false,
+          loopPage: nextLoopPage,
+          isLoadingMore: false,
+        }));
+        return;
+      }
 
       const enrichedNewPosts = await enrichPostsWithUserData(newPosts);
 

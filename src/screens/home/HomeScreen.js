@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useCallback, useEffect } from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native'; 
 
@@ -24,7 +24,21 @@ export default function HomeScreen() {
 
   useEffect(() => {
     fetchFeed(currentUserId);
-  }, [currentUserId]);
+  }, [currentUserId, fetchFeed]);
+
+  const handleEndReached = useCallback(() => {
+    if (isLoading || isLoadingMore || posts.length === 0) {
+      return;
+    }
+
+    fetchMorePosts(currentUserId);
+  }, [
+    currentUserId,
+    fetchMorePosts,
+    isLoading,
+    isLoadingMore,
+    posts.length,
+  ]);
 
   if (isLoading && posts.length === 0) {
     return <HomeSkeleton />;
@@ -48,7 +62,7 @@ export default function HomeScreen() {
         contentContainerStyle={styles.listContent}
         data={posts}
         keyExtractor={(item) => item.id}
-        onEndReached={() => fetchMorePosts(currentUserId)}
+        onEndReached={handleEndReached}
         onEndReachedThreshold={0.4}
         onRefresh={() => refreshFeed(currentUserId)}
         refreshing={isRefreshing}

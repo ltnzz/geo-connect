@@ -9,13 +9,14 @@ import ScreenHeader from '../../components/common/ScreenHeader';
 import PostCard from '../../components/post/PostCard';
 import { db } from '../../config/firebase';
 import { COLLECTIONS } from '../../constants/firestore';
-import { DUMMY_EVENTS } from '../../data/dummyEvents';
+import { useEventStore } from '../../stores/eventStore';
 import { useFeedStore } from '../../stores/feedstore';
 import { colors, radius, spacing } from '../../utils/theme';
 
 export default function SearchScreen() {
   const navigation = useNavigation();
   const feedPosts = useFeedStore((s) => s.posts);
+  const eventsData = useEventStore((s) => s.events);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeSearchTab, setActiveSearchTab] = useState('PEOPLE');
   const [searchedUsers, setSearchedUsers] = useState([]);
@@ -75,9 +76,9 @@ export default function SearchScreen() {
     : [];
 
   const visibleEvents = normalizedSearch
-    ? DUMMY_EVENTS.filter((event) =>
-        [event.title, event.venue, event.description].some((value) =>
-          value.toLowerCase().includes(normalizedSearch),
+    ? eventsData.filter((event) =>
+        [event.title, event.location?.address, event.location?.city, event.description].some((value) =>
+          value?.toLowerCase().includes(normalizedSearch),
         ),
       )
     : [];
@@ -177,10 +178,13 @@ export default function SearchScreen() {
             )
           }
           renderItem={({ item }) => (
-            <View style={styles.eventRow}>
+            <Pressable 
+              style={styles.eventRow}
+              onPress={() => navigation.navigate('EventDetail', { eventId: item.id })}
+            >
               <Text style={styles.personName}>{item.title}</Text>
-              <Text style={styles.personUsername}>{item.venue}</Text>
-            </View>
+              <Text style={styles.personUsername}>{item.location?.address || 'TBD'}</Text>
+            </Pressable>
           )}
           showsVerticalScrollIndicator={false}
         />

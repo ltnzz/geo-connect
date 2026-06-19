@@ -13,7 +13,9 @@ import {
 } from 'react-native';
 
 import ScreenHeader from '../../components/common/ScreenHeader';
+import NewEventCard from '../../components/event/NewEventCard';
 import { useAuthStore } from '../../stores/authStore';
+import { useEventStore } from '../../stores/eventStore';
 import { DUMMY_POSTS } from '../../data/dummyPosts';
 import { firestoreService } from '../../services/firestoreService';
 import { colors, radius, spacing } from '../../utils/theme';
@@ -53,6 +55,8 @@ export default function ProfileScreen() {
   const displayName = user?.displayName || user?.fullName || username;
   const city = user?.city || 'Jakarta';
   const visiblePosts = activeSegment === 'posts' ? DUMMY_POSTS : savedPosts;
+  const events = useEventStore((state) => state.events);
+  const userEvents = events.filter((e) => e.creatorId === user?.uid);
 
   useFocusEffect(
     useCallback(() => {
@@ -225,6 +229,30 @@ export default function ProfileScreen() {
 
           <Pressable
             accessibilityRole="tab"
+            accessibilityState={{ selected: activeSegment === 'events' }}
+            onPress={() => setActiveSegment('events')}
+            style={[
+              styles.segmentButton,
+              activeSegment === 'events' && styles.segmentButtonActive,
+            ]}
+          >
+            <Ionicons
+              color={activeSegment === 'events' ? colors.primary : colors.neutral}
+              name="calendar-outline"
+              size={17}
+            />
+            <Text
+              style={[
+                styles.segmentText,
+                activeSegment === 'events' && styles.segmentTextActive,
+              ]}
+            >
+              Events
+            </Text>
+          </Pressable>
+
+          <Pressable
+            accessibilityRole="tab"
             accessibilityState={{ selected: activeSegment === 'saved' }}
             onPress={() => setActiveSegment('saved')}
             style={[
@@ -275,7 +303,29 @@ export default function ProfileScreen() {
           </View>
         ) : null}
 
-        {!isSavedLoading && !savedError && visiblePosts.length > 0 ? (
+        {activeSegment === 'events' && userEvents.length === 0 ? (
+          <View style={styles.feedState}>
+            <Ionicons color="#AAB2C0" name="calendar-outline" size={28} />
+            <Text style={styles.feedStateTitle}>No events created yet</Text>
+            <Text style={styles.feedStateText}>
+              Events you create will appear here.
+            </Text>
+          </View>
+        ) : null}
+
+        {activeSegment === 'events' && userEvents.length > 0 ? (
+          <View style={styles.eventList}>
+            {userEvents.map((event) => (
+              <NewEventCard
+                key={event.id}
+                event={event}
+                onPress={() => navigation.navigate('EventDetail', { eventId: event.id })}
+              />
+            ))}
+          </View>
+        ) : null}
+
+        {activeSegment !== 'events' && !isSavedLoading && !savedError && visiblePosts.length > 0 ? (
           <View style={styles.feedGrid}>
             {visiblePosts.map((post, index) => (
               <Pressable
@@ -467,6 +517,15 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     marginTop: 12,
     overflow: 'hidden',
+  },
+  eventList: {
+    alignSelf: 'stretch',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    justifyContent: 'center',
+    marginTop: 16,
+    paddingHorizontal: spacing.xs,
   },
   feedItem: {
     aspectRatio: 1,

@@ -606,25 +606,36 @@ export const firestoreService = {
     });
   },
   async getFeedPosts({ pageSize = 10, cursor = null } = {}) {
-  assertFirebaseConfigured();
-  const constraints = [orderBy('createdAt', 'desc'), limit(pageSize)];
-  if (cursor) constraints.push(startAfter(cursor));
-  const snapshot = await getDocs(query(collection(db, COLLECTIONS.posts), ...constraints));
-  const posts = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
-  const lastDoc = snapshot.docs[snapshot.docs.length - 1] ?? null;
-  return { posts, lastDoc };
-},
+    assertFirebaseConfigured();
+    const constraints = [orderBy('createdAt', 'desc'), limit(pageSize)];
+    if (cursor) constraints.push(startAfter(cursor));
+    const snapshot = await getDocs(query(collection(db, COLLECTIONS.posts), ...constraints));
+    const posts = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+    const lastDoc = snapshot.docs[snapshot.docs.length - 1] ?? null;
+    return { posts, lastDoc };
+  },
 
-async getLikedPostIds(postIds, userId) {
-  assertFirebaseConfigured();
-  if (!postIds.length) return new Set();
-  const snapshots = await Promise.all(
-    postIds.map((postId) =>
-      getDoc(doc(db, COLLECTIONS.posts, postId, SUBCOLLECTIONS.likes, userId)),
-    ),
-  );
-  const liked = new Set();
-  snapshots.forEach((snap, i) => { if (snap.exists()) liked.add(postIds[i]); });
-  return liked;
-},
+  async getLikedPostIds(postIds, userId) {
+    assertFirebaseConfigured();
+    if (!postIds.length) return new Set();
+    const snapshots = await Promise.all(
+      postIds.map((postId) =>
+        getDoc(doc(db, COLLECTIONS.posts, postId, SUBCOLLECTIONS.likes, userId)),
+      ),
+    );
+    const liked = new Set();
+    snapshots.forEach((snap, i) => { if (snap.exists()) liked.add(postIds[i]); });
+    return liked;
+  },
+
+  async getUpcomingEvents({ pageSize = 10, cursor = null } = {}) {
+    assertFirebaseConfigured();
+    const constraints = [orderBy('startTime', 'asc'), limit(pageSize)];
+    if (cursor) constraints.push(startAfter(cursor));
+    // Also we could filter by startTime >= now, but for simplicity we just fetch
+    const snapshot = await getDocs(query(collection(db, COLLECTIONS.events), ...constraints));
+    const events = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+    const lastDoc = snapshot.docs[snapshot.docs.length - 1] ?? null;
+    return { events, lastDoc };
+  },
 };

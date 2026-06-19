@@ -1,8 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   FlatList,
+  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -11,24 +13,42 @@ import {
 } from 'react-native';
 
 import ScreenHeader from '../../components/common/ScreenHeader';
+import NewEventCard from '../../components/event/NewEventCard';
 import { DUMMY_EVENTS } from '../../data/dummyEvents';
+import { useEventStore } from '../../stores/eventStore';
+import { filterRecentEvents } from '../../utils/dateUtils';
 import { colors, radius, spacing } from '../../utils/theme';
 
 function EventArtwork({ event, compact = false }) {
+  if (event.bannerUrl) {
+    return (
+      <View style={[styles.artwork, compact && styles.compactArtwork]}>
+        <Image source={{ uri: event.bannerUrl }} style={styles.artworkImage} />
+        {event.category ? (
+          <Text style={[styles.artworkCategory, compact && styles.compactCategory]}>
+            {event.category}
+          </Text>
+        ) : null}
+      </View>
+    );
+  }
+
   return (
     <View
       style={[
         styles.artwork,
         compact && styles.compactArtwork,
-        { backgroundColor: event.color },
+        { backgroundColor: '#E9F0FF' }, // Fallback color
       ]}
     >
       <View style={styles.artworkIcon}>
         <Ionicons color={colors.primary} name="calendar" size={compact ? 20 : 28} />
       </View>
-      <Text style={[styles.artworkCategory, compact && styles.compactCategory]}>
-        {event.category}
-      </Text>
+      {event.category ? (
+        <Text style={[styles.artworkCategory, compact && styles.compactCategory]}>
+          {event.category}
+        </Text>
+      ) : null}
     </View>
   );
 }
@@ -36,14 +56,22 @@ function EventArtwork({ event, compact = false }) {
 function FeaturedEventCard({ event, onOpen }) {
   const [response, setResponse] = useState(null);
 
+  let scheduleString = '';
+  if (event.schedule) {
+    scheduleString = event.schedule;
+  } else if (event.startTime) {
+    const startTime = event.startTime?.toDate ? event.startTime.toDate() : new Date(event.startTime);
+    scheduleString = startTime.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
+  }
+
   return (
     <View style={styles.featuredCard}>
       <View style={styles.badgeRow}>
         <View style={styles.statusBadge}>
           <View style={styles.statusDot} />
-          <Text style={styles.statusText}>{event.status}</Text>
+          <Text style={styles.statusText}>{event.status || 'Upcoming'}</Text>
         </View>
-        <Text style={styles.distance}>{event.distance}</Text>
+        <Text style={styles.distance}>Nearby</Text>
       </View>
 
       <Pressable accessibilityRole="button" onPress={onOpen}>
@@ -61,12 +89,12 @@ function FeaturedEventCard({ event, onOpen }) {
             <View style={styles.metaRow}>
               <Ionicons color={colors.neutral} name="location-outline" size={12} />
               <Text numberOfLines={1} style={styles.metaText}>
-                {event.venue}
+                {event.venue || event.location?.address || 'TBD'}
               </Text>
             </View>
             <View style={styles.metaRow}>
               <Ionicons color={colors.neutral} name="time-outline" size={12} />
-              <Text style={styles.metaText}>{event.schedule}</Text>
+              <Text style={styles.metaText}>{scheduleString}</Text>
             </View>
           </View>
           <View style={styles.calendarButton}>
@@ -85,14 +113,8 @@ function FeaturedEventCard({ event, onOpen }) {
             ]}
           >
             <Ionicons
-              color={
-                response === 'going' ? '#FFFFFF' : colors.primary
-              }
-              name={
-                response === 'going'
-                  ? 'checkmark-circle'
-                  : 'checkmark-circle-outline'
-              }
+              color={response === 'going' ? '#FFFFFF' : colors.primary}
+              name={response === 'going' ? 'checkmark-circle' : 'checkmark-circle-outline'}
               size={16}
             />
             <Text
@@ -106,9 +128,7 @@ function FeaturedEventCard({ event, onOpen }) {
           </Pressable>
           <Pressable
             accessibilityRole="button"
-            onPress={() =>
-              setResponse(response === 'interested' ? null : 'interested')
-            }
+            onPress={() => setResponse(response === 'interested' ? null : 'interested')}
             style={({ pressed }) => [
               styles.responseAction,
               response === 'interested' && styles.secondaryActionSelected,
@@ -116,23 +136,14 @@ function FeaturedEventCard({ event, onOpen }) {
             ]}
           >
             <Ionicons
-              color={
-                response === 'interested'
-                  ? colors.tertiary
-                  : colors.mutedText
-              }
-              name={
-                response === 'interested'
-                  ? 'bookmark'
-                  : 'bookmark-outline'
-              }
+              color={response === 'interested' ? colors.tertiary : colors.mutedText}
+              name={response === 'interested' ? 'bookmark' : 'bookmark-outline'}
               size={15}
             />
             <Text
               style={[
                 styles.responseActionText,
-                response === 'interested' &&
-                  styles.secondaryActionTextSelected,
+                response === 'interested' && styles.secondaryActionTextSelected,
               ]}
             >
               Interested
@@ -145,20 +156,26 @@ function FeaturedEventCard({ event, onOpen }) {
 }
 
 function TrendingEventCard({ event, onPress }) {
+  let scheduleString = '';
+  if (event.schedule) {
+    scheduleString = event.schedule;
+  } else if (event.startTime) {
+    const startTime = event.startTime?.toDate ? event.startTime.toDate() : new Date(event.startTime);
+    scheduleString = startTime.toLocaleDateString([], { month: 'short', day: 'numeric' });
+  }
+
+  const attendeesCount = event.attendees !== undefined ? event.attendees : (event.participantCount || 0);
+
   return (
     <Pressable
-      accessibilityLabel={`${event.title} at ${event.venue}`}
       accessibilityRole="button"
       onPress={onPress}
-      style={({ pressed }) => [
-        styles.trendingCard,
-        pressed && styles.pressed,
-      ]}
+      style={({ pressed }) => [styles.trendingCard, pressed && styles.pressed]}
     >
       <View style={styles.trendingArtworkWrap}>
         <EventArtwork compact event={event} />
         <View style={styles.trendingDistanceBadge}>
-          <Text style={styles.trendingDistance}>{event.distance}</Text>
+          <Text style={styles.trendingDistance}>Nearby</Text>
         </View>
       </View>
       <View style={styles.trendingContent}>
@@ -166,7 +183,7 @@ function TrendingEventCard({ event, onPress }) {
           {event.title}
         </Text>
         <Text numberOfLines={1} style={styles.trendingMeta}>
-          {event.schedule} · {event.attendees} going
+          {scheduleString} · {attendeesCount} going
         </Text>
       </View>
     </Pressable>
@@ -176,22 +193,45 @@ function TrendingEventCard({ event, onPress }) {
 export default function EventScreen() {
   const navigation = useNavigation();
   const [searchQuery, setSearchQuery] = useState('');
+  
+  const { events, isLoading, fetchEvents } = useEventStore();
+
+  useEffect(() => {
+    if (events.length === 0 && !isLoading) {
+      fetchEvents();
+    }
+  }, []);
+
   const normalizedSearch = searchQuery.trim().toLowerCase();
-  const matchingEvents = normalizedSearch
+  
+  // Real Events (for New Events section)
+  const matchingReal = normalizedSearch
+    ? events.filter((event) =>
+        [
+          event.title,
+          event.location?.address,
+          event.location?.city,
+          event.description,
+        ].some((value) => value?.toLowerCase().includes(normalizedSearch))
+      )
+    : events;
+
+  const newEvents = filterRecentEvents(matchingReal);
+
+  // Dummy Events (for Featured and Trending sections)
+  const matchingDummy = normalizedSearch
     ? DUMMY_EVENTS.filter((event) =>
         [
           event.title,
           event.venue,
           event.category,
           event.status,
-        ].some((value) => value.toLowerCase().includes(normalizedSearch)),
+        ].some((value) => value.toLowerCase().includes(normalizedSearch))
       )
     : DUMMY_EVENTS;
-  const featuredEvent =
-    matchingEvents.find((event) => event.featured) || matchingEvents[0];
-  const trendingEvents = matchingEvents.filter(
-    (event) => event.id !== featuredEvent?.id,
-  );
+
+  const featuredEvent = matchingDummy[0];
+  const trendingEvents = matchingDummy.slice(1);
 
   return (
     <View style={styles.screen}>
@@ -210,30 +250,46 @@ export default function EventScreen() {
           Curated happenings around your location.
         </Text>
 
-        {featuredEvent ? (
+        {isLoading && events.length === 0 ? (
+          <ActivityIndicator style={{ marginTop: spacing.xl }} color={colors.primary} size="large" />
+        ) : featuredEvent ? (
           <FeaturedEventCard
             event={featuredEvent}
-            onOpen={() =>
-              navigation.navigate('EventDetail', {
-                eventId: featuredEvent.id,
-              })
-            }
+            onOpen={() => navigation.navigate('EventDetail', { eventId: featuredEvent.id })}
           />
         ) : (
           <View style={styles.emptyState}>
-            <Ionicons
-              color="#A5AFBD"
-              name="calendar-outline"
-              size={34}
-            />
+            <Ionicons color="#A5AFBD" name="calendar-outline" size={34} />
             <Text style={styles.emptyTitle}>No matching events</Text>
             <Text style={styles.emptyText}>
-              Try another event, venue, or category.
+              {normalizedSearch ? 'Try another event, venue, or category.' : 'No upcoming events right now.'}
             </Text>
           </View>
         )}
 
-        {trendingEvents.length ? (
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>New Events</Text>
+        </View>
+
+        {newEvents.length > 0 ? (
+          <FlatList
+            contentContainerStyle={styles.trendingList}
+            data={newEvents}
+            horizontal
+            keyExtractor={(event) => event.id}
+            renderItem={({ item }) => (
+              <NewEventCard
+                event={item}
+                onPress={() => navigation.navigate('EventDetail', { eventId: item.id })}
+              />
+            )}
+            showsHorizontalScrollIndicator={false}
+          />
+        ) : (
+          <Text style={styles.emptyNewEventsText}>No new events recently.</Text>
+        )}
+
+        {trendingEvents.length > 0 ? (
           <>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Trending Spots</Text>
@@ -255,9 +311,7 @@ export default function EventScreen() {
               renderItem={({ item }) => (
                 <TrendingEventCard
                   event={item}
-                  onPress={() =>
-                    navigation.navigate('EventDetail', { eventId: item.id })
-                  }
+                  onPress={() => navigation.navigate('EventDetail', { eventId: item.id })}
                 />
               )}
               showsHorizontalScrollIndicator={false}
@@ -341,6 +395,12 @@ const styles = StyleSheet.create({
   },
   compactArtwork: {
     height: 120,
+  },
+  artworkImage: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: radius.md,
+    height: '100%',
+    width: '100%',
   },
   artworkIcon: {
     alignItems: 'center',
@@ -524,6 +584,14 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_400Regular',
     fontSize: 11,
     marginTop: spacing.xs,
+  },
+  emptyNewEventsText: {
+    color: colors.neutral,
+    fontFamily: 'Inter_400Regular',
+    fontSize: 13,
+    paddingHorizontal: spacing.md,
+    marginTop: spacing.sm,
+    marginBottom: spacing.lg,
   },
   pressed: {
     opacity: 0.72,

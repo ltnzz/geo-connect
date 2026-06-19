@@ -267,13 +267,7 @@ export default function CreatePostScreen() {
             )}
           </Pressable>
         </View>
-      ) : (
-        <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, spacing.md) }]}>
-          <Pressable style={styles.submitButton}>
-            <Text style={styles.submitButtonText}>CREATE EVENT</Text>
-          </Pressable>
-        </View>
-      )}
+      ) : null}
     </View>
   );
 }

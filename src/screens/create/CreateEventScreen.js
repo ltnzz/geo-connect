@@ -1,11 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import { ActivityIndicator, Image, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useState } from 'react';
-import * as Location from 'expo-location';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import DateTimePickerBox from '../../components/event/DateTimePickerBox';
+import { useLocation } from '../../hooks/useLocation';
 import { colors, radius, spacing } from '../../utils/theme';
 import { imagePickerService } from '../../services/imagePickerService';
 import { cloudinaryService } from '../../services/cloudinaryService';
@@ -22,14 +22,14 @@ export default function CreateEventScreen() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [asset, setAsset] = useState(null);
-  const [location, setLocation] = useState(null);
   
+  const { location, isFetchingLocation, locationError, handleGetLocation } = useLocation();
+
   const [date, setDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [time, setTime] = useState(new Date());
   const [showTimePicker, setShowTimePicker] = useState(false);
 
-  const [isFetchingLocation, setIsFetchingLocation] = useState(false);
   const [isPosting, setIsPosting] = useState(false);
   const [error, setError] = useState(null);
 
@@ -43,38 +43,7 @@ export default function CreateEventScreen() {
     }
   };
 
-  const handleGetLocation = async () => {
-    setIsFetchingLocation(true);
-    setError(null);
-    try {
-      let { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        setError('Location permission denied.');
-        setIsFetchingLocation(false);
-        return;
-      }
 
-      let currentPos = await Location.getCurrentPositionAsync({});
-      let geocode = await Location.reverseGeocodeAsync({
-        latitude: currentPos.coords.latitude,
-        longitude: currentPos.coords.longitude,
-      });
-
-      if (geocode.length > 0) {
-        const place = geocode[0];
-        setLocation({
-          latitude: currentPos.coords.latitude,
-          longitude: currentPos.coords.longitude,
-          city: place.city || place.subregion,
-          address: place.street || place.name || 'Current Location',
-        });
-      }
-    } catch (err) {
-      setError('Failed to get location. Make sure GPS is enabled.');
-    } finally {
-      setIsFetchingLocation(false);
-    }
-  };
 
   const onDateChange = (event, selectedDate) => {
     setShowDatePicker(false);
@@ -151,23 +120,16 @@ export default function CreateEventScreen() {
         onChangeText={setTitle}
       />
 
-      <View style={styles.dateTimeRow}>
-        <Pressable style={styles.dateTimeButton} onPress={() => setShowDatePicker(true)}>
-          <Ionicons color={colors.neutral} name="calendar-outline" size={20} />
-          <Text style={styles.dateTimeText}>{date.toLocaleDateString()}</Text>
-        </Pressable>
-        {showDatePicker && (
-          <DateTimePicker value={date} mode="date" display="default" onChange={onDateChange} />
-        )}
-
-        <Pressable style={styles.dateTimeButton} onPress={() => setShowTimePicker(true)}>
-          <Ionicons color={colors.neutral} name="time-outline" size={20} />
-          <Text style={styles.dateTimeText}>{time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
-        </Pressable>
-        {showTimePicker && (
-          <DateTimePicker value={time} mode="time" display="default" onChange={onTimeChange} />
-        )}
-      </View>
+      <DateTimePickerBox
+        date={date}
+        time={time}
+        showDatePicker={showDatePicker}
+        showTimePicker={showTimePicker}
+        setShowDatePicker={setShowDatePicker}
+        setShowTimePicker={setShowTimePicker}
+        onDateChange={onDateChange}
+        onTimeChange={onTimeChange}
+      />
 
       <Pressable style={styles.eventLocationButton} onPress={handleGetLocation} disabled={isFetchingLocation}>
         <Ionicons color={colors.primary} name="location" size={18} />
@@ -211,7 +173,7 @@ export default function CreateEventScreen() {
         </View>
       )}
 
-      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+      {error || locationError ? <Text style={styles.errorText}>{error || locationError}</Text> : null}
 
       {/* Internal Footer for Submit */}
       <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, spacing.md) }]}>
@@ -240,27 +202,6 @@ const styles = StyleSheet.create({
     fontFamily: 'Poppins_700Bold',
     fontSize: 28,
     marginBottom: spacing.xl,
-  },
-  dateTimeRow: {
-    flexDirection: 'row',
-    gap: spacing.md,
-    marginBottom: spacing.xl,
-  },
-  dateTimeButton: {
-    alignItems: 'center',
-    borderColor: colors.border,
-    borderRadius: radius.sm,
-    borderWidth: 1,
-    flex: 1,
-    flexDirection: 'row',
-    gap: spacing.sm,
-    padding: spacing.md,
-  },
-  dateTimeText: {
-    color: colors.neutral,
-    fontFamily: 'Poppins_600SemiBold',
-    fontSize: 12,
-    letterSpacing: 1,
   },
   eventLocationButton: {
     alignItems: 'center',

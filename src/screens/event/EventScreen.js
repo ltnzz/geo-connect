@@ -16,6 +16,7 @@ import ScreenHeader from '../../components/common/ScreenHeader';
 import NewEventCard from '../../components/event/NewEventCard';
 import { DUMMY_EVENTS } from '../../data/dummyEvents';
 import { useEventStore } from '../../stores/eventStore';
+import { filterRecentEvents } from '../../utils/dateUtils';
 import { colors, radius, spacing } from '../../utils/theme';
 
 function EventArtwork({ event, compact = false }) {
@@ -215,14 +216,7 @@ export default function EventScreen() {
       )
     : events;
 
-  const now = new Date();
-  const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-
-  const newEvents = matchingReal.filter((event) => {
-    if (!event.createdAt) return false;
-    const createdAt = event.createdAt?.toDate ? event.createdAt.toDate() : new Date(event.createdAt);
-    return createdAt >= twentyFourHoursAgo;
-  });
+  const newEvents = filterRecentEvents(matchingReal);
 
   // Dummy Events (for Featured and Trending sections)
   const matchingDummy = normalizedSearch

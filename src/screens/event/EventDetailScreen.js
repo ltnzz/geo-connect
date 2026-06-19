@@ -1,23 +1,40 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Share, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image, Share, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useState } from 'react';
 
 import ScreenHeader from '../../components/common/ScreenHeader';
 import { DUMMY_EVENTS } from '../../data/dummyEvents';
+import { useEventStore } from '../../stores/eventStore';
 import { colors, radius, spacing } from '../../utils/theme';
 
 export default function EventDetailScreen({ route }) {
   const insets = useSafeAreaInsets();
-  const event =
-    DUMMY_EVENTS.find((item) => item.id === route.params?.eventId) ||
-    DUMMY_EVENTS[0];
+  const events = useEventStore((s) => s.events);
+  const realEvent = events.find((item) => item.id === route.params?.eventId);
+  const dummyEvent = DUMMY_EVENTS.find((item) => item.id === route.params?.eventId);
+  
+  const event = realEvent || dummyEvent || DUMMY_EVENTS[0];
   const [response, setResponse] = useState(null);
+
+  const isReal = !!realEvent;
+  const title = event.title;
+  const category = event.category || 'Event';
+  const description = event.description;
+  const venue = isReal ? (event.location?.city || event.location?.address || 'Nearby') : event.venue;
+  const host = isReal ? 'User' : event.host;
+  const attendees = isReal ? (event.participantCount || 0) : event.attendees;
+  
+  let scheduleStr = event.schedule || '';
+  if (isReal && event.startTime) {
+    const d = event.startTime?.toDate ? event.startTime.toDate() : new Date(event.startTime);
+    scheduleStr = d.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
+  }
 
   const shareEvent = () =>
     Share.share({
-      message: `${event.title}\n${event.schedule} at ${event.venue}`,
-      title: event.title,
+      message: `${title}\n${scheduleStr} at ${venue}`,
+      title: title,
     });
 
   return (
@@ -35,40 +52,44 @@ export default function EventDetailScreen({ route }) {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        <View style={[styles.hero, { backgroundColor: event.color }]}>
-          <View style={styles.heroIcon}>
-            <Ionicons color={colors.primary} name="musical-notes" size={38} />
-          </View>
+        <View style={[styles.hero, !isReal && { backgroundColor: event.color }, isReal && { backgroundColor: '#E9F0FF' }]}>
+          {isReal && event.bannerUrl ? (
+            <Image source={{ uri: event.bannerUrl }} style={styles.heroImage} />
+          ) : (
+            <View style={styles.heroIcon}>
+              <Ionicons color={colors.primary} name="musical-notes" size={38} />
+            </View>
+          )}
           <View style={styles.categoryBadge}>
-            <Text style={styles.categoryText}>{event.category}</Text>
+            <Text style={styles.categoryText}>{category}</Text>
           </View>
         </View>
 
-        <Text style={styles.title}>{event.title}</Text>
+        <Text style={styles.title}>{title}</Text>
         <View style={styles.hostRow}>
           <View style={styles.hostAvatar}>
             <Ionicons color={colors.primary} name="people" size={15} />
           </View>
-          <Text style={styles.hostText}>Hosted by {event.host}</Text>
+          <Text style={styles.hostText}>Hosted by {host}</Text>
         </View>
 
         <View style={styles.chipRow}>
           <View style={styles.chip}>
             <Ionicons color={colors.neutral} name="calendar-outline" size={13} />
-            <Text style={styles.chipText}>{event.schedule}</Text>
+            <Text style={styles.chipText}>{scheduleStr}</Text>
           </View>
           <View style={styles.chip}>
             <Ionicons color={colors.primary} name="location" size={13} />
-            <Text style={styles.chipText}>{event.distance}</Text>
+            <Text style={styles.chipText}>{isReal ? 'Nearby' : event.distance}</Text>
           </View>
         </View>
 
         <View style={styles.venueRow}>
           <Ionicons color={colors.primary} name="navigate-circle-outline" size={20} />
-          <Text style={styles.venueText}>{event.venue}</Text>
+          <Text style={styles.venueText}>{venue}</Text>
         </View>
 
-        <Text style={styles.description}>{event.description}</Text>
+        <Text style={styles.description}>{description}</Text>
 
         <View style={styles.storyCard}>
           <Text style={styles.storyTitle}>Attendees & Event Story</Text>
@@ -80,7 +101,7 @@ export default function EventDetailScreen({ route }) {
                 </View>
               ))}
             </View>
-            <Text style={styles.attendeeCount}>+{event.attendees} going</Text>
+            <Text style={styles.attendeeCount}>+{attendees} going</Text>
           </View>
         </View>
       </ScrollView>
@@ -162,6 +183,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     overflow: 'hidden',
     position: 'relative',
+  },
+  heroImage: {
+    ...StyleSheet.absoluteFillObject,
+    height: '100%',
+    width: '100%',
   },
   heroIcon: {
     alignItems: 'center',

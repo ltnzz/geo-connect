@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { ActivityIndicator, Image, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { useState } from 'react';
-import { useNavigation } from '@react-navigation/native';
+import { useState, useCallback } from 'react';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import DateTimePickerBox from '../../components/event/DateTimePickerBox';
@@ -23,15 +23,31 @@ export default function CreateEventScreen() {
   const [description, setDescription] = useState('');
   const [asset, setAsset] = useState(null);
   
-  const { location, isFetchingLocation, locationError, handleGetLocation } = useLocation();
+  const [isPosting, setIsPosting] = useState(false);
+  const [error, setError] = useState(null);
 
   const [date, setDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [time, setTime] = useState(new Date());
   const [showTimePicker, setShowTimePicker] = useState(false);
 
-  const [isPosting, setIsPosting] = useState(false);
-  const [error, setError] = useState(null);
+  const { location, isFetchingLocation, locationError, handleGetLocation, clearLocation } = useLocation();
+
+  useFocusEffect(
+    useCallback(() => {
+      return () => {
+        setTitle('');
+        setDescription('');
+        setAsset(null);
+        setDate(new Date());
+        setTime(new Date());
+        setShowDatePicker(false);
+        setShowTimePicker(false);
+        setError(null);
+        clearLocation();
+      };
+    }, [])
+  );
 
   const handlePickImage = async () => {
     setError(null);
@@ -56,10 +72,6 @@ export default function CreateEventScreen() {
   };
 
   const handleSubmit = async () => {
-    if (!title.trim()) return setError('Please enter an event title.');
-    if (!location) return setError('Please add an event location.');
-    if (!asset) return setError('Please upload an event cover image.');
-    
     setError(null);
     setIsPosting(true);
 
@@ -108,7 +120,7 @@ export default function CreateEventScreen() {
     }
   };
 
-  const canSubmit = title.trim().length > 0 && !!location && !!asset && !isPosting;
+  const canSubmit = title.trim().length > 0 && description.trim().length > 0 && !!location && !!asset && !isPosting;
 
   return (
     <View style={styles.container}>
@@ -185,7 +197,7 @@ export default function CreateEventScreen() {
           {isPosting ? (
             <ActivityIndicator color={colors.surface} />
           ) : (
-            <Text style={styles.submitButtonText}>CREATE EVENT</Text>
+            <Text style={[styles.submitButtonText, !canSubmit && styles.submitButtonTextDisabled]}>CREATE EVENT</Text>
           )}
         </Pressable>
       </View>
@@ -308,5 +320,8 @@ const styles = StyleSheet.create({
     fontFamily: 'Poppins_600SemiBold',
     fontSize: 14,
     letterSpacing: 1,
+  },
+  submitButtonTextDisabled: {
+    color: '#94A3B8',
   },
 });

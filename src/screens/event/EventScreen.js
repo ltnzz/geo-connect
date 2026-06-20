@@ -31,15 +31,34 @@ import { colors, radius, spacing } from '../../utils/theme';
 export default function EventScreen() {
   const navigation = useNavigation();
   const [searchQuery, setSearchQuery] = useState('');
+  const [isRefreshing, setIsRefreshing] = useState(false);
   
   const { events, isLoading, isOffline, fetchEvents } = useEventStore();
+  const user = useAuthStore((state) => state.user);
+  const {
+    location,
+    isFetchingLocation,
+    handleGetLocation,
+  } = useLocation();
+
+  const refreshEvents = async () => {
+    setIsRefreshing(true);
+    try {
+      await Promise.all([
+        fetchEvents(),
+        handleGetLocation(),
+      ]);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   useEffect(() => {
     if (events.length === 0 && !isLoading) {
       fetchEvents();
     }
     handleGetLocation();
-  }, []);
+  }, [events.length, fetchEvents, handleGetLocation, isLoading]);
 
   const normalizedSearch = searchQuery.trim().toLowerCase();
   
@@ -57,7 +76,7 @@ export default function EventScreen() {
 
   const newEvents = filterRecentEvents(matchingReal);
 
-      const nearbyEvents = location
+  const nearbyEvents = location
     ? matchingReal.filter((event) => {
         if (event.creatorId === user?.uid) return false;
         if (!event.location || !event.location.latitude || !event.location.longitude) return false;

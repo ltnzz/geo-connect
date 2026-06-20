@@ -21,11 +21,11 @@ import {
 } from 'react-native';
 
 import ScreenHeader from '../../components/common/ScreenHeader';
-import { DUMMY_EVENTS } from '../../data/dummyEvents';
 import { DEFAULT_MAP_CENTER } from '../../data/mapDiscoveryData';
 import { firestoreService } from '../../services/firestoreService';
 import { locationService } from '../../services/locationService';
 import { useAuthStore } from '../../stores/authStore';
+import { useEventStore } from '../../stores/eventStore';
 import { getDistanceMeters } from '../../utils/geo';
 import { clusterMapItems } from '../../utils/mapCluster';
 import { colors, radius, spacing } from '../../utils/theme';
@@ -69,19 +69,28 @@ const normalizeConnection = (connection) => ({
   },
 });
 
-const getEventItems = (center, radiusMeters) =>
-  DUMMY_EVENTS.filter(
+const getEventItems = (center, radiusMeters, eventsList) =>
+  eventsList.filter(
     (event) =>
-      event.coordinate &&
-      getDistanceMeters(center, event.coordinate) <= radiusMeters,
-  ).map((event) => ({
-    id: `event-${event.id}`,
-    type: 'event',
-    sourceId: event.id,
-    title: event.title,
-    subtitle: `${event.schedule} - ${event.venue}`,
-    coordinate: event.coordinate,
-  }));
+      event.location &&
+      event.location.latitude &&
+      event.location.longitude &&
+      getDistanceMeters(center, event.location) <= radiusMeters,
+  ).map((event) => {
+    const startD = event.startTime?.toDate ? event.startTime.toDate() : new Date(event.startTime);
+    const timeStr = startD.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return {
+      id: `event-${event.id}`,
+      type: 'event',
+      sourceId: event.id,
+      title: event.title,
+      subtitle: `${timeStr} - ${event.location.city || 'Nearby'}`,
+      coordinate: {
+        latitude: event.location.latitude,
+        longitude: event.location.longitude,
+      },
+    };
+  });
 
 function DiscoveryMarker({ cluster, onPress }) {
   const isCluster = cluster.items.length > 1;
@@ -165,6 +174,8 @@ export default function MapScreen() {
   const isLocationRefreshInFlight = useRef(false);
   const viewport = useWindowDimensions();
   const user = useAuthStore((state) => state.user);
+  const eventsList = useEventStore((state) => state.events);
+  const fetchEvents = useEventStore((state) => state.fetchEvents);
   const [isEnabled, setIsEnabled] = useState(false);
   const [showPermissionIntro, setShowPermissionIntro] = useState(false);
   const [isLoadingLocation, setIsLoadingLocation] = useState(true);
@@ -240,13 +251,14 @@ export default function MapScreen() {
 
       if (canRestore) {
         loadCurrentLocation();
+        fetchEvents();
       }
     });
 
     return () => {
       isActive = false;
     };
-  }, [loadCurrentLocation]);
+  }, [loadCurrentLocation, fetchEvents]);
 
   useFocusEffect(
     useCallback(() => {
@@ -343,12 +355,12 @@ export default function MapScreen() {
 
         setItems([
           ...nearbyConnections,
-          ...getEventItems(center, radiusMeters),
+          ...getEventItems(center, radiusMeters, eventsList),
         ]);
       })
       .catch(() => {
         if (isActive) {
-          setItems(getEventItems(center, radiusMeters));
+          setItems(getEventItems(center, radiusMeters, eventsList));
         }
       })
       .finally(() => {
@@ -360,7 +372,7 @@ export default function MapScreen() {
     return () => {
       isActive = false;
     };
-  }, [center, isEnabled, radiusMeters, refreshVersion, user?.uid]);
+  }, [center, isEnabled, radiusMeters, refreshVersion, user?.uid, eventsList]);
 
   const visibleItems = useMemo(
     () =>

@@ -5,7 +5,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useEffect, useState } from 'react';
 
 import ScreenHeader from '../../components/common/ScreenHeader';
-import { DUMMY_EVENTS } from '../../data/dummyEvents';
 import { useEventStore } from '../../stores/eventStore';
 import { useAuthStore } from '../../stores/authStore';
 import { useLocation } from '../../hooks/useLocation';
@@ -17,21 +16,26 @@ export default function EventDetailScreen({ route }) {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const user = useAuthStore((s) => s.user);
-  const { location, handleGetLocation } = useLocation();
+  const { location, isFetchingLocation, handleGetLocation } = useLocation();
   const events = useEventStore((s) => s.events);
   const removeEvent = useEventStore((s) => s.removeEvent);
-  const realEvent = events.find((item) => item.id === route.params?.eventId);
-  const dummyEvent = DUMMY_EVENTS.find((item) => item.id === route.params?.eventId);
+  const event = events.find((item) => item.id === route.params?.eventId);
   
-  const event = realEvent || dummyEvent || DUMMY_EVENTS[0];
   const [response, setResponse] = useState(null);
 
-  const isReal = !!realEvent;
-  const isOwnEvent = isReal && user && event.creatorId === user.uid;
+  const isOwnEvent = user && event?.creatorId === user.uid;
+  if (!event) {
+    return (
+      <View style={[styles.screen, { justifyContent: 'center', alignItems: 'center' }]}>
+        <Text>Event not found.</Text>
+      </View>
+    );
+  }
+
   const title = event.title;
   const category = event.category || 'Event';
   const description = event.description;
-  const venue = isReal ? (event.location?.city || event.location?.address || 'Nearby') : event.venue;
+  const venue = event.location?.city || event.location?.address || 'Nearby';
 
   const [hostName, setHostName] = useState('Loading...');
 
@@ -40,7 +44,7 @@ export default function EventDetailScreen({ route }) {
   }, [handleGetLocation]);
 
   useEffect(() => {
-    if (isReal && event.creatorId) {
+    if (event.creatorId) {
       if (user && event.creatorId === user.uid) {
         setHostName('You');
       } else {
@@ -53,13 +57,13 @@ export default function EventDetailScreen({ route }) {
         }).catch(() => setHostName('User'));
       }
     }
-  }, [isReal, event.creatorId, user]);
+  }, [event.creatorId, user]);
 
-  const host = isReal ? hostName : event.host;
-  const attendees = isReal ? (event.participantCount || 0) : event.attendees;
+  const host = hostName;
+  const attendees = event.participantCount || 0;
   
   let scheduleStr = event.schedule || '';
-  if (isReal && event.startTime) {
+  if (event.startTime) {
     const startD = event.startTime?.toDate ? event.startTime.toDate() : new Date(event.startTime);
     const endD = event.endTime?.toDate ? event.endTime.toDate() : (event.endTime ? new Date(event.endTime) : startD);
 
@@ -81,7 +85,7 @@ export default function EventDetailScreen({ route }) {
     event.location.latitude,
     event.location.longitude
   ) : null;
-  const distanceStr = dist !== null ? `${dist.toFixed(1)} km away` : 'Nearby';
+  const distanceStr = isFetchingLocation ? 'Calculating...' : (dist !== null ? `${dist.toFixed(1)} km away` : 'Nearby');
 
   const shareEvent = () =>
     Share.share({
@@ -127,8 +131,8 @@ export default function EventDetailScreen({ route }) {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        <View style={[styles.hero, !isReal && { backgroundColor: event.color }, isReal && { backgroundColor: '#E9F0FF' }]}>
-          {isReal && event.bannerUrl ? (
+        <View style={[styles.hero, { backgroundColor: '#E9F0FF' }]}>
+          {event.bannerUrl ? (
             <Image source={{ uri: event.bannerUrl }} style={styles.heroImage} />
           ) : (
             <View style={styles.heroIcon}>
@@ -155,7 +159,7 @@ export default function EventDetailScreen({ route }) {
           </View>
           <View style={styles.chip}>
             <Ionicons color={colors.primary} name="location" size={13} />
-            <Text style={styles.chipText}>{isReal ? distanceStr : event.distance}</Text>
+            <Text style={styles.chipText}>{distanceStr}</Text>
           </View>
         </View>
 

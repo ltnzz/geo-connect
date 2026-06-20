@@ -1,15 +1,18 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image, Share, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import ScreenHeader from '../../components/common/ScreenHeader';
 import { DUMMY_EVENTS } from '../../data/dummyEvents';
 import { useEventStore } from '../../stores/eventStore';
+import { useAuthStore } from '../../stores/authStore';
+import { firestoreService } from '../../services/firestoreService';
 import { colors, radius, spacing } from '../../utils/theme';
 
 export default function EventDetailScreen({ route }) {
   const insets = useSafeAreaInsets();
+  const user = useAuthStore((s) => s.user);
   const events = useEventStore((s) => s.events);
   const realEvent = events.find((item) => item.id === route.params?.eventId);
   const dummyEvent = DUMMY_EVENTS.find((item) => item.id === route.params?.eventId);
@@ -18,11 +21,31 @@ export default function EventDetailScreen({ route }) {
   const [response, setResponse] = useState(null);
 
   const isReal = !!realEvent;
+  const isOwnEvent = isReal && user && event.creatorId === user.uid;
   const title = event.title;
   const category = event.category || 'Event';
   const description = event.description;
   const venue = isReal ? (event.location?.city || event.location?.address || 'Nearby') : event.venue;
-  const host = isReal ? 'User' : event.host;
+
+  const [hostName, setHostName] = useState('Loading...');
+
+  useEffect(() => {
+    if (isReal && event.creatorId) {
+      if (user && event.creatorId === user.uid) {
+        setHostName('You');
+      } else {
+        firestoreService.getUser(event.creatorId).then(creator => {
+          if (creator && creator.username) {
+            setHostName(creator.username);
+          } else {
+            setHostName('User');
+          }
+        }).catch(() => setHostName('User'));
+      }
+    }
+  }, [isReal, event.creatorId, user]);
+
+  const host = isReal ? hostName : event.host;
   const attendees = isReal ? (event.participantCount || 0) : event.attendees;
   
   let scheduleStr = event.schedule || '';
@@ -107,61 +130,84 @@ export default function EventDetailScreen({ route }) {
       </ScrollView>
 
       <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, spacing.md) }]}>
-        <Pressable
-          accessibilityRole="button"
-          onPress={() =>
-            setResponse(response === 'interested' ? null : 'interested')
-          }
-          style={[
-            styles.responseButton,
-            response === 'interested' && styles.interestedSelected,
-          ]}
-        >
-          <Ionicons
-            color={
-              response === 'interested' ? colors.tertiary : colors.neutral
-            }
-            name={
-              response === 'interested' ? 'bookmark' : 'bookmark-outline'
-            }
-            size={16}
-          />
-          <Text
-            style={[
-              styles.interestedText,
-              response === 'interested' && styles.interestedTextSelected,
-            ]}
-          >
-            Interested
-          </Text>
-        </Pressable>
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => setResponse(response === 'going' ? null : 'going')}
-          style={[
-            styles.responseButton,
-            styles.goingButton,
-            response === 'going' && styles.goingSelected,
-          ]}
-        >
-          <Ionicons
-            color={response === 'going' ? '#FFFFFF' : colors.primary}
-            name={
-              response === 'going'
-                ? 'checkmark-circle'
-                : 'checkmark-circle-outline'
-            }
-            size={17}
-          />
-          <Text
-            style={[
-              styles.goingText,
-              response === 'going' && styles.goingTextSelected,
-            ]}
-          >
-            Going
-          </Text>
-        </Pressable>
+        {isOwnEvent ? (
+          <>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => console.log('Delete event clicked')}
+              style={[styles.responseButton, { borderColor: '#FFE4E6', backgroundColor: '#FFF1F2' }]}
+            >
+              <Ionicons color="#E11D48" name="trash-outline" size={16} />
+              <Text style={[styles.interestedText, { color: '#E11D48' }]}>Delete</Text>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => console.log('Edit event clicked')}
+              style={[styles.responseButton, styles.goingButton, styles.goingSelected]}
+            >
+              <Ionicons color="#FFFFFF" name="pencil" size={16} />
+              <Text style={[styles.goingText, styles.goingTextSelected]}>Edit Event</Text>
+            </Pressable>
+          </>
+        ) : (
+          <>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() =>
+                setResponse(response === 'interested' ? null : 'interested')
+              }
+              style={[
+                styles.responseButton,
+                response === 'interested' && styles.interestedSelected,
+              ]}
+            >
+              <Ionicons
+                color={
+                  response === 'interested' ? colors.tertiary : colors.neutral
+                }
+                name={
+                  response === 'interested' ? 'bookmark' : 'bookmark-outline'
+                }
+                size={16}
+              />
+              <Text
+                style={[
+                  styles.interestedText,
+                  response === 'interested' && styles.interestedTextSelected,
+                ]}
+              >
+                Interested
+              </Text>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => setResponse(response === 'going' ? null : 'going')}
+              style={[
+                styles.responseButton,
+                styles.goingButton,
+                response === 'going' && styles.goingSelected,
+              ]}
+            >
+              <Ionicons
+                color={response === 'going' ? '#FFFFFF' : colors.primary}
+                name={
+                  response === 'going'
+                    ? 'checkmark-circle'
+                    : 'checkmark-circle-outline'
+                }
+                size={17}
+              />
+              <Text
+                style={[
+                  styles.goingText,
+                  response === 'going' && styles.goingTextSelected,
+                ]}
+              >
+                Going
+              </Text>
+            </Pressable>
+          </>
+        )}
       </View>
     </View>
   );

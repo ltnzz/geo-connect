@@ -3,7 +3,7 @@ import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { colors, radius, spacing } from '../../utils/theme';
 
-export default function NewEventCard({ event, onPress }) {
+export default function NewEventCard({ event, onPress, fullWidth = false }) {
   const startTime = event.startTime?.toDate ? event.startTime.toDate() : new Date(event.startTime);
   const scheduleString = startTime.toLocaleDateString([], { month: 'short', day: 'numeric' });
   const address = event.location?.city || 'Nearby';
@@ -12,7 +12,7 @@ export default function NewEventCard({ event, onPress }) {
     <Pressable
       accessibilityRole="button"
       onPress={onPress}
-      style={({ pressed }) => [styles.trendingCard, pressed && styles.pressed]}
+      style={({ pressed }) => [styles.trendingCard, fullWidth && { width: '100%' }, pressed && styles.pressed]}
     >
       <View style={styles.trendingArtworkWrap}>
         <View style={[styles.artwork, styles.compactArtwork, !event.bannerUrl && { backgroundColor: '#E9F0FF' }]}>
@@ -31,7 +31,7 @@ export default function NewEventCard({ event, onPress }) {
         </View>
 
         <View style={styles.trendingDistanceBadge}>
-          <Text style={styles.trendingDistance}>Baru</Text>
+          <Text style={styles.trendingDistance}>New</Text>
         </View>
       </View>
       <View style={styles.trendingContent}>

@@ -1,12 +1,12 @@
 import * as Location from 'expo-location';
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 
 export function useLocation() {
   const [location, setLocation] = useState(null);
   const [isFetchingLocation, setIsFetchingLocation] = useState(false);
   const [locationError, setLocationError] = useState(null);
 
-  const handleGetLocation = async () => {
+  const handleGetLocation = useCallback(async () => {
     setIsFetchingLocation(true);
     setLocationError(null);
     try {
@@ -37,7 +37,12 @@ export function useLocation() {
     } finally {
       setIsFetchingLocation(false);
     }
-  };
+  }, []);
 
-  return { location, isFetchingLocation, locationError, handleGetLocation };
+  const clearLocation = useCallback(() => {
+    setLocation(null);
+    setLocationError(null);
+  }, []);
+
+  return { location, isFetchingLocation, locationError, handleGetLocation, clearLocation };
 }

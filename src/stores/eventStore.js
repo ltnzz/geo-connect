@@ -104,5 +104,23 @@ export const useEventStore = create((set, get) => ({
   prependEvent: (event) =>
     set((s) => ({ events: [event, ...s.events] })),
 
+  removeEvent: (eventId) => {
+    set((s) => {
+      const newEvents = s.events.filter((e) => e.id !== eventId);
+      cacheEvents(newEvents);
+      return { events: newEvents };
+    });
+  },
+
+  updateEvent: (eventId, updatedData) => {
+    set((s) => {
+      const newEvents = s.events.map((e) =>
+        e.id === eventId ? { ...e, ...updatedData } : e
+      );
+      cacheEvents(newEvents);
+      return { events: newEvents };
+    });
+  },
+
   clearError: () => set({ error: null }),
 }));

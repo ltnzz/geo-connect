@@ -9,6 +9,7 @@ import SettingsScreen from '../screens/settings/SettingsScreen';
 import EventDetailScreen from '../screens/event/EventDetailScreen';
 import SearchScreen from '../screens/search/SearchScreen';
 import AllNewEventsScreen from '../screens/event/AllNewEventsScreen';
+import EditEventScreen from '../screens/create/EditEventScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -24,6 +25,7 @@ export default function AppNavigator() {
         <Stack.Screen name="EventDetail" component={EventDetailScreen} />
         <Stack.Screen name="Search" component={SearchScreen} />
         <Stack.Screen name="AllNewEvents" component={AllNewEventsScreen} />
+        <Stack.Screen name="EditEvent" component={EditEventScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

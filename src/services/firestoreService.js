@@ -121,7 +121,7 @@ export const firestoreService = {
       if (user?.uid) {
         await deleteDoc(
           doc(db, COLLECTIONS.sharedLocations, user.uid),
-        ).catch(() => {});
+        ).catch(() => { });
       }
       return;
     }
@@ -586,6 +586,33 @@ export const firestoreService = {
       participantCount: 0,
       status: data.status,
     });
+  },
+
+  async deleteEvent(eventId) {
+    assertFirebaseConfigured();
+    const eventRef = doc(db, COLLECTIONS.events, eventId);
+    await deleteDoc(eventRef);
+  },
+
+  async updateEvent(eventId, data) {
+    assertFirebaseConfigured();
+    const eventRef = doc(db, COLLECTIONS.events, eventId);
+    
+    const updates = {};
+    if (data.title !== undefined) updates.title = data.title.trim();
+    if (data.description !== undefined) updates.description = data.description.trim();
+    if (data.bannerUrl !== undefined) updates.bannerUrl = data.bannerUrl;
+    if (data.categoryId !== undefined) updates.categoryId = data.categoryId;
+    if (data.placeId !== undefined) updates.placeId = data.placeId;
+    if (data.location !== undefined) updates.location = createLocation(data.location);
+    if (data.radiusMeters !== undefined) updates.radiusMeters = data.radiusMeters;
+    if (data.startTime !== undefined) updates.startTime = data.startTime;
+    if (data.endTime !== undefined) updates.endTime = data.endTime;
+    if (data.status !== undefined) updates.status = data.status;
+    
+    updates.updatedAt = serverTimestamp();
+
+    await updateDoc(eventRef, updates);
   },
 
   async setEventRegistered(eventId, userId, shouldRegister) {

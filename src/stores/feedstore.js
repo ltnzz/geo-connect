@@ -188,6 +188,21 @@ export const useFeedStore = create((set, get) => ({
   prependPost: (post) =>
     set((s) => ({ posts: [{ ...post, isLiked: false }, ...s.posts] })),
 
+  fetchPost: async (postId, currentUserId) => {
+    const cached = get().posts.find((p) => p.id === postId);
+    if (cached) return cached;
+
+    const raw = await firestoreService.getPost(postId);
+    if (!raw) return null;
+
+    const [enriched] = await enrichPostsWithUserData([raw]);
+    const likedIds = currentUserId
+      ? await firestoreService.getLikedPostIds([enriched.id], currentUserId)
+      : new Set();
+
+    return { ...enriched, isLiked: likedIds.has(enriched.id) };
+  },
+
   toggleLike: async (postId, userId) => {
     const target = get().posts.find((p) => p.id === postId);
     if (!target) return;
@@ -248,7 +263,7 @@ export const useFeedStore = create((set, get) => ({
     }
   },
 
-  addComment: async (postId, { userId, content, author }) => {
+  addComment: async (postId, { userId, content, author, parentId = null, replyToAuthorName = '' }) => {
     if (!content.trim()) return;
 
     const tempId = `temp_${Date.now()}`;
@@ -260,6 +275,8 @@ export const useFeedStore = create((set, get) => ({
       author,
       authorName: author?.username || 'You',
       authorAvatar: author?.avatarUrl || '',
+      parentId,
+      replyToAuthorName,
       createdAt: new Date(),
       _pending: true,
     };
@@ -275,7 +292,12 @@ export const useFeedStore = create((set, get) => ({
     }));
 
     try {
-      const realId = await firestoreService.addComment(postId, { userId, content, author });
+      const realId = await firestoreService.addComment(postId, {
+        userId,
+        content,
+        parentId,
+        replyToAuthorName,
+      });
       const post = get().posts.find((p) => p.id === postId);
 
       if (post?.authorId) {

@@ -5,31 +5,40 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { colors, radius, spacing } from '../../utils/theme';
 
 export default function DateTimePickerBox({ 
-  date, 
-  time, 
-  showDatePicker, 
-  showTimePicker, 
-  setShowDatePicker, 
-  setShowTimePicker, 
-  onDateChange, 
-  onTimeChange 
+  val1, 
+  val2, 
+  showPicker1, 
+  showPicker2, 
+  setShowPicker1, 
+  setShowPicker2, 
+  onChange1, 
+  onChange2,
+  mode = 'date',
+  icon = 'calendar-outline'
 }) {
+  const formatVal = (val) => {
+    if (mode === 'date') return val.toLocaleDateString();
+    return val.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
   return (
     <View style={styles.dateTimeRow}>
-      <Pressable style={styles.dateTimeButton} onPress={() => setShowDatePicker(true)}>
-        <Ionicons color={colors.neutral} name="calendar-outline" size={20} />
-        <Text style={styles.dateTimeText}>{date.toLocaleDateString()}</Text>
+      <Pressable style={styles.dateTimeButton} onPress={() => setShowPicker1(true)}>
+        <Ionicons color={colors.neutral} name={icon} size={20} />
+        <Text style={styles.dateTimeText}>{formatVal(val1)}</Text>
       </Pressable>
-      {showDatePicker && (
-        <DateTimePicker value={date} mode="date" display="default" onChange={onDateChange} />
+      {showPicker1 && (
+        <DateTimePicker value={val1} mode={mode} display="default" onChange={onChange1} />
       )}
 
-      <Pressable style={styles.dateTimeButton} onPress={() => setShowTimePicker(true)}>
-        <Ionicons color={colors.neutral} name="time-outline" size={20} />
-        <Text style={styles.dateTimeText}>{time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
+      <Text style={styles.separator}>-</Text>
+
+      <Pressable style={styles.dateTimeButton} onPress={() => setShowPicker2(true)}>
+        <Ionicons color={colors.neutral} name={icon} size={20} />
+        <Text style={styles.dateTimeText}>{formatVal(val2)}</Text>
       </Pressable>
-      {showTimePicker && (
-        <DateTimePicker value={time} mode="time" display="default" onChange={onTimeChange} />
+      {showPicker2 && (
+        <DateTimePicker value={val2} mode={mode} display="default" onChange={onChange2} />
       )}
     </View>
   );
@@ -37,9 +46,15 @@ export default function DateTimePickerBox({
 
 const styles = StyleSheet.create({
   dateTimeRow: {
+    alignItems: 'center',
     flexDirection: 'row',
-    gap: spacing.md,
+    gap: spacing.sm,
     marginBottom: spacing.xl,
+  },
+  separator: {
+    color: colors.neutral,
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 16,
   },
   dateTimeButton: {
     alignItems: 'center',

@@ -1,28 +1,33 @@
 import { Ionicons } from '@expo/vector-icons';
-import { ActivityIndicator, Image, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { useState, useCallback } from 'react';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { ActivityIndicator, Image, Pressable, StyleSheet, Text, TextInput, View, ScrollView } from 'react-native';
+import { useState, useEffect } from 'react';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import DateTimePickerBox from '../../components/event/DateTimePickerBox';
+import ScreenHeader from '../../components/common/ScreenHeader';
 import { useLocation } from '../../hooks/useLocation';
 import { colors, radius, spacing } from '../../utils/theme';
 import { imagePickerService } from '../../services/imagePickerService';
 import { cloudinaryService } from '../../services/cloudinaryService';
 import { firestoreService } from '../../services/firestoreService';
-import { useAuthStore } from '../../stores/authStore';
 import { useEventStore } from '../../stores/eventStore';
 
-export default function CreateEventScreen() {
+export default function EditEventScreen() {
   const navigation = useNavigation();
+  const route = useRoute();
   const insets = useSafeAreaInsets();
-  const user = useAuthStore((s) => s.user);
-  const prependEvent = useEventStore((s) => s.prependEvent);
+
+  const eventId = route.params?.eventId;
+  const events = useEventStore((s) => s.events);
+  const updateEventStore = useEventStore((s) => s.updateEvent);
+
+  const event = events.find((e) => e.id === eventId);
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [asset, setAsset] = useState(null);
-  
+
   const [isPosting, setIsPosting] = useState(false);
   const [error, setError] = useState(null);
 
@@ -31,43 +36,45 @@ export default function CreateEventScreen() {
   const [time, setTime] = useState(new Date());
   const [showTimePicker, setShowTimePicker] = useState(false);
 
-  const [endDate, setEndDate] = useState(() => {
-    const d = new Date();
-    d.setHours(d.getHours() + 2);
-    return d;
-  });
+  const [endDate, setEndDate] = useState(new Date());
   const [showEndDatePicker, setShowEndDatePicker] = useState(false);
-  const [endTime, setEndTime] = useState(() => {
-    const d = new Date();
-    d.setHours(d.getHours() + 2);
-    return d;
-  });
+  const [endTime, setEndTime] = useState(new Date());
   const [showEndTimePicker, setShowEndTimePicker] = useState(false);
 
-  const { location, isFetchingLocation, locationError, handleGetLocation, clearLocation } = useLocation();
+  const { location: newLocation, isFetchingLocation, locationError, handleGetLocation, clearLocation } = useLocation();
 
-  useFocusEffect(
-    useCallback(() => {
-      return () => {
-        setTitle('');
-        setDescription('');
-        setAsset(null);
-        setDate(new Date());
-        setTime(new Date());
-        setShowDatePicker(false);
-        setShowTimePicker(false);
-        
-        const d = new Date();
-        d.setHours(d.getHours() + 2);
-        setEndDate(d);
-        setEndTime(d);
-        setShowEndDatePicker(false);
-        setShowEndTimePicker(false);
-        setError(null);
-        clearLocation();
-      };
-    }, [])
-  );
+  const [currentLocation, setCurrentLocation] = useState(null);
+
+  useEffect(() => {
+    if (event) {
+      setTitle(event.title || '');
+      setDescription(event.description || '');
+      if (event.bannerUrl) setAsset({ uri: event.bannerUrl });
+
+      const startD = event.startTime?.toDate ? event.startTime.toDate() : new Date(event.startTime);
+      const endD = event.endTime?.toDate ? event.endTime.toDate() : (event.endTime ? new Date(event.endTime) : startD);
+
+      setDate(startD);
+      setTime(startD);
+      setEndDate(endD);
+      setEndTime(endD);
+      setCurrentLocation(event.location);
+    }
+  }, [event]);
+
+  useEffect(() => {
+    if (newLocation) {
+      setCurrentLocation(newLocation);
+    }
+  }, [newLocation]);
+
+  if (!event) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <Text>Event not found.</Text>
+      </View>
+    );
+  }
 
   const handlePickImage = async () => {
     setError(null);
@@ -79,24 +86,22 @@ export default function CreateEventScreen() {
     }
   };
 
-
-
-  const onDateChange = (event, selectedDate) => {
+  const onDateChange = (e, selectedDate) => {
     setShowDatePicker(false);
     if (selectedDate) setDate(selectedDate);
   };
 
-  const onTimeChange = (event, selectedTime) => {
+  const onTimeChange = (e, selectedTime) => {
     setShowTimePicker(false);
     if (selectedTime) setTime(selectedTime);
   };
 
-  const onEndDateChange = (event, selectedDate) => {
+  const onEndDateChange = (e, selectedDate) => {
     setShowEndDatePicker(false);
     if (selectedDate) setEndDate(selectedDate);
   };
 
-  const onEndTimeChange = (event, selectedTime) => {
+  const onEndTimeChange = (e, selectedTime) => {
     setShowEndTimePicker(false);
     if (selectedTime) setEndTime(selectedTime);
   };
@@ -106,7 +111,6 @@ export default function CreateEventScreen() {
     setIsPosting(true);
 
     try {
-      // Combine Date and Time
       const startDateTime = new Date(
         date.getFullYear(),
         date.getMonth(),
@@ -123,46 +127,45 @@ export default function CreateEventScreen() {
         endTime.getMinutes()
       );
 
-      const uploaded = await cloudinaryService.uploadImage(asset, { folder: 'events' });
-      const bannerUrl = uploaded.secureUrl;
+      let bannerUrl = event.bannerUrl;
+      if (asset && asset.uri && !asset.uri.startsWith('http')) {
+        const uploaded = await cloudinaryService.uploadImage(asset, { folder: 'events' });
+        bannerUrl = uploaded.secureUrl;
+      } else if (!asset) {
+        bannerUrl = '';
+      }
 
-      const eventId = await firestoreService.createEvent({
-        creatorId: user.uid,
+      const updateData = {
         title,
         description,
         bannerUrl,
-        location,
-        radiusMeters: 5000, // Default 5km radius for visibility
+        location: currentLocation,
         startTime: startDateTime,
         endTime: endDateTime,
-        status: 'published',
-      });
+      };
 
-      prependEvent({
-        id: eventId,
-        creatorId: user.uid,
-        title: title.trim(),
-        description: description.trim(),
-        bannerUrl,
-        location,
-        startTime: startDateTime,
-        participantCount: 0,
-        createdAt: new Date(),
-      });
+      await firestoreService.updateEvent(eventId, updateData);
+      updateEventStore(eventId, updateData);
 
-      navigation.navigate('Events');
+      navigation.goBack();
     } catch (err) {
-      setError(err.message || 'Failed to create event. Try again.');
+      setError(err.message || 'Failed to update event. Try again.');
     } finally {
       setIsPosting(false);
     }
   };
 
-  const canSubmit = title.trim().length > 0 && description.trim().length > 0 && !!location && !!asset && !isPosting;
+  const canSubmit = title.trim().length > 0 && description.trim().length > 0 && !!currentLocation && !!asset && !isPosting;
 
   return (
-    <View style={styles.container}>
-      <TextInput
+    <View style={styles.screen}>
+      <ScreenHeader showBack title="Edit Event" />
+      <ScrollView 
+        style={styles.container} 
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
+        <TextInput
         placeholder="Event Name..."
         placeholderTextColor="#CBD5E1"
         style={styles.eventNameInput}
@@ -203,16 +206,16 @@ export default function CreateEventScreen() {
         <View style={styles.locationTextContainer}>
           {isFetchingLocation ? (
             <Text style={styles.eventLocationText}>Locating...</Text>
-          ) : location ? (
+          ) : currentLocation ? (
             <>
-              <Text style={styles.eventLocationText}>{location.address}</Text>
-              <Text style={styles.eventLocationSub}>{location.city}</Text>
+              <Text style={styles.eventLocationText}>{currentLocation.address}</Text>
+              <Text style={styles.eventLocationSub}>{currentLocation.city}</Text>
             </>
           ) : (
             <Text style={styles.eventLocationText}>Choose Event Location</Text>
           )}
         </View>
-        {location && <Ionicons name="checkmark-circle" color={colors.primary} size={18} />}
+        {currentLocation && <Ionicons name="checkmark-circle" color={colors.primary} size={18} />}
       </Pressable>
 
       <TextInput
@@ -242,7 +245,6 @@ export default function CreateEventScreen() {
 
       {error || locationError ? <Text style={styles.errorText}>{error || locationError}</Text> : null}
 
-      {/* Internal Footer for Submit */}
       <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, spacing.md) }]}>
         <Pressable
           disabled={!canSubmit}
@@ -252,17 +254,25 @@ export default function CreateEventScreen() {
           {isPosting ? (
             <ActivityIndicator color={colors.surface} />
           ) : (
-            <Text style={[styles.submitButtonText, !canSubmit && styles.submitButtonTextDisabled]}>CREATE EVENT</Text>
+            <Text style={[styles.submitButtonText, !canSubmit && styles.submitButtonTextDisabled]}>UPDATE EVENT</Text>
           )}
         </Pressable>
       </View>
+      </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
   container: {
     flex: 1,
+  },
+  content: {
+    padding: spacing.md,
   },
   eventNameInput: {
     color: colors.text,
@@ -354,6 +364,7 @@ const styles = StyleSheet.create({
     right: 8,
     backgroundColor: 'rgba(255,255,255,0.8)',
     borderRadius: 12,
+    padding: 2,
   },
   errorText: {
     color: colors.danger,

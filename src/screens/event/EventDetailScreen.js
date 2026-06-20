@@ -1,36 +1,50 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Image, Share, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { Alert, Image, Share, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useEffect, useState } from 'react';
 
 import ScreenHeader from '../../components/common/ScreenHeader';
-import { DUMMY_EVENTS } from '../../data/dummyEvents';
 import { useEventStore } from '../../stores/eventStore';
 import { useAuthStore } from '../../stores/authStore';
+import { useLocation } from '../../hooks/useLocation';
+import { calculateDistance } from '../../utils/locationUtils';
 import { firestoreService } from '../../services/firestoreService';
 import { colors, radius, spacing } from '../../utils/theme';
 
 export default function EventDetailScreen({ route }) {
+  const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const user = useAuthStore((s) => s.user);
+  const { location, isFetchingLocation, handleGetLocation } = useLocation();
   const events = useEventStore((s) => s.events);
-  const realEvent = events.find((item) => item.id === route.params?.eventId);
-  const dummyEvent = DUMMY_EVENTS.find((item) => item.id === route.params?.eventId);
+  const removeEvent = useEventStore((s) => s.removeEvent);
+  const event = events.find((item) => item.id === route.params?.eventId);
   
-  const event = realEvent || dummyEvent || DUMMY_EVENTS[0];
   const [response, setResponse] = useState(null);
 
-  const isReal = !!realEvent;
-  const isOwnEvent = isReal && user && event.creatorId === user.uid;
+  const isOwnEvent = user && event?.creatorId === user.uid;
+  if (!event) {
+    return (
+      <View style={[styles.screen, { justifyContent: 'center', alignItems: 'center' }]}>
+        <Text>Event not found.</Text>
+      </View>
+    );
+  }
+
   const title = event.title;
   const category = event.category || 'Event';
   const description = event.description;
-  const venue = isReal ? (event.location?.city || event.location?.address || 'Nearby') : event.venue;
+  const venue = event.location?.city || event.location?.address || 'Nearby';
 
   const [hostName, setHostName] = useState('Loading...');
 
   useEffect(() => {
-    if (isReal && event.creatorId) {
+    handleGetLocation();
+  }, [handleGetLocation]);
+
+  useEffect(() => {
+    if (event.creatorId) {
       if (user && event.creatorId === user.uid) {
         setHostName('You');
       } else {
@@ -43,22 +57,64 @@ export default function EventDetailScreen({ route }) {
         }).catch(() => setHostName('User'));
       }
     }
-  }, [isReal, event.creatorId, user]);
+  }, [event.creatorId, user]);
 
-  const host = isReal ? hostName : event.host;
-  const attendees = isReal ? (event.participantCount || 0) : event.attendees;
+  const host = hostName;
+  const attendees = event.participantCount || 0;
   
   let scheduleStr = event.schedule || '';
-  if (isReal && event.startTime) {
-    const d = event.startTime?.toDate ? event.startTime.toDate() : new Date(event.startTime);
-    scheduleStr = d.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
+  if (event.startTime) {
+    const startD = event.startTime?.toDate ? event.startTime.toDate() : new Date(event.startTime);
+    const endD = event.endTime?.toDate ? event.endTime.toDate() : (event.endTime ? new Date(event.endTime) : startD);
+
+    const startDateStr = startD.toLocaleDateString([], { day: 'numeric', month: 'short' });
+    const endDateStr = endD.toLocaleDateString([], { day: 'numeric', month: 'short' });
+    const startTimeStr = startD.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const endTimeStr = endD.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    if (startDateStr === endDateStr) {
+      scheduleStr = `${startDateStr}, ${startTimeStr} - ${endTimeStr}`;
+    } else {
+      scheduleStr = `${startDateStr} - ${endDateStr}\n${startTimeStr} - ${endTimeStr}`;
+    }
   }
+
+  const dist = location && event.location ? calculateDistance(
+    location.latitude,
+    location.longitude,
+    event.location.latitude,
+    event.location.longitude
+  ) : null;
+  const distanceStr = isFetchingLocation ? 'Calculating...' : (dist !== null ? `${dist.toFixed(1)} km away` : 'Nearby');
 
   const shareEvent = () =>
     Share.share({
       message: `${title}\n${scheduleStr} at ${venue}`,
       title: title,
     });
+
+  const handleDeleteEvent = () => {
+    Alert.alert(
+      'Delete Event',
+      'Are you sure you want to delete this event? This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Delete', 
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await firestoreService.deleteEvent(event.id);
+              removeEvent(event.id);
+              navigation.goBack();
+            } catch (error) {
+              Alert.alert('Error', 'Failed to delete event. Please try again.');
+            }
+          }
+        }
+      ]
+    );
+  };
 
   return (
     <View style={styles.screen}>
@@ -75,8 +131,8 @@ export default function EventDetailScreen({ route }) {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        <View style={[styles.hero, !isReal && { backgroundColor: event.color }, isReal && { backgroundColor: '#E9F0FF' }]}>
-          {isReal && event.bannerUrl ? (
+        <View style={[styles.hero, { backgroundColor: '#E9F0FF' }]}>
+          {event.bannerUrl ? (
             <Image source={{ uri: event.bannerUrl }} style={styles.heroImage} />
           ) : (
             <View style={styles.heroIcon}>
@@ -103,7 +159,7 @@ export default function EventDetailScreen({ route }) {
           </View>
           <View style={styles.chip}>
             <Ionicons color={colors.primary} name="location" size={13} />
-            <Text style={styles.chipText}>{isReal ? 'Nearby' : event.distance}</Text>
+            <Text style={styles.chipText}>{distanceStr}</Text>
           </View>
         </View>
 
@@ -134,7 +190,7 @@ export default function EventDetailScreen({ route }) {
           <>
             <Pressable
               accessibilityRole="button"
-              onPress={() => console.log('Delete event clicked')}
+              onPress={handleDeleteEvent}
               style={[styles.responseButton, { borderColor: '#FFE4E6', backgroundColor: '#FFF1F2' }]}
             >
               <Ionicons color="#E11D48" name="trash-outline" size={16} />
@@ -142,7 +198,7 @@ export default function EventDetailScreen({ route }) {
             </Pressable>
             <Pressable
               accessibilityRole="button"
-              onPress={() => console.log('Edit event clicked')}
+              onPress={() => navigation.navigate('EditEvent', { eventId: event.id })}
               style={[styles.responseButton, styles.goingButton, styles.goingSelected]}
             >
               <Ionicons color="#FFFFFF" name="pencil" size={16} />

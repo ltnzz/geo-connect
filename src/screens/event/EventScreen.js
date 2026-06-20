@@ -32,9 +32,7 @@ export default function EventScreen() {
   const navigation = useNavigation();
   const [searchQuery, setSearchQuery] = useState('');
   
-  const { events, isLoading, fetchEvents, isRefreshing, refreshEvents } = useEventStore();
-  const user = useAuthStore((s) => s.user);
-  const { location, isFetchingLocation, handleGetLocation } = useLocation();
+  const { events, isLoading, isOffline, fetchEvents } = useEventStore();
 
   useEffect(() => {
     if (events.length === 0 && !isLoading) {
@@ -89,6 +87,11 @@ export default function EventScreen() {
         searchValue={searchQuery}
         showSearch
       />
+      {isOffline ? (
+        <View style={styles.offlineBanner}>
+          <Text style={styles.offlineText}>Offline mode - showing cached events</Text>
+        </View>
+      ) : null}
 
       <ScrollView
         contentContainerStyle={styles.content}
@@ -209,5 +212,16 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.72,
+  },
+  offlineBanner: {
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  offlineText: {
+    color: '#92400E',
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 11,
+    textAlign: 'center',
   },
 });

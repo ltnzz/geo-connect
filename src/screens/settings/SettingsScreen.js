@@ -17,6 +17,7 @@ import ScreenHeader from '../../components/common/ScreenHeader';
 import { LOCATION_SHARING } from '../../constants/firestore';
 import { firestoreService } from '../../services/firestoreService';
 import { useAuthStore } from '../../stores/authStore';
+import { useThemeStore } from '../../stores/themeStore';
 import { colors, radius, spacing } from '../../utils/theme';
 
 const LOCATION_OPTIONS = [
@@ -74,6 +75,8 @@ export default function SettingsScreen() {
   const updateCurrentUser = useAuthStore((state) => state.updateCurrentUser);
   const logout = useAuthStore((state) => state.logout);
   const isAuthLoading = useAuthStore((state) => state.isLoading);
+  const themeMode = useThemeStore((state) => state.mode);
+  const setThemeMode = useThemeStore((state) => state.setThemeMode);
   const [isSaving, setIsSaving] = useState(false);
   const [isLogoutConfirmVisible, setIsLogoutConfirmVisible] = useState(false);
   const [invisibleMode, setInvisibleMode] = useState(
@@ -116,6 +119,13 @@ export default function SettingsScreen() {
       firestoreService.clearSharedLocation(user.uid).catch(() => {});
     }
     savePrivacySetting({ locationSharing: value }).catch(() => {});
+  };
+
+  const isDarkMode = themeMode === 'dark';
+  const themeStyles = {
+    card: isDarkMode ? styles.darkCard : null,
+    screen: isDarkMode ? styles.darkScreen : null,
+    text: isDarkMode ? styles.darkText : null,
   };
 
   const deleteLocationData = () => {
@@ -171,7 +181,7 @@ export default function SettingsScreen() {
   };
 
   return (
-    <View style={styles.screen}>
+    <View style={[styles.screen, themeStyles.screen]}>
       <ScreenHeader showBack title="Settings & Privacy" />
 
       <ScrollView
@@ -179,7 +189,7 @@ export default function SettingsScreen() {
         showsVerticalScrollIndicator={false}
       >
         <SectionLabel>ACCOUNT</SectionLabel>
-        <View style={styles.card}>
+        <View style={[styles.card, themeStyles.card]}>
           <MenuRow
             label="Account Details"
             onPress={() =>
@@ -193,14 +203,36 @@ export default function SettingsScreen() {
           />
         </View>
 
+        <SectionLabel>APPEARANCE</SectionLabel>
+        <View style={[styles.card, themeStyles.card]}>
+          <View style={styles.invisibleRow}>
+            <View style={styles.lockIcon}>
+              <Ionicons color={colors.primary} name="contrast" size={17} />
+            </View>
+            <View style={styles.menuCopy}>
+              <Text style={[styles.menuLabel, themeStyles.text]}>Dark Mode</Text>
+              <Text style={styles.menuDescription}>
+                Switch between light and dark app appearance.
+              </Text>
+            </View>
+            <Switch
+              accessibilityLabel="Dark mode"
+              onValueChange={(value) => setThemeMode(value ? 'dark' : 'light')}
+              thumbColor="#FFFFFF"
+              trackColor={{ false: '#D8DEE8', true: colors.primary }}
+              value={isDarkMode}
+            />
+          </View>
+        </View>
+
         <SectionLabel>LOCATION VISIBILITY</SectionLabel>
-        <View style={styles.card}>
+        <View style={[styles.card, themeStyles.card]}>
           <View style={[styles.invisibleRow, styles.rowBorder]}>
             <View style={styles.lockIcon}>
               <Ionicons color={colors.primary} name="lock-closed" size={17} />
             </View>
             <View style={styles.menuCopy}>
-              <Text style={styles.menuLabel}>Invisible Mode</Text>
+              <Text style={[styles.menuLabel, themeStyles.text]}>Invisible Mode</Text>
               <Text style={styles.menuDescription}>
                 Stay active without appearing in Nearby People.
               </Text>
@@ -261,7 +293,7 @@ export default function SettingsScreen() {
         </View>
 
         <SectionLabel>DATA MANAGEMENT</SectionLabel>
-        <View style={styles.card}>
+        <View style={[styles.card, themeStyles.card]}>
           <MenuRow
             description="View and delete your past geodata."
             label="Location History"
@@ -590,5 +622,15 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.65,
+  },
+  darkScreen: {
+    backgroundColor: '#0F172A',
+  },
+  darkCard: {
+    backgroundColor: '#172033',
+    borderColor: '#334155',
+  },
+  darkText: {
+    color: '#F8FAFC',
   },
 });

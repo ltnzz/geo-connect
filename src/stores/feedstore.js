@@ -1,8 +1,12 @@
 import { create } from 'zustand';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { firestoreService } from '../services/firestoreService';
+import { notificationService } from '../services/notificationService';
+import { NOTIFICATION_TYPES } from '../constants/firestore';
 
 const PAGE_SIZE = 10;
+const FEED_CACHE_KEY = '@aroundu:feed-cache';
 
 const createLoopedPosts = (posts, loopPage) =>
   posts.slice(0, PAGE_SIZE).map((post, index) => ({
@@ -32,6 +36,15 @@ const enrichPostsWithUserData = async (posts) => {
   );
 };
 
+const readCachedFeed = async () => {
+  const cached = await AsyncStorage.getItem(FEED_CACHE_KEY);
+  return cached ? JSON.parse(cached) : [];
+};
+
+const cacheFeed = async (posts) => {
+  await AsyncStorage.setItem(FEED_CACHE_KEY, JSON.stringify(posts)).catch(() => {});
+};
+
 export const useFeedStore = create((set, get) => ({
   posts: [],
   lastDoc: null,
@@ -40,6 +53,7 @@ export const useFeedStore = create((set, get) => ({
   isLoadingMore: false,
   hasMore: true,
   loopPage: 0,
+  isOffline: false,
   error: null,
 
   commentsByPost: {},
@@ -57,15 +71,25 @@ export const useFeedStore = create((set, get) => ({
         ? await firestoreService.getLikedPostIds(enrichedPosts.map((p) => p.id), currentUserId)
         : new Set();
 
+      const nextPosts = enrichedPosts.map((p) => ({ ...p, isLiked: likedIds.has(p.id) }));
+      await cacheFeed(nextPosts);
+
       set({
-        posts: enrichedPosts.map((p) => ({ ...p, isLiked: likedIds.has(p.id) })),
+        posts: nextPosts,
         lastDoc,
         hasMore: posts.length === PAGE_SIZE,
         loopPage: 0,
+        isOffline: false,
         isLoading: false,
       });
     } catch (err) {
-      set({ error: err.message || 'Failed to load feed.', isLoading: false });
+      const cachedPosts = await readCachedFeed().catch(() => []);
+      set({
+        error: cachedPosts.length ? null : err.message || 'Failed to load feed.',
+        isLoading: false,
+        isOffline: cachedPosts.length > 0,
+        posts: cachedPosts,
+      });
     }
   },
 
@@ -80,15 +104,25 @@ export const useFeedStore = create((set, get) => ({
         ? await firestoreService.getLikedPostIds(enrichedPosts.map((p) => p.id), currentUserId)
         : new Set();
 
+      const nextPosts = enrichedPosts.map((p) => ({ ...p, isLiked: likedIds.has(p.id) }));
+      await cacheFeed(nextPosts);
+
       set({
-        posts: enrichedPosts.map((p) => ({ ...p, isLiked: likedIds.has(p.id) })),
+        posts: nextPosts,
         lastDoc,
         hasMore: posts.length === PAGE_SIZE,
         loopPage: 0,
+        isOffline: false,
         isRefreshing: false,
       });
     } catch (err) {
-      set({ error: err.message || 'Failed to refresh.', isRefreshing: false });
+      const cachedPosts = await readCachedFeed().catch(() => []);
+      set({
+        error: cachedPosts.length ? null : err.message || 'Failed to refresh.',
+        isOffline: cachedPosts.length > 0,
+        isRefreshing: false,
+        posts: cachedPosts.length ? cachedPosts : get().posts,
+      });
     }
   },
 
@@ -131,12 +165,21 @@ export const useFeedStore = create((set, get) => ({
         ? await firestoreService.getLikedPostIds(enrichedNewPosts.map((p) => p.id), currentUserId)
         : new Set();
 
-      set((s) => ({
-        posts: [...s.posts, ...enrichedNewPosts.map((p) => ({ ...p, isLiked: likedIds.has(p.id) }))],
-        lastDoc: nextLastDoc,
-        hasMore: newPosts.length === PAGE_SIZE,
-        isLoadingMore: false,
-      }));
+      set((s) => {
+        const mergedPosts = [
+          ...s.posts,
+          ...enrichedNewPosts.map((p) => ({ ...p, isLiked: likedIds.has(p.id) })),
+        ];
+        cacheFeed(mergedPosts);
+
+        return {
+          posts: mergedPosts,
+          lastDoc: nextLastDoc,
+          hasMore: newPosts.length === PAGE_SIZE,
+          isOffline: false,
+          isLoadingMore: false,
+        };
+      });
     } catch (err) {
       set({ error: err.message || 'Failed to load more.', isLoadingMore: false });
     }
@@ -163,6 +206,19 @@ export const useFeedStore = create((set, get) => ({
 
     try {
       await firestoreService.setPostLiked(postId, userId, nextLiked);
+      if (nextLiked && target.authorId) {
+        await firestoreService.createNotification({
+          actorId: userId,
+          actorUsername: 'someone',
+          postId,
+          recipientId: target.authorId,
+          type: NOTIFICATION_TYPES.like,
+        }).catch(() => {});
+        await notificationService.showLocalNotification({
+          title: 'Like sent',
+          body: 'Your like was saved.',
+        });
+      }
     } catch (err) {
       set((s) => ({
         posts: s.posts.map((p) =>
@@ -202,6 +258,8 @@ export const useFeedStore = create((set, get) => ({
       userId,
       content: content.trim(),
       author,
+      authorName: author?.username || 'You',
+      authorAvatar: author?.avatarUrl || '',
       createdAt: new Date(),
       _pending: true,
     };
@@ -218,6 +276,21 @@ export const useFeedStore = create((set, get) => ({
 
     try {
       const realId = await firestoreService.addComment(postId, { userId, content, author });
+      const post = get().posts.find((p) => p.id === postId);
+
+      if (post?.authorId) {
+        await firestoreService.createNotification({
+          actorId: userId,
+          actorUsername: author?.username || 'someone',
+          postId,
+          recipientId: post.authorId,
+          type: NOTIFICATION_TYPES.comment,
+        }).catch(() => {});
+        await notificationService.showLocalNotification({
+          title: 'Comment posted',
+          body: 'Your comment was added.',
+        });
+      }
 
       set((s) => ({
         commentsByPost: {
@@ -292,6 +365,31 @@ export const useFeedStore = create((set, get) => ({
 
     try {
       await firestoreService.setFollowing(currentUserId, targetUserId, nextFollowing);
+      if (nextFollowing) {
+        await firestoreService.createNotification({
+          actorId: currentUserId,
+          actorUsername: 'someone',
+          recipientId: targetUserId,
+          type: NOTIFICATION_TYPES.follow,
+        }).catch(() => {});
+        await notificationService.showLocalNotification({
+          title: 'Follow updated',
+          body: 'You are now following this account.',
+        });
+      }
+      set((s) => ({
+        posts: s.posts.map((post) =>
+          post.authorId === targetUserId
+            ? {
+                ...post,
+                authorFollowersCount: Math.max(
+                  0,
+                  (post.authorFollowersCount || 0) + (nextFollowing ? 1 : -1),
+                ),
+              }
+            : post,
+        ),
+      }));
     } catch (err) {
       set((s) => ({
         followingByUser: { ...s.followingByUser, [targetUserId]: wasFollowing },

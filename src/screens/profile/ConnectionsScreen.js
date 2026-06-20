@@ -129,14 +129,10 @@ export default function ConnectionsScreen({ route }) {
 
               <View style={styles.personInfo}>
                 <Text numberOfLines={1} style={styles.name}>
-                  {profile.displayName ||
-                    profile.fullName ||
-                    profile.username ||
-                    'AroundU user'}
+                  @{profile.username || 'aroundu'}
                 </Text>
                 <Text numberOfLines={1} style={styles.username}>
-                  @{profile.username || 'aroundu'}
-                  {profile.city ? ` · ${profile.city}` : ''}
+                  {profile.city || 'AroundU'}
                 </Text>
               </View>
             </View>

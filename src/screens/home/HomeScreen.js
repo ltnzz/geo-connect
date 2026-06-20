@@ -17,6 +17,7 @@ export default function HomeScreen() {
   const isLoading    = useFeedStore((s) => s.isLoading);
   const isRefreshing = useFeedStore((s) => s.isRefreshing);
   const isLoadingMore = useFeedStore((s) => s.isLoadingMore);
+  const isOffline    = useFeedStore((s) => s.isOffline);
   const error        = useFeedStore((s) => s.error);
   const fetchFeed    = useFeedStore((s) => s.fetchFeed);
   const refreshFeed  = useFeedStore((s) => s.refreshFeed);
@@ -58,6 +59,11 @@ export default function HomeScreen() {
   return (
     <View style={styles.screen}>
       <ScreenHeader onSearchIconPress={() => navigation.navigate('Search')} />
+      {isOffline ? (
+        <View style={styles.offlineBanner}>
+          <Text style={styles.offlineText}>Offline mode - showing cached posts</Text>
+        </View>
+      ) : null}
       <FlatList
         contentContainerStyle={styles.listContent}
         data={posts}
@@ -112,5 +118,16 @@ const styles = StyleSheet.create({
   footerLoader: {
     marginBottom: spacing.lg,
     marginTop: spacing.sm,
+  },
+  offlineBanner: {
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  offlineText: {
+    color: '#92400E',
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 11,
+    textAlign: 'center',
   },
 });

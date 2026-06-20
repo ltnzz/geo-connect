@@ -12,18 +12,27 @@ export default function PostCard({ post }) {
   const currentUserId = useAuthStore((s) => s.user?.uid);
   const toggleLike = useFeedStore((s) => s.toggleLike);
 
-  if (!post) return null;
-
   const locationLabel =
-    post.location?.address || post.location?.city || 'Around you';
+    post?.location?.address || post?.location?.city || 'Around you';
+
+  if (!post) return null;
 
   const handleLike = () => {
     if (!currentUserId) return;
     toggleLike(post.id, currentUserId);
   };
 
+  const handleLikePress = (event) => {
+    event.stopPropagation?.();
+    handleLike();
+  };
+
   const handleOpenDetail = () => {
-    navigation.navigate('PostDetail', { postId: post.id });
+    navigation.navigate('PostDetail', {
+      initialPostId: post.id,
+      postId: post.id,
+      posts: [post],
+    });
   };
 
   return (
@@ -62,7 +71,7 @@ export default function PostCard({ post }) {
 
       <View style={styles.footer}>
         <View style={styles.actionsRow}>
-          <Pressable hitSlop={8} onPress={handleLike} style={styles.actionItem}>
+          <Pressable hitSlop={8} onPress={handleLikePress} style={styles.actionItem}>
             <Ionicons
               color={post.isLiked ? colors.danger : colors.text}
               name={post.isLiked ? 'heart' : 'heart-outline'}
@@ -71,7 +80,14 @@ export default function PostCard({ post }) {
             <Text style={styles.actionText}>{formatCount(post.likesCount || 0)}</Text>
           </Pressable>
 
-          <Pressable hitSlop={8} onPress={handleOpenDetail} style={styles.actionItem}>
+          <Pressable
+            hitSlop={8}
+            onPress={(event) => {
+              event.stopPropagation?.();
+              handleOpenDetail();
+            }}
+            style={styles.actionItem}
+          >
             <Ionicons color={colors.text} name="chatbubble-outline" size={20} />
             <Text style={styles.actionText}>{formatCount(post.commentsCount || 0)}</Text>
           </Pressable>

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   Poppins_400Regular,
+  Poppins_500Medium,
   Poppins_600SemiBold,
   Poppins_700Bold,
 } from '@expo-google-fonts/poppins';
@@ -17,6 +18,7 @@ import AuthScreen from './src/screens/auth/AuthScreen';
 import AppNavigator from './src/navigation/AppNavigator';
 import SplashScreen from './src/screens/splash/SplashScreen';
 import { useAuthStore } from './src/stores/authStore';
+import { useThemeStore } from './src/stores/themeStore';
 import { notificationService } from './src/services/notificationService';
 
 notificationService.configureForegroundNotifications();
@@ -24,10 +26,13 @@ notificationService.configureForegroundNotifications();
 export default function App() {
   const [isSplashVisible, setIsSplashVisible] = useState(true);
   const initialize = useAuthStore((state) => state.initialize);
+  const initializeTheme = useThemeStore((state) => state.initializeTheme);
   const isInitialized = useAuthStore((state) => state.isInitialized);
+  const themeMode = useThemeStore((state) => state.mode);
   const user = useAuthStore((state) => state.user);
   const [fontsLoaded] = useFonts({
     Poppins_400Regular,
+    Poppins_500Medium,
     Poppins_600SemiBold,
     Poppins_700Bold,
     Inter_400Regular,
@@ -41,7 +46,8 @@ export default function App() {
 
   useEffect(() => {
     initialize();
-  }, [initialize]);
+    initializeTheme();
+  }, [initialize, initializeTheme]);
 
   useEffect(() => {
     if (!user?.uid) {
@@ -70,7 +76,7 @@ export default function App() {
       ) : (
         content
       )}
-      <StatusBar style={isSplashVisible ? 'dark' : 'auto'} />
+      <StatusBar style={isSplashVisible || themeMode === 'light' ? 'dark' : 'light'} />
     </SafeAreaProvider>
   );
 }

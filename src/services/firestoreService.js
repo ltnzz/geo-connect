@@ -44,6 +44,22 @@ const createDocument = async (collectionName, data) => {
   return reference.id;
 };
 
+const getMillis = (value) => {
+  if (!value) {
+    return 0;
+  }
+
+  if (typeof value.toMillis === 'function') {
+    return value.toMillis();
+  }
+
+  if (typeof value.toDate === 'function') {
+    return value.toDate().getTime();
+  }
+
+  return new Date(value).getTime() || 0;
+};
+
 export const firestoreService = {
   async getUser(userId) {
     assertFirebaseConfigured();
@@ -61,6 +77,7 @@ export const firestoreService = {
       'invisibleMode',
       'locationSharing',
       'city',
+      'profileLocation',
     ];
     const safeUpdates = Object.fromEntries(
       Object.entries(updates).filter(([key]) => allowedFields.includes(key)),
@@ -210,6 +227,60 @@ export const firestoreService = {
     return commentRef.id;
   },
 
+  async getComments(postId) {
+    assertFirebaseConfigured();
+
+    const commentsSnapshot = await getDocs(
+      query(
+        collection(db, COLLECTIONS.posts, postId, SUBCOLLECTIONS.comments),
+        orderBy('createdAt', 'asc'),
+      ),
+    );
+
+    const comments = await Promise.all(
+      commentsSnapshot.docs.map(async (commentDocument) => {
+        const comment = commentDocument.data();
+        const profile = comment.userId
+          ? await this.getUser(comment.userId).catch(() => null)
+          : null;
+
+        return {
+          id: commentDocument.id,
+          ...comment,
+          authorName: profile?.username || 'AroundU user',
+          authorAvatar: profile?.avatarUrl || '',
+        };
+      }),
+    );
+
+    return comments;
+  },
+
+  async deleteComment(postId, commentId) {
+    const commentRef = doc(
+      db,
+      COLLECTIONS.posts,
+      postId,
+      SUBCOLLECTIONS.comments,
+      commentId,
+    );
+    const postRef = doc(db, COLLECTIONS.posts, postId);
+
+    await runTransaction(db, async (transaction) => {
+      const snapshot = await transaction.get(commentRef);
+
+      if (!snapshot.exists()) {
+        return;
+      }
+
+      transaction.delete(commentRef);
+      transaction.update(postRef, {
+        commentsCount: increment(-1),
+        updatedAt: serverTimestamp(),
+      });
+    });
+  },
+
   async setPostLiked(postId, userId, shouldLike) {
     const postRef = doc(db, COLLECTIONS.posts, postId);
     const likeRef = doc(
@@ -236,6 +307,21 @@ export const firestoreService = {
           updatedAt: serverTimestamp(),
         });
       }
+    });
+  },
+
+  async createNotification(data) {
+    if (!data.recipientId || data.recipientId === data.actorId) {
+      return null;
+    }
+
+    return createDocument(COLLECTIONS.notifications, {
+      recipientId: data.recipientId,
+      actorId: data.actorId,
+      actorUsername: data.actorUsername || 'aroundu',
+      postId: data.postId || null,
+      type: data.type,
+      read: false,
     });
   },
 
@@ -280,6 +366,21 @@ export const firestoreService = {
     return bookmarkedPosts.filter(Boolean);
   },
 
+  async getUserPosts(userId) {
+    assertFirebaseConfigured();
+
+    const postsSnapshot = await getDocs(
+      query(
+        collection(db, COLLECTIONS.posts),
+        where('authorId', '==', userId),
+      ),
+    );
+
+    return postsSnapshot.docs
+      .map((postDocument) => ({ id: postDocument.id, ...postDocument.data() }))
+      .sort((a, b) => getMillis(b.createdAt) - getMillis(a.createdAt));
+  },
+
   async setFollowing(followerId, followingId, shouldFollow) {
     if (followerId === followingId) {
       throw new Error('You cannot follow yourself.');
@@ -322,6 +423,18 @@ export const firestoreService = {
         });
       }
     });
+  },
+
+  async isFollowing(followerId, followingId) {
+    if (!followerId || !followingId || followerId === followingId) {
+      return false;
+    }
+
+    const followSnapshot = await getDoc(
+      doc(db, COLLECTIONS.follows, createFollowId(followerId, followingId)),
+    );
+
+    return followSnapshot.exists();
   },
 
   async getConnections(userId, type) {
@@ -411,11 +524,6 @@ export const firestoreService = {
         return {
           id: connectedUserId,
           username: profile.username || 'aroundu',
-          displayName:
-            profile.displayName ||
-            profile.fullName ||
-            profile.username ||
-            'AroundU user',
           city: profile.city || '',
           avatarUrl: profile.avatarUrl || '',
           location,
@@ -613,6 +721,61 @@ export const firestoreService = {
     const posts = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
     const lastDoc = snapshot.docs[snapshot.docs.length - 1] ?? null;
     return { posts, lastDoc };
+  },
+
+  async searchPosts(searchText, maxResults = 25) {
+    assertFirebaseConfigured();
+    const normalizedSearch = searchText.trim().toLowerCase();
+
+    if (!normalizedSearch) {
+      return [];
+    }
+
+    const snapshot = await getDocs(
+      query(
+        collection(db, COLLECTIONS.posts),
+        orderBy('createdAt', 'desc'),
+        limit(maxResults),
+      ),
+    );
+
+    return snapshot.docs
+      .map((documentSnapshot) => ({ id: documentSnapshot.id, ...documentSnapshot.data() }))
+      .filter((post) =>
+        [
+          post.caption,
+          post.location?.address,
+          post.location?.city,
+        ].some((value) => value?.toLowerCase().includes(normalizedSearch)),
+      );
+  },
+
+  async searchEvents(searchText, maxResults = 25) {
+    assertFirebaseConfigured();
+    const normalizedSearch = searchText.trim().toLowerCase();
+
+    if (!normalizedSearch) {
+      return [];
+    }
+
+    const snapshot = await getDocs(
+      query(
+        collection(db, COLLECTIONS.events),
+        orderBy('startTime', 'asc'),
+        limit(maxResults),
+      ),
+    );
+
+    return snapshot.docs
+      .map((documentSnapshot) => ({ id: documentSnapshot.id, ...documentSnapshot.data() }))
+      .filter((event) =>
+        [
+          event.title,
+          event.description,
+          event.location?.address,
+          event.location?.city,
+        ].some((value) => value?.toLowerCase().includes(normalizedSearch)),
+      );
   },
 
   async getLikedPostIds(postIds, userId) {

@@ -5,6 +5,10 @@ module.exports = () => {
 
   return {
     ...config,
+    plugins: [
+      ...(config.plugins || []),
+      'expo-audio',
+    ],
     android: {
       ...config.android,
       config: {

@@ -6,6 +6,7 @@ import {
   FlatList,
   Image,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -16,6 +17,8 @@ import ScreenHeader from '../../components/common/ScreenHeader';
 import FeaturedEventCard from '../../components/event/FeaturedEventCard';
 import NewEventCard from '../../components/event/NewEventCard';
 import TrendingEventCard from '../../components/event/TrendingEventCard';
+import EventSectionHeader from '../../components/event/EventSectionHeader';
+import EmptyNearbyEvent from '../../components/event/EmptyNearbyEvent';
 import { useEventStore } from '../../stores/eventStore';
 import { useAuthStore } from '../../stores/authStore';
 import { filterRecentEvents } from '../../utils/dateUtils';
@@ -29,7 +32,7 @@ export default function EventScreen() {
   const navigation = useNavigation();
   const [searchQuery, setSearchQuery] = useState('');
   
-  const { events, isLoading, fetchEvents } = useEventStore();
+  const { events, isLoading, fetchEvents, isRefreshing, refreshEvents } = useEventStore();
   const user = useAuthStore((s) => s.user);
   const { location, isFetchingLocation, handleGetLocation } = useLocation();
 
@@ -89,6 +92,14 @@ export default function EventScreen() {
 
       <ScrollView
         contentContainerStyle={styles.content}
+        refreshControl={
+          <RefreshControl
+            colors={[colors.primary]}
+            onRefresh={refreshEvents}
+            refreshing={isRefreshing}
+            tintColor={colors.primary}
+          />
+        }
         showsVerticalScrollIndicator={false}
       >
         <Text style={styles.heading}>Nearby Events</Text>
@@ -104,28 +115,15 @@ export default function EventScreen() {
             onOpen={() => navigation.navigate('EventDetail', { eventId: featuredEvent.id })}
           />
         ) : (
-          <View style={styles.emptyState}>
-            <Ionicons color="#A5AFBD" name="location-outline" size={34} />
-            <Text style={styles.emptyTitle}>No nearby events</Text>
-            <Text style={styles.emptyText}>
-              There are no events within a 1 km radius of your location.
-            </Text>
-          </View>
+          <EmptyNearbyEvent />
         )}
 
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>New Events</Text>
-          {newEvents.length > 0 && (
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => navigation.navigate('AllNewEvents')}
-              style={styles.viewMapButton}
-            >
-              <Text style={styles.viewMapText}>View all</Text>
-              <Ionicons color={colors.primary} name="arrow-forward" size={13} />
-            </Pressable>
-          )}
-        </View>
+        <EventSectionHeader
+          buttonText="View all"
+          onButtonPress={() => navigation.navigate('AllNewEvents')}
+          showButton={newEvents.length > 0}
+          title="New Events"
+        />
 
         {newEvents.length > 0 ? (
           <FlatList
@@ -147,17 +145,11 @@ export default function EventScreen() {
 
         {trendingEvents.length > 0 ? (
           <>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Trending Spots</Text>
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => navigation.navigate('Maps')}
-                style={styles.viewMapButton}
-              >
-                <Text style={styles.viewMapText}>View map</Text>
-                <Ionicons color={colors.primary} name="arrow-forward" size={13} />
-              </Pressable>
-            </View>
+            <EventSectionHeader
+              buttonText="View map"
+              onButtonPress={() => navigation.navigate('Maps')}
+              title="Trending Spots"
+            />
 
             <FlatList
               contentContainerStyle={styles.trendingList}
@@ -202,51 +194,10 @@ const styles = StyleSheet.create({
     marginTop: 3,
     paddingHorizontal: spacing.md,
   },
-  sectionHeader: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: spacing.lg,
-    paddingHorizontal: spacing.md,
-  },
-  sectionTitle: {
-    color: colors.text,
-    fontFamily: 'Inter_700Bold',
-    fontSize: 17,
-  },
-  viewMapButton: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 4,
-    paddingVertical: spacing.xs,
-  },
-  viewMapText: {
-    color: colors.primary,
-    fontFamily: 'Inter_600SemiBold',
-    fontSize: 11,
-  },
   trendingList: {
     gap: spacing.sm,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.md,
-  },
-  emptyState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginHorizontal: spacing.md,
-    minHeight: 260,
-  },
-  emptyTitle: {
-    color: '#465268',
-    fontFamily: 'Inter_600SemiBold',
-    fontSize: 15,
-    marginTop: spacing.sm,
-  },
-  emptyText: {
-    color: colors.neutral,
-    fontFamily: 'Inter_400Regular',
-    fontSize: 11,
-    marginTop: spacing.xs,
   },
   emptyNewEventsText: {
     color: colors.neutral,

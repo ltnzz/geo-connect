@@ -1,5 +1,5 @@
 import { useNavigation } from '@react-navigation/native';
-import { FlatList, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, FlatList, StyleSheet, View } from 'react-native';
 
 import ScreenHeader from '../../components/common/ScreenHeader';
 import NewEventCard from '../../components/event/NewEventCard';
@@ -9,7 +9,7 @@ import { colors, spacing } from '../../utils/theme';
 
 export default function AllNewEventsScreen() {
   const navigation = useNavigation();
-  const { events } = useEventStore();
+  const { events, fetchMoreEvents, isLoadingMore, hasMore } = useEventStore();
   
   const newEvents = filterRecentEvents(events);
 
@@ -26,13 +26,20 @@ export default function AllNewEventsScreen() {
         data={newEvents}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
-          <NewEventCard
-            event={item}
-            fullWidth
-            onPress={() => navigation.navigate('EventDetail', { eventId: item.id })}
-          />
-        )}
-        showsVerticalScrollIndicator={false}
+            <NewEventCard
+              event={item}
+              fullWidth
+              onPress={() => navigation.navigate('EventDetail', { eventId: item.id })}
+            />
+          )}
+          showsVerticalScrollIndicator={false}
+          onEndReached={hasMore ? fetchMoreEvents : null}
+          onEndReachedThreshold={0.5}
+          ListFooterComponent={
+            isLoadingMore ? (
+              <ActivityIndicator color={colors.primary} style={{ marginVertical: spacing.md }} />
+            ) : null
+          }
       />
     </View>
   );

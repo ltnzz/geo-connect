@@ -1,11 +1,7 @@
-import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  FlatList,
-  Image,
-  Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -57,8 +53,11 @@ export default function EventScreen() {
     if (events.length === 0 && !isLoading) {
       fetchEvents();
     }
+  }, [events.length, fetchEvents, isLoading]);
+
+  useEffect(() => {
     handleGetLocation();
-  }, [events.length, fetchEvents, handleGetLocation, isLoading]);
+  }, [handleGetLocation]);
 
   const normalizedSearch = searchQuery.trim().toLowerCase();
   
@@ -92,8 +91,6 @@ export default function EventScreen() {
 
   const featuredEvent = nearbyEvents.length > 0 ? nearbyEvents[0] : null;
 
-  // We keep trending spots using all real events sorted by popularity or just slice it,
-  // because DUMMY_EVENTS was removed. Let's use real events that have attendees.
   const trendingEvents = matchingReal
     .filter(e => e.id !== featuredEvent?.id)
     .sort((a, b) => (b.participantCount || 0) - (a.participantCount || 0))
@@ -148,19 +145,19 @@ export default function EventScreen() {
         />
 
         {newEvents.length > 0 ? (
-          <FlatList
+          <ScrollView
             contentContainerStyle={styles.trendingList}
-            data={newEvents.slice(0, 5)}
             horizontal
-            keyExtractor={(event) => event.id}
-            renderItem={({ item }) => (
+            showsHorizontalScrollIndicator={false}
+          >
+            {newEvents.slice(0, 5).map((item) => (
               <NewEventCard
+                key={item.id}
                 event={item}
                 onPress={() => navigation.navigate('EventDetail', { eventId: item.id })}
               />
-            )}
-            showsHorizontalScrollIndicator={false}
-          />
+            ))}
+          </ScrollView>
         ) : (
           <Text style={styles.emptyNewEventsText}>No new events recently.</Text>
         )}
@@ -173,19 +170,19 @@ export default function EventScreen() {
               title="Trending Spots"
             />
 
-            <FlatList
+            <ScrollView
               contentContainerStyle={styles.trendingList}
-              data={trendingEvents}
               horizontal
-              keyExtractor={(event) => event.id}
-              renderItem={({ item }) => (
+              showsHorizontalScrollIndicator={false}
+            >
+              {trendingEvents.map((item) => (
                 <TrendingEventCard
+                  key={item.id}
                   event={item}
                   onPress={() => navigation.navigate('EventDetail', { eventId: item.id })}
                 />
-              )}
-              showsHorizontalScrollIndicator={false}
-            />
+              ))}
+            </ScrollView>
           </>
         ) : null}
       </ScrollView>
@@ -229,9 +226,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
     marginBottom: spacing.lg,
   },
-  pressed: {
-    opacity: 0.72,
-  },
+
   offlineBanner: {
     backgroundColor: '#FEF3C7',
     paddingHorizontal: spacing.md,

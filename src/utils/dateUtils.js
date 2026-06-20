@@ -19,3 +19,20 @@ export function filterRecentEvents(events) {
       return dateB - dateA;
     });
 }
+
+export function formatEventSchedule(startTime, endTime) {
+  if (!startTime) return '';
+
+  const startD = startTime?.toDate ? startTime.toDate() : new Date(startTime);
+  const endD = endTime?.toDate ? endTime.toDate() : (endTime ? new Date(endTime) : startD);
+
+  const startDateStr = startD.toLocaleDateString([], { day: 'numeric', month: 'short' });
+  const endDateStr = endD.toLocaleDateString([], { day: 'numeric', month: 'short' });
+  const startTimeStr = startD.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const endTimeStr = endD.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+  if (startDateStr === endDateStr) {
+    return `${startDateStr}, ${startTimeStr} - ${endTimeStr}`;
+  }
+  return `${startDateStr} - ${endDateStr}\n${startTimeStr} - ${endTimeStr}`;
+}

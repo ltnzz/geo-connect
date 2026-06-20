@@ -16,9 +16,11 @@ import ScreenHeader from '../../components/common/ScreenHeader';
 import FeaturedEventCard from '../../components/event/FeaturedEventCard';
 import NewEventCard from '../../components/event/NewEventCard';
 import TrendingEventCard from '../../components/event/TrendingEventCard';
-import { DUMMY_EVENTS } from '../../data/dummyEvents';
 import { useEventStore } from '../../stores/eventStore';
+import { useAuthStore } from '../../stores/authStore';
 import { filterRecentEvents } from '../../utils/dateUtils';
+import { calculateDistance } from '../../utils/locationUtils';
+import { useLocation } from '../../hooks/useLocation';
 import { colors, radius, spacing } from '../../utils/theme';
 
 
@@ -28,11 +30,14 @@ export default function EventScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   
   const { events, isLoading, fetchEvents } = useEventStore();
+  const user = useAuthStore((s) => s.user);
+  const { location, isFetchingLocation, handleGetLocation } = useLocation();
 
   useEffect(() => {
     if (events.length === 0 && !isLoading) {
       fetchEvents();
     }
+    handleGetLocation();
   }, []);
 
   const normalizedSearch = searchQuery.trim().toLowerCase();
@@ -51,20 +56,28 @@ export default function EventScreen() {
 
   const newEvents = filterRecentEvents(matchingReal);
 
-  // Dummy Events (for Featured and Trending sections)
-  const matchingDummy = normalizedSearch
-    ? DUMMY_EVENTS.filter((event) =>
-        [
-          event.title,
-          event.venue,
-          event.category,
-          event.status,
-        ].some((value) => value.toLowerCase().includes(normalizedSearch))
-      )
-    : DUMMY_EVENTS;
+      const nearbyEvents = location
+    ? matchingReal.filter((event) => {
+        if (event.creatorId === user?.uid) return false;
+        if (!event.location || !event.location.latitude || !event.location.longitude) return false;
+        const dist = calculateDistance(
+          location.latitude,
+          location.longitude,
+          event.location.latitude,
+          event.location.longitude
+        );
+        return dist !== null && dist <= 1; // within 1 km
+      })
+    : [];
 
-  const featuredEvent = matchingDummy[0];
-  const trendingEvents = matchingDummy.slice(1);
+  const featuredEvent = nearbyEvents.length > 0 ? nearbyEvents[0] : null;
+
+  // We keep trending spots using all real events sorted by popularity or just slice it,
+  // because DUMMY_EVENTS was removed. Let's use real events that have attendees.
+  const trendingEvents = matchingReal
+    .filter(e => e.id !== featuredEvent?.id)
+    .sort((a, b) => (b.participantCount || 0) - (a.participantCount || 0))
+    .slice(0, 5);
 
   return (
     <View style={styles.screen}>
@@ -83,7 +96,7 @@ export default function EventScreen() {
           Curated happenings around your location.
         </Text>
 
-        {isLoading && events.length === 0 ? (
+        {isLoading || isFetchingLocation ? (
           <ActivityIndicator style={{ marginTop: spacing.xl }} color={colors.primary} size="large" />
         ) : featuredEvent ? (
           <FeaturedEventCard
@@ -92,22 +105,32 @@ export default function EventScreen() {
           />
         ) : (
           <View style={styles.emptyState}>
-            <Ionicons color="#A5AFBD" name="calendar-outline" size={34} />
-            <Text style={styles.emptyTitle}>No matching events</Text>
+            <Ionicons color="#A5AFBD" name="location-outline" size={34} />
+            <Text style={styles.emptyTitle}>No nearby events</Text>
             <Text style={styles.emptyText}>
-              {normalizedSearch ? 'Try another event, venue, or category.' : 'No upcoming events right now.'}
+              There are no events within a 1 km radius of your location.
             </Text>
           </View>
         )}
 
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>New Events</Text>
+          {newEvents.length > 0 && (
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => navigation.navigate('AllNewEvents')}
+              style={styles.viewMapButton}
+            >
+              <Text style={styles.viewMapText}>View all</Text>
+              <Ionicons color={colors.primary} name="arrow-forward" size={13} />
+            </Pressable>
+          )}
         </View>
 
         {newEvents.length > 0 ? (
           <FlatList
             contentContainerStyle={styles.trendingList}
-            data={newEvents}
+            data={newEvents.slice(0, 5)}
             horizontal
             keyExtractor={(event) => event.id}
             renderItem={({ item }) => (

@@ -624,11 +624,19 @@ export default function MapScreen() {
                       accessibilityRole={item.type === 'event' ? 'button' : 'text'}
                       disabled={item.type !== 'event'}
                       key={item.id}
-                      onPress={() =>
+                      onPress={() => {
+                      if (item.type === 'event') {
                         navigation.navigate('EventDetail', {
                           eventId: item.sourceId,
-                        })
+                        });
                       }
+
+                      if (item.type === 'user') {
+                        navigation.navigate('UserDetail', {
+                          userId: item.sourceId.replace('user-', ''),
+                        });
+                      }
+                      }}
                       style={styles.clusterItem}
                     >
                       <View

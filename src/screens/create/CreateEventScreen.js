@@ -31,6 +31,19 @@ export default function CreateEventScreen() {
   const [time, setTime] = useState(new Date());
   const [showTimePicker, setShowTimePicker] = useState(false);
 
+  const [endDate, setEndDate] = useState(() => {
+    const d = new Date();
+    d.setHours(d.getHours() + 2);
+    return d;
+  });
+  const [showEndDatePicker, setShowEndDatePicker] = useState(false);
+  const [endTime, setEndTime] = useState(() => {
+    const d = new Date();
+    d.setHours(d.getHours() + 2);
+    return d;
+  });
+  const [showEndTimePicker, setShowEndTimePicker] = useState(false);
+
   const { location, isFetchingLocation, locationError, handleGetLocation, clearLocation } = useLocation();
 
   useFocusEffect(
@@ -43,6 +56,13 @@ export default function CreateEventScreen() {
         setTime(new Date());
         setShowDatePicker(false);
         setShowTimePicker(false);
+        
+        const d = new Date();
+        d.setHours(d.getHours() + 2);
+        setEndDate(d);
+        setEndTime(d);
+        setShowEndDatePicker(false);
+        setShowEndTimePicker(false);
         setError(null);
         clearLocation();
       };
@@ -71,6 +91,16 @@ export default function CreateEventScreen() {
     if (selectedTime) setTime(selectedTime);
   };
 
+  const onEndDateChange = (event, selectedDate) => {
+    setShowEndDatePicker(false);
+    if (selectedDate) setEndDate(selectedDate);
+  };
+
+  const onEndTimeChange = (event, selectedTime) => {
+    setShowEndTimePicker(false);
+    if (selectedTime) setEndTime(selectedTime);
+  };
+
   const handleSubmit = async () => {
     setError(null);
     setIsPosting(true);
@@ -85,6 +115,14 @@ export default function CreateEventScreen() {
         time.getMinutes()
       );
 
+      const endDateTime = new Date(
+        endDate.getFullYear(),
+        endDate.getMonth(),
+        endDate.getDate(),
+        endTime.getHours(),
+        endTime.getMinutes()
+      );
+
       const uploaded = await cloudinaryService.uploadImage(asset, { folder: 'events' });
       const bannerUrl = uploaded.secureUrl;
 
@@ -96,7 +134,7 @@ export default function CreateEventScreen() {
         location,
         radiusMeters: 5000, // Default 5km radius for visibility
         startTime: startDateTime,
-        endTime: new Date(startDateTime.getTime() + 2 * 60 * 60 * 1000), // Default 2 hours later
+        endTime: endDateTime,
         status: 'published',
       });
 
@@ -132,15 +170,32 @@ export default function CreateEventScreen() {
         onChangeText={setTitle}
       />
 
+      <Text style={styles.inputLabel}>Event Dates</Text>
       <DateTimePickerBox
-        date={date}
-        time={time}
-        showDatePicker={showDatePicker}
-        showTimePicker={showTimePicker}
-        setShowDatePicker={setShowDatePicker}
-        setShowTimePicker={setShowTimePicker}
-        onDateChange={onDateChange}
-        onTimeChange={onTimeChange}
+        val1={date}
+        val2={endDate}
+        showPicker1={showDatePicker}
+        showPicker2={showEndDatePicker}
+        setShowPicker1={setShowDatePicker}
+        setShowPicker2={setShowEndDatePicker}
+        onChange1={onDateChange}
+        onChange2={onEndDateChange}
+        mode="date"
+        icon="calendar-outline"
+      />
+
+      <Text style={styles.inputLabel}>Operating Hours</Text>
+      <DateTimePickerBox
+        val1={time}
+        val2={endTime}
+        showPicker1={showTimePicker}
+        showPicker2={showEndTimePicker}
+        setShowPicker1={setShowTimePicker}
+        setShowPicker2={setShowEndTimePicker}
+        onChange1={onTimeChange}
+        onChange2={onEndTimeChange}
+        mode="time"
+        icon="time-outline"
       />
 
       <Pressable style={styles.eventLocationButton} onPress={handleGetLocation} disabled={isFetchingLocation}>
@@ -214,6 +269,12 @@ const styles = StyleSheet.create({
     fontFamily: 'Poppins_700Bold',
     fontSize: 28,
     marginBottom: spacing.xl,
+  },
+  inputLabel: {
+    color: colors.text,
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 14,
+    marginBottom: spacing.sm,
   },
   eventLocationButton: {
     alignItems: 'center',

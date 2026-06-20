@@ -61,10 +61,8 @@ const TYPE_META = {
 const normalizeConnection = (connection) => ({
   id: `user-${connection.id}`,
   type: 'user',
-  title: connection.displayName,
-  subtitle: `@${connection.username}${
-    connection.city ? ` - ${connection.city}` : ''
-  }`,
+  title: `@${connection.username}`,
+  subtitle: connection.city || 'Nearby',
   coordinate: {
     latitude: connection.location.latitude,
     longitude: connection.location.longitude,

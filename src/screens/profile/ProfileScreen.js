@@ -5,20 +5,24 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 
 import ScreenHeader from '../../components/common/ScreenHeader';
 import NewEventCard from '../../components/event/NewEventCard';
+import ProfileLocationPicker from '../../components/profile/ProfileLocationPicker';
 import { useAuthStore } from '../../stores/authStore';
 import { useEventStore } from '../../stores/eventStore';
-import { DUMMY_POSTS } from '../../data/dummyPosts';
 import { firestoreService } from '../../services/firestoreService';
 import { colors, radius, spacing } from '../../utils/theme';
+
+const POST_COLORS = ['#E9F0FF', '#E9FDF5', '#FFF7E8', '#F3E8FF', '#FFECEF'];
 
 const formatCount = (value) => {
   const count = Number(value) || 0;
@@ -47,14 +51,25 @@ export default function ProfileScreen() {
   const user = useAuthStore((state) => state.user);
   const updateCurrentUser = useAuthStore((state) => state.updateCurrentUser);
   const [activeSegment, setActiveSegment] = useState('posts');
+  const [profilePosts, setProfilePosts] = useState([]);
+  const [isPostsLoading, setIsPostsLoading] = useState(false);
+  const [postsError, setPostsError] = useState('');
   const [savedPosts, setSavedPosts] = useState([]);
   const [isSavedLoading, setIsSavedLoading] = useState(false);
   const [savedError, setSavedError] = useState('');
+  const [isEditVisible, setIsEditVisible] = useState(false);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [isLocationPickerVisible, setIsLocationPickerVisible] = useState(false);
+  const [editForm, setEditForm] = useState({
+    username: user?.username || '',
+    bio: user?.bio || '',
+    city: user?.city || '',
+    profileLocation: user?.profileLocation || null,
+  });
 
   const username = user?.username || 'aroundu';
-  const displayName = user?.displayName || user?.fullName || username;
   const city = user?.city || 'Jakarta';
-  const visiblePosts = activeSegment === 'posts' ? DUMMY_POSTS : savedPosts;
+  const visiblePosts = activeSegment === 'posts' ? profilePosts : savedPosts;
   const events = useEventStore((state) => state.events);
   const fetchEvents = useEventStore((state) => state.fetchEvents);
   const isEventsLoading = useEventStore((state) => state.isLoading);
@@ -74,18 +89,35 @@ export default function ProfileScreen() {
 
       let isActive = true;
 
-      firestoreService
-        .getUser(user.uid)
-        .then((profile) => {
+      setIsPostsLoading(true);
+      setPostsError('');
+
+      Promise.all([
+        firestoreService.getUser(user.uid),
+        firestoreService.getUserPosts(user.uid),
+      ])
+        .then(([profile, posts]) => {
           if (isActive && profile) {
             updateCurrentUser({
               followersCount: profile.followersCount ?? 0,
               followingCount: profile.followingCount ?? 0,
-              postsCount: profile.postsCount ?? 0,
+              postsCount: profile.postsCount ?? posts.length,
             });
+            setProfilePosts(posts);
+          } else if (isActive) {
+            setProfilePosts(posts);
           }
         })
-        .catch(() => {});
+        .catch(() => {
+          if (isActive) {
+            setPostsError('Unable to load your posts.');
+          }
+        })
+        .finally(() => {
+          if (isActive) {
+            setIsPostsLoading(false);
+          }
+        });
 
       return () => {
         isActive = false;
@@ -125,8 +157,47 @@ export default function ProfileScreen() {
     };
   }, [activeSegment, user?.uid]);
 
-  const showEditUnavailable = () => {
-    Alert.alert('Edit Profile', 'Profile editing will be available soon.');
+  const openEditProfile = () => {
+    setEditForm({
+      username: user?.username || '',
+      bio: user?.bio || '',
+      city: user?.city || '',
+      profileLocation: user?.profileLocation || null,
+    });
+    setIsEditVisible(true);
+  };
+
+  const updateEditField = (field, value) => {
+    setEditForm((current) => ({ ...current, [field]: value }));
+  };
+
+  const saveProfile = async () => {
+    if (!user?.uid || isSavingProfile) {
+      return;
+    }
+
+    const updates = {
+      username: editForm.username.trim().toLowerCase(),
+      bio: editForm.bio.trim(),
+      city: editForm.city.trim(),
+      profileLocation: editForm.profileLocation,
+    };
+
+    if (!updates.username) {
+      Alert.alert('Username required', 'Please enter a username.');
+      return;
+    }
+
+    setIsSavingProfile(true);
+    try {
+      await firestoreService.updateUser(user.uid, updates);
+      updateCurrentUser(updates);
+      setIsEditVisible(false);
+    } catch {
+      Alert.alert('Unable to save profile', 'Please check your connection and try again.');
+    } finally {
+      setIsSavingProfile(false);
+    }
   };
 
   return (
@@ -151,23 +222,23 @@ export default function ProfileScreen() {
         </View>
 
         <Text numberOfLines={1} style={styles.name}>
-          {displayName}
+          @{username}
         </Text>
 
         <View style={styles.metaRow}>
-          <Text numberOfLines={1} style={styles.metaText}>
-            @{username}
-          </Text>
-          <Text style={styles.metaDot}>•</Text>
           <Ionicons color={colors.neutral} name="location-outline" size={13} />
           <Text numberOfLines={1} style={styles.metaText}>
             {city}
           </Text>
         </View>
 
+        {user?.bio ? (
+          <Text style={styles.bioText}>{user.bio}</Text>
+        ) : null}
+
         <Pressable
           accessibilityRole="button"
-          onPress={showEditUnavailable}
+          onPress={openEditProfile}
           style={({ pressed }) => [styles.editButton, pressed && styles.pressed]}
         >
           <Text style={styles.editButtonText}>Edit Profile</Text>
@@ -284,6 +355,33 @@ export default function ProfileScreen() {
           </Pressable>
         </View>
 
+        {activeSegment === 'posts' && isPostsLoading ? (
+          <View style={styles.feedState}>
+            <ActivityIndicator color={colors.primary} />
+            <Text style={styles.feedStateText}>Loading your posts...</Text>
+          </View>
+        ) : null}
+
+        {activeSegment === 'posts' && !isPostsLoading && postsError ? (
+          <View style={styles.feedState}>
+            <Ionicons color={colors.danger} name="alert-circle-outline" size={25} />
+            <Text style={styles.feedStateText}>{postsError}</Text>
+          </View>
+        ) : null}
+
+        {activeSegment === 'posts' &&
+        !isPostsLoading &&
+        !postsError &&
+        visiblePosts.length === 0 ? (
+          <View style={styles.feedState}>
+            <Ionicons color="#AAB2C0" name="grid-outline" size={28} />
+            <Text style={styles.feedStateTitle}>No posts yet</Text>
+            <Text style={styles.feedStateText}>
+              Posts you create will appear here.
+            </Text>
+          </View>
+        ) : null}
+
         {activeSegment === 'saved' && isSavedLoading ? (
           <View style={styles.feedState}>
             <ActivityIndicator color={colors.primary} />
@@ -353,7 +451,10 @@ export default function ProfileScreen() {
           </View>
         ) : null}
 
-        {activeSegment !== 'events' && !isSavedLoading && !savedError && visiblePosts.length > 0 ? (
+        {activeSegment !== 'events' &&
+        (activeSegment !== 'posts' || (!isPostsLoading && !postsError)) &&
+        (activeSegment !== 'saved' || (!isSavedLoading && !savedError)) &&
+        visiblePosts.length > 0 ? (
           <View style={styles.feedGrid}>
             {visiblePosts.map((post, index) => (
               <Pressable
@@ -371,7 +472,7 @@ export default function ProfileScreen() {
                   {
                     backgroundColor:
                       post.color ||
-                      DUMMY_POSTS[index % DUMMY_POSTS.length].color,
+                      POST_COLORS[index % POST_COLORS.length],
                   },
                   pressed && styles.pressed,
                 ]}
@@ -390,6 +491,95 @@ export default function ProfileScreen() {
           </View>
         ) : null}
       </ScrollView>
+
+      <Modal
+        animationType="slide"
+        onRequestClose={() => setIsEditVisible(false)}
+        transparent
+        visible={isEditVisible}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.editSheet}>
+            <View style={styles.sheetHeader}>
+              <Text style={styles.sheetTitle}>Edit Profile</Text>
+              <Pressable
+                accessibilityLabel="Close edit profile"
+                accessibilityRole="button"
+                onPress={() => setIsEditVisible(false)}
+                style={styles.closeButton}
+              >
+                <Ionicons color={colors.neutral} name="close" size={22} />
+              </Pressable>
+            </View>
+
+            <Text style={styles.inputLabel}>Username</Text>
+            <TextInput
+              autoCapitalize="none"
+              onChangeText={(value) => updateEditField('username', value)}
+              placeholder="username"
+              placeholderTextColor="#AAB2C0"
+              style={styles.input}
+              value={editForm.username}
+            />
+
+            <Text style={styles.inputLabel}>Location</Text>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => setIsLocationPickerVisible(true)}
+              style={styles.locationPickerButton}
+            >
+              <View style={styles.locationPickerIcon}>
+                <Ionicons color={colors.primary} name="map-outline" size={18} />
+              </View>
+              <View style={styles.locationPickerCopy}>
+                <Text style={styles.locationPickerText}>
+                  {editForm.city || editForm.profileLocation?.address || 'Pick from map'}
+                </Text>
+                <Text style={styles.locationPickerHint}>
+                  Tap to choose your profile location
+                </Text>
+              </View>
+              <Ionicons color={colors.neutral} name="chevron-forward" size={18} />
+            </Pressable>
+
+            <Text style={styles.inputLabel}>Bio</Text>
+            <TextInput
+              multiline
+              onChangeText={(value) => updateEditField('bio', value)}
+              placeholder="Tell people what you are into"
+              placeholderTextColor="#AAB2C0"
+              style={[styles.input, styles.bioInput]}
+              value={editForm.bio}
+            />
+
+            <Pressable
+              accessibilityRole="button"
+              disabled={isSavingProfile}
+              onPress={saveProfile}
+              style={[styles.saveButton, isSavingProfile && styles.saveButtonDisabled]}
+            >
+              {isSavingProfile ? (
+                <ActivityIndicator color="#FFFFFF" size="small" />
+              ) : (
+                <Text style={styles.saveButtonText}>Save Profile</Text>
+              )}
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+
+      <ProfileLocationPicker
+        onClose={() => setIsLocationPickerVisible(false)}
+        onSelect={(location) => {
+          setEditForm((current) => ({
+            ...current,
+            city: location.city || location.address || current.city,
+            profileLocation: location,
+          }));
+          setIsLocationPickerVisible(false);
+        }}
+        visible={isLocationPickerVisible}
+      />
     </View>
   );
 }
@@ -446,10 +636,14 @@ const styles = StyleSheet.create({
     fontFamily: 'Poppins_400Regular',
     fontSize: 12,
   },
-  metaDot: {
-    color: '#AAB2C0',
+  bioText: {
+    color: '#526173',
+    fontFamily: 'Poppins_400Regular',
     fontSize: 12,
-    marginHorizontal: 5,
+    lineHeight: 18,
+    marginTop: spacing.sm,
+    maxWidth: '88%',
+    textAlign: 'center',
   },
   editButton: {
     alignItems: 'center',
@@ -538,9 +732,8 @@ const styles = StyleSheet.create({
   },
   feedGrid: {
     alignSelf: 'stretch',
-    borderColor: '#E3E8F0',
+    backgroundColor: '#E8EEF7',
     borderRadius: radius.sm,
-    borderWidth: StyleSheet.hairlineWidth,
     flexDirection: 'row',
     flexWrap: 'wrap',
     marginTop: 12,
@@ -557,8 +750,6 @@ const styles = StyleSheet.create({
   },
   feedItem: {
     aspectRatio: 1,
-    borderColor: '#FFFFFF',
-    borderWidth: 1,
     justifyContent: 'flex-end',
     overflow: 'hidden',
     width: '33.3333%',
@@ -604,5 +795,100 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.65,
+  },
+  modalBackdrop: {
+    backgroundColor: 'rgba(15,23,42,0.46)',
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  editSheet: {
+    backgroundColor: colors.surface,
+    borderTopLeftRadius: radius.lg,
+    borderTopRightRadius: radius.lg,
+    padding: spacing.lg,
+  },
+  sheetHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: spacing.md,
+  },
+  sheetTitle: {
+    color: colors.text,
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 18,
+  },
+  closeButton: {
+    padding: spacing.xs,
+  },
+  inputLabel: {
+    color: '#526173',
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 11,
+    marginBottom: 6,
+    marginTop: spacing.sm,
+  },
+  input: {
+    borderColor: '#D9E0EB',
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    color: colors.text,
+    fontFamily: 'Poppins_400Regular',
+    fontSize: 13,
+    minHeight: 44,
+    paddingHorizontal: spacing.md,
+  },
+  bioInput: {
+    minHeight: 86,
+    paddingTop: spacing.sm,
+    textAlignVertical: 'top',
+  },
+  locationPickerButton: {
+    alignItems: 'center',
+    borderColor: '#D9E0EB',
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    flexDirection: 'row',
+    minHeight: 56,
+    paddingHorizontal: spacing.md,
+  },
+  locationPickerIcon: {
+    alignItems: 'center',
+    backgroundColor: '#EAF1FF',
+    borderRadius: radius.full,
+    height: 34,
+    justifyContent: 'center',
+    marginRight: spacing.sm,
+    width: 34,
+  },
+  locationPickerCopy: {
+    flex: 1,
+  },
+  locationPickerText: {
+    color: colors.text,
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 13,
+  },
+  locationPickerHint: {
+    color: colors.neutral,
+    fontFamily: 'Poppins_400Regular',
+    fontSize: 10,
+    marginTop: 1,
+  },
+  saveButton: {
+    alignItems: 'center',
+    backgroundColor: colors.primary,
+    borderRadius: radius.sm,
+    height: 46,
+    justifyContent: 'center',
+    marginTop: spacing.lg,
+  },
+  saveButtonDisabled: {
+    opacity: 0.72,
+  },
+  saveButtonText: {
+    color: '#FFFFFF',
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 13,
   },
 });

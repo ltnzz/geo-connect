@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { setAudioModeAsync, useAudioPlayer } from 'expo-audio';
 import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -7,8 +8,14 @@ import { spacing } from '../../utils/theme';
 
 const BRAND_TEXT = 'AroundU';
 const TAGLINE_TEXT = "Discover What's Happening Around You";
+const SPLASH_SOUND = require('../../../assets/audio/splash.wav');
+const SPLASH_AUDIO_START_SECONDS = 1;
+const SPLASH_AUDIO_END_SECONDS = 4;
+const SPLASH_AUDIO_DURATION_MS =
+  (SPLASH_AUDIO_END_SECONDS - SPLASH_AUDIO_START_SECONDS) * 1000;
 
 export default function SplashScreen({ onFinish }) {
+  const splashPlayer = useAudioPlayer(SPLASH_SOUND);
   const logoOpacity = useRef(new Animated.Value(0)).current;
   const logoScale = useRef(new Animated.Value(0.92)).current;
   const logoTranslateY = useRef(new Animated.Value(12)).current;
@@ -16,6 +23,36 @@ export default function SplashScreen({ onFinish }) {
   const brandTranslateY = useRef(new Animated.Value(10)).current;
   const taglineOpacity = useRef(new Animated.Value(0)).current;
   const taglineTranslateY = useRef(new Animated.Value(8)).current;
+
+  useEffect(() => {
+    setAudioModeAsync({
+      interruptionMode: 'mixWithOthers',
+      playsInSilentMode: true,
+    }).catch(() => {});
+
+    try {
+      splashPlayer.volume = 0.28;
+      splashPlayer.seekTo(SPLASH_AUDIO_START_SECONDS).catch(() => {});
+      splashPlayer.play();
+    } catch {
+      // Web browsers can block autoplay. The splash should continue silently.
+    }
+
+    const stopTimer = setTimeout(() => {
+      try {
+        splashPlayer.pause();
+        splashPlayer.seekTo(SPLASH_AUDIO_START_SECONDS).catch(() => {});
+      } catch {}
+    }, SPLASH_AUDIO_DURATION_MS);
+
+    return () => {
+      clearTimeout(stopTimer);
+      try {
+        splashPlayer.pause();
+        splashPlayer.seekTo(SPLASH_AUDIO_START_SECONDS).catch(() => {});
+      } catch {}
+    };
+  }, [splashPlayer]);
 
   useEffect(() => {
     const animation = Animated.sequence([
@@ -68,7 +105,7 @@ export default function SplashScreen({ onFinish }) {
           useNativeDriver: true,
         }),
       ]),
-      Animated.delay(900),
+      Animated.delay(2040),
     ]);
 
     animation.start(({ finished }) => {

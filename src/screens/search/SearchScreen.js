@@ -1,29 +1,53 @@
-import { collection, getDocs, query, where } from 'firebase/firestore';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, FlatList, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { collection, getDocs, query, where } from 'firebase/firestore';
+import { useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  FlatList,
+  Image,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 
-import SearchBar from '../../components/search/SearchBar';
 import ScreenHeader from '../../components/common/ScreenHeader';
 import PostCard from '../../components/post/PostCard';
+import SearchBar from '../../components/search/SearchBar';
 import { db } from '../../config/firebase';
 import { COLLECTIONS } from '../../constants/firestore';
+import { firestoreService } from '../../services/firestoreService';
+import { useAuthStore } from '../../stores/authStore';
 import { useEventStore } from '../../stores/eventStore';
 import { useFeedStore } from '../../stores/feedstore';
 import { colors, radius, spacing } from '../../utils/theme';
 
+const uniqueById = (items) =>
+  items.filter(
+    (item, index, source) =>
+      item?.id && source.findIndex((candidate) => candidate.id === item.id) === index,
+  );
+
 export default function SearchScreen() {
   const navigation = useNavigation();
+  const currentUserId = useAuthStore((s) => s.user?.uid);
   const feedPosts = useFeedStore((s) => s.posts);
+  const checkFollowing = useFeedStore((s) => s.checkFollowing);
+  const followingByUser = useFeedStore((s) => s.followingByUser);
+  const toggleFollow = useFeedStore((s) => s.toggleFollow);
   const eventsData = useEventStore((s) => s.events);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeSearchTab, setActiveSearchTab] = useState('PEOPLE');
   const [searchedUsers, setSearchedUsers] = useState([]);
+  const [searchedPosts, setSearchedPosts] = useState([]);
+  const [searchedEvents, setSearchedEvents] = useState([]);
   const [isSearchingUsers, setIsSearchingUsers] = useState(false);
+  const [isSearchingContent, setIsSearchingContent] = useState(false);
+
+  const normalizedSearch = searchQuery.trim().toLowerCase();
 
   useEffect(() => {
-    const normalizedSearch = searchQuery.trim().toLowerCase();
     if (!normalizedSearch) {
       setSearchedUsers([]);
       return;
@@ -33,21 +57,20 @@ export default function SearchScreen() {
     const fetchUsers = async () => {
       setIsSearchingUsers(true);
       try {
-        const q = query(
+        const usersQuery = query(
           collection(db, COLLECTIONS.users),
           where('username', '>=', normalizedSearch),
-          where('username', '<=', normalizedSearch + '\uf8ff')
+          where('username', '<=', `${normalizedSearch}\uf8ff`),
         );
-        const snapshot = await getDocs(q);
+        const snapshot = await getDocs(usersQuery);
         if (isActive) {
-          const results = snapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-          }));
-          setSearchedUsers(results);
+          setSearchedUsers(snapshot.docs.map((documentSnapshot) => ({
+            id: documentSnapshot.id,
+            ...documentSnapshot.data(),
+          })));
         }
-      } catch (err) {
-        console.error('Failed to search users:', err);
+      } catch {
+        if (isActive) setSearchedUsers([]);
       } finally {
         if (isActive) setIsSearchingUsers(false);
       }
@@ -58,30 +81,111 @@ export default function SearchScreen() {
       isActive = false;
       clearTimeout(timer);
     };
-  }, [searchQuery]);
+  }, [normalizedSearch]);
 
-  const normalizedSearch = searchQuery.trim().toLowerCase();
+  useEffect(() => {
+    if (!normalizedSearch) {
+      setSearchedPosts([]);
+      setSearchedEvents([]);
+      return;
+    }
+
+    let isActive = true;
+    const fetchContent = async () => {
+      setIsSearchingContent(true);
+      try {
+        const [posts, events] = await Promise.all([
+          firestoreService.searchPosts(normalizedSearch),
+          firestoreService.searchEvents(normalizedSearch),
+        ]);
+        if (isActive) {
+          setSearchedPosts(posts);
+          setSearchedEvents(events);
+        }
+      } catch {
+        if (isActive) {
+          setSearchedPosts([]);
+          setSearchedEvents([]);
+        }
+      } finally {
+        if (isActive) setIsSearchingContent(false);
+      }
+    };
+
+    const timer = setTimeout(fetchContent, 500);
+    return () => {
+      isActive = false;
+      clearTimeout(timer);
+    };
+  }, [normalizedSearch]);
+
+  useEffect(() => {
+    searchedUsers.forEach((user) => {
+      const targetUserId = user.id || user.uid;
+      if (targetUserId) {
+        checkFollowing(currentUserId, targetUserId);
+      }
+    });
+  }, [checkFollowing, currentUserId, searchedUsers]);
 
   const visiblePosts = normalizedSearch
-    ? feedPosts.filter((post) =>
+    ? uniqueById([...searchedPosts, ...feedPosts]).filter((post) =>
         [
           post.authorName,
           post.caption,
           post.location?.address,
           post.location?.city,
-        ].some((value) =>
-          value?.toLowerCase().includes(normalizedSearch),
-        ),
+        ].some((value) => value?.toLowerCase().includes(normalizedSearch)),
       )
     : [];
 
   const visibleEvents = normalizedSearch
-    ? eventsData.filter((event) =>
-        [event.title, event.location?.address, event.location?.city, event.description].some((value) =>
-          value?.toLowerCase().includes(normalizedSearch),
-        ),
+    ? uniqueById([...searchedEvents, ...eventsData]).filter((event) =>
+        [
+          event.title,
+          event.location?.address,
+          event.location?.city,
+          event.description,
+        ].some((value) => value?.toLowerCase().includes(normalizedSearch)),
       )
     : [];
+
+  const renderPerson = ({ item }) => {
+    const targetUserId = item.id || item.uid;
+    const isOwnUser = currentUserId === targetUserId;
+    const isFollowing = !!followingByUser[targetUserId];
+
+    return (
+      <View style={styles.personRow}>
+        <View style={styles.avatar}>
+          {item.avatarUrl ? (
+            <Image source={{ uri: item.avatarUrl }} style={styles.avatarImage} />
+          ) : (
+            <Ionicons color="#A9B4C5" name="person-outline" size={25} />
+          )}
+        </View>
+        <View style={styles.personInfo}>
+          <Text numberOfLines={1} style={styles.personName}>
+            @{item.username || 'aroundu'}
+          </Text>
+          <Text numberOfLines={1} style={styles.personUsername}>
+            {item.city || 'AroundU'}
+          </Text>
+        </View>
+        {!isOwnUser && targetUserId ? (
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => toggleFollow(currentUserId, targetUserId)}
+            style={[styles.followButton, isFollowing && styles.followingButton]}
+          >
+            <Text style={[styles.followText, isFollowing && styles.followingText]}>
+              {isFollowing ? 'Following' : 'Follow'}
+            </Text>
+          </Pressable>
+        ) : null}
+      </View>
+    );
+  };
 
   return (
     <View style={styles.screen}>
@@ -97,8 +201,7 @@ export default function SearchScreen() {
         placeholder="Search people, events, posts..."
         value={searchQuery}
       />
-      
-      {/* Search Tabs */}
+
       <View style={styles.searchTabContainer}>
         {['PEOPLE', 'EVENTS', 'POSTS'].map((tab) => (
           <Pressable
@@ -114,20 +217,24 @@ export default function SearchScreen() {
       </View>
 
       {activeSearchTab === 'POSTS' ? (
-        <FlatList
-          contentContainerStyle={styles.listContent}
-          data={visiblePosts}
-          keyExtractor={(post) => post.id}
-          ListEmptyComponent={
-            normalizedSearch ? (
-              <Text style={styles.emptyText}>No posts found</Text>
-            ) : (
-              <Text style={styles.emptyText}>Type to search posts</Text>
-            )
-          }
-          renderItem={({ item }) => <PostCard post={item} />}
-          showsVerticalScrollIndicator={false}
-        />
+        isSearchingContent ? (
+          <ActivityIndicator color={colors.primary} style={styles.footerLoader} />
+        ) : (
+          <FlatList
+            contentContainerStyle={styles.listContent}
+            data={visiblePosts}
+            keyExtractor={(post) => post.id}
+            ListEmptyComponent={
+              normalizedSearch ? (
+                <Text style={styles.emptyText}>No posts found</Text>
+              ) : (
+                <Text style={styles.emptyText}>Type to search posts</Text>
+              )
+            }
+            renderItem={({ item }) => <PostCard post={item} />}
+            showsVerticalScrollIndicator={false}
+          />
+        )
       ) : activeSearchTab === 'PEOPLE' ? (
         isSearchingUsers ? (
           <ActivityIndicator color={colors.primary} style={styles.footerLoader} />
@@ -143,28 +250,11 @@ export default function SearchScreen() {
                 <Text style={styles.emptyText}>Type to search users</Text>
               )
             }
-            renderItem={({ item }) => (
-              <View style={styles.personRow}>
-                <View style={styles.avatar}>
-                  {item.avatarUrl ? (
-                    <Image source={{ uri: item.avatarUrl }} style={styles.avatarImage} />
-                  ) : (
-                    <Ionicons color="#A9B4C5" name="person-outline" size={25} />
-                  )}
-                </View>
-                <View style={styles.personInfo}>
-                  <Text numberOfLines={1} style={styles.personName}>
-                    {item.displayName || item.fullName || item.username || 'User'}
-                  </Text>
-                  <Text numberOfLines={1} style={styles.personUsername}>
-                    @{item.username}
-                    {item.city ? ` · ${item.city}` : ''}
-                  </Text>
-                </View>
-              </View>
-            )}
+            renderItem={renderPerson}
           />
         )
+      ) : isSearchingContent ? (
+        <ActivityIndicator color={colors.primary} style={styles.footerLoader} />
       ) : (
         <FlatList
           contentContainerStyle={styles.listContent}
@@ -178,9 +268,10 @@ export default function SearchScreen() {
             )
           }
           renderItem={({ item }) => (
-            <Pressable 
-              style={styles.eventRow}
+            <Pressable
+              accessibilityRole="button"
               onPress={() => navigation.navigate('EventDetail', { eventId: item.id })}
+              style={styles.eventRow}
             >
               <Text style={styles.personName}>{item.title}</Text>
               <Text style={styles.personUsername}>{item.location?.address || 'TBD'}</Text>
@@ -281,6 +372,23 @@ const styles = StyleSheet.create({
     fontFamily: 'Poppins_400Regular',
     fontSize: 12,
     marginTop: 2,
+  },
+  followButton: {
+    backgroundColor: colors.primary,
+    borderRadius: radius.full,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+  },
+  followingButton: {
+    backgroundColor: '#EEF4FF',
+  },
+  followText: {
+    color: '#FFFFFF',
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 11,
+  },
+  followingText: {
+    color: colors.primary,
   },
   eventRow: {
     backgroundColor: colors.surface,

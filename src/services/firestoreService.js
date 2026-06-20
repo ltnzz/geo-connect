@@ -187,28 +187,75 @@ export const firestoreService = {
     return postRef.id;
   },
 
-  async addComment(postId, { userId, content, parentId = null }) {
-    const commentRef = doc(
-      collection(db, COLLECTIONS.posts, postId, SUBCOLLECTIONS.comments),
-    );
-    const postRef = doc(db, COLLECTIONS.posts, postId);
+async addComment(postId, { userId, content, parentId = null, authorName = '', authorAvatar = '', replyToAuthorName = '' }) {
+  const commentRef = doc(
+    collection(db, COLLECTIONS.posts, postId, SUBCOLLECTIONS.comments),
+  );
+  const postRef = doc(db, COLLECTIONS.posts, postId);
 
-    await runTransaction(db, async (transaction) => {
-      transaction.set(commentRef, {
-        userId,
-        content: content.trim(),
-        parentId,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      });
-      transaction.update(postRef, {
-        commentsCount: increment(1),
-        updatedAt: serverTimestamp(),
-      });
+  await runTransaction(db, async (transaction) => {
+    transaction.set(commentRef, {
+      userId,
+      content: content.trim(),
+      parentId,
+      authorName,
+      authorAvatar,
+      replyToAuthorName,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
     });
+    transaction.update(postRef, {
+      commentsCount: increment(1),
+      updatedAt: serverTimestamp(),
+    });
+  });
 
-    return commentRef.id;
-  },
+  return commentRef.id;
+},
+
+async getComments(postId) {
+  assertFirebaseConfigured();
+  const snapshot = await getDocs(
+    query(
+      collection(db, COLLECTIONS.posts, postId, SUBCOLLECTIONS.comments),
+      orderBy('createdAt', 'asc'),
+    ),
+  );
+  return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+},
+
+async deleteComment(postId, commentId) {
+  const commentRef = doc(
+    db,
+    COLLECTIONS.posts,
+    postId,
+    SUBCOLLECTIONS.comments,
+    commentId,
+  );
+  const postRef = doc(db, COLLECTIONS.posts, postId);
+
+  await runTransaction(db, async (transaction) => {
+    transaction.delete(commentRef);
+    transaction.update(postRef, {
+      commentsCount: increment(-1),
+      updatedAt: serverTimestamp(),
+    });
+  });
+},
+
+async isFollowing(followerId, followingId) {
+  assertFirebaseConfigured();
+  const snapshot = await getDoc(
+    doc(db, COLLECTIONS.follows, createFollowId(followerId, followingId)),
+  );
+  return snapshot.exists();
+},
+
+async getPost(postId) {
+  assertFirebaseConfigured();
+  const snapshot = await getDoc(doc(db, COLLECTIONS.posts, postId));
+  return snapshot.exists() ? { id: snapshot.id, ...snapshot.data() } : null;
+},
 
   async setPostLiked(postId, userId, shouldLike) {
     const postRef = doc(db, COLLECTIONS.posts, postId);

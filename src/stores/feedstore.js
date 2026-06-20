@@ -4,6 +4,12 @@ import { firestoreService } from '../services/firestoreService';
 
 const PAGE_SIZE = 10;
 
+const createLoopedPosts = (posts, loopPage) =>
+  posts.slice(0, PAGE_SIZE).map((post, index) => ({
+    ...post,
+    _listKey: `${post.id}-loop-${loopPage}-${index}`,
+  }));
+
 const enrichPostsWithUserData = async (posts) => {
   return await Promise.all(
     posts.map(async (post) => {
@@ -11,9 +17,9 @@ const enrichPostsWithUserData = async (posts) => {
         if (!post.authorId) {
           return { ...post, authorName: 'Anonymous', authorAvatar: null };
         }
-        
+
         const userData = await firestoreService.getUser(post.authorId);
-        
+
         return {
           ...post,
           authorName: userData?.username || 'Anonymous',
@@ -33,6 +39,7 @@ export const useFeedStore = create((set, get) => ({
   isRefreshing: false,
   isLoadingMore: false,
   hasMore: true,
+  loopPage: 0,
   error: null,
 
   commentsByPost: {},
@@ -54,6 +61,7 @@ export const useFeedStore = create((set, get) => ({
         posts: enrichedPosts.map((p) => ({ ...p, isLiked: likedIds.has(p.id) })),
         lastDoc,
         hasMore: posts.length === PAGE_SIZE,
+        loopPage: 0,
         isLoading: false,
       });
     } catch (err) {
@@ -76,6 +84,7 @@ export const useFeedStore = create((set, get) => ({
         posts: enrichedPosts.map((p) => ({ ...p, isLiked: likedIds.has(p.id) })),
         lastDoc,
         hasMore: posts.length === PAGE_SIZE,
+        loopPage: 0,
         isRefreshing: false,
       });
     } catch (err) {
@@ -84,16 +93,37 @@ export const useFeedStore = create((set, get) => ({
   },
 
   fetchMorePosts: async (currentUserId) => {
-    const { lastDoc, hasMore, isLoadingMore } = get();
-    if (!hasMore || isLoadingMore || !lastDoc) return;
+    const { lastDoc, hasMore, isLoadingMore, posts, loopPage } = get();
+    if (isLoadingMore || posts.length === 0) return;
 
     set({ isLoadingMore: true });
+
+    if (!hasMore || !lastDoc) {
+      const nextLoopPage = loopPage + 1;
+      set((s) => ({
+        posts: [...s.posts, ...createLoopedPosts(s.posts, nextLoopPage)],
+        loopPage: nextLoopPage,
+        isLoadingMore: false,
+      }));
+      return;
+    }
+
     try {
       const { posts: newPosts, lastDoc: nextLastDoc } = await firestoreService.getFeedPosts({
         pageSize: PAGE_SIZE,
         cursor: lastDoc,
       });
 
+      if (newPosts.length === 0) {
+        const nextLoopPage = loopPage + 1;
+        set((s) => ({
+          posts: [...s.posts, ...createLoopedPosts(s.posts, nextLoopPage)],
+          hasMore: false,
+          loopPage: nextLoopPage,
+          isLoadingMore: false,
+        }));
+        return;
+      }
 
       const enrichedNewPosts = await enrichPostsWithUserData(newPosts);
 
@@ -114,6 +144,21 @@ export const useFeedStore = create((set, get) => ({
 
   prependPost: (post) =>
     set((s) => ({ posts: [{ ...post, isLiked: false }, ...s.posts] })),
+
+  fetchPost: async (postId, currentUserId) => {
+    const cached = get().posts.find((p) => p.id === postId);
+    if (cached) return cached;
+
+    const raw = await firestoreService.getPost(postId);
+    if (!raw) return null;
+
+    const [enriched] = await enrichPostsWithUserData([raw]);
+    const likedIds = currentUserId
+      ? await firestoreService.getLikedPostIds([enriched.id], currentUserId)
+      : new Set();
+
+    return { ...enriched, isLiked: likedIds.has(enriched.id) };
+  },
 
   toggleLike: async (postId, userId) => {
     const target = get().posts.find((p) => p.id === postId);
@@ -162,56 +207,66 @@ export const useFeedStore = create((set, get) => ({
     }
   },
 
-  addComment: async (postId, { userId, content, author }) => {
-    if (!content.trim()) return;
+  addComment: async (postId, { userId, content, authorName = '', authorAvatar = '', parentId = null, replyToAuthorName = '' }) => {
+  if (!content.trim()) return;
 
-    const tempId = `temp_${Date.now()}`;
-    const optimistic = {
-      id: tempId,
-      postId,
+  const tempId = `temp_${Date.now()}`;
+  const optimistic = {
+    id: tempId,
+    postId,
+    userId,
+    content: content.trim(),
+    authorName,
+    authorAvatar,
+    parentId,
+    replyToAuthorName,
+    createdAt: new Date(),
+    _pending: true,
+  };
+
+  set((s) => ({
+    commentsByPost: {
+      ...s.commentsByPost,
+      [postId]: [...(s.commentsByPost[postId] || []), optimistic],
+    },
+    posts: s.posts.map((p) =>
+      p.id === postId ? { ...p, commentsCount: (p.commentsCount || 0) + 1 } : p,
+    ),
+  }));
+
+  try {
+    const realId = await firestoreService.addComment(postId, {
       userId,
-      content: content.trim(),
-      author,
-      createdAt: new Date(),
-      _pending: true,
-    };
+      content,
+      authorName,
+      authorAvatar,
+      parentId,
+      replyToAuthorName,
+    });
 
     set((s) => ({
       commentsByPost: {
         ...s.commentsByPost,
-        [postId]: [...(s.commentsByPost[postId] || []), optimistic],
+        [postId]: (s.commentsByPost[postId] || []).map((c) =>
+          c.id === tempId ? { ...c, id: realId, _pending: false } : c,
+        ),
+      },
+    }));
+  } catch (err) {
+    set((s) => ({
+      commentsByPost: {
+        ...s.commentsByPost,
+        [postId]: (s.commentsByPost[postId] || []).filter((c) => c.id !== tempId),
       },
       posts: s.posts.map((p) =>
-        p.id === postId ? { ...p, commentsCount: (p.commentsCount || 0) + 1 } : p,
+        p.id === postId
+          ? { ...p, commentsCount: Math.max(0, (p.commentsCount || 0) - 1) }
+          : p,
       ),
+      error: err.message || 'Failed to post comment.',
     }));
-
-    try {
-      const realId = await firestoreService.addComment(postId, { userId, content, author });
-
-      set((s) => ({
-        commentsByPost: {
-          ...s.commentsByPost,
-          [postId]: (s.commentsByPost[postId] || []).map((c) =>
-            c.id === tempId ? { ...c, id: realId, _pending: false } : c,
-          ),
-        },
-      }));
-    } catch (err) {
-      set((s) => ({
-        commentsByPost: {
-          ...s.commentsByPost,
-          [postId]: (s.commentsByPost[postId] || []).filter((c) => c.id !== tempId),
-        },
-        posts: s.posts.map((p) =>
-          p.id === postId
-            ? { ...p, commentsCount: Math.max(0, (p.commentsCount || 0) - 1) }
-            : p,
-        ),
-        error: err.message || 'Failed to post comment.',
-      }));
-    }
-  },
+  }
+},
 
   deleteComment: async (postId, commentId) => {
     const prevComments = get().commentsByPost[postId] || [];

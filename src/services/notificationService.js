@@ -100,4 +100,19 @@ export const notificationService = {
     const tokenRef = await getTokenReference(userId, pushToken.data);
     await deleteDoc(tokenRef).catch(() => {});
   },
+
+  async showLocalNotification({ title, body }) {
+    if (Platform.OS === 'web') {
+      return;
+    }
+
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        body,
+        sound: true,
+        title,
+      },
+      trigger: null,
+    }).catch(() => {});
+  },
 };

@@ -45,6 +45,7 @@ const toPublicUser = (firebaseUser, profile = {}) => ({
   avatarUrl: profile.avatarUrl || firebaseUser.photoURL || '',
   bio: profile.bio || '',
   city: profile.city || '',
+  profileLocation: profile.profileLocation || null,
   isPublic: profile.isPublic ?? true,
   invisibleMode: profile.invisibleMode ?? false,
   locationSharing: profile.locationSharing || LOCATION_SHARING.hidden,

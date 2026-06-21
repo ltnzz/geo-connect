@@ -23,6 +23,7 @@ export const SUBCOLLECTIONS = Object.freeze({
   participants: 'participants',
   checkins: 'checkins',
   stories: 'stories',
+  declines: 'declines',
 });
 
 export const NOTIFICATION_TYPES = Object.freeze({

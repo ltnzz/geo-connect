@@ -6,6 +6,7 @@ import { useEffect } from 'react';
 
 import ScreenHeader from '../../components/common/ScreenHeader';
 import EventDetailFooter from '../../components/event/EventDetailFooter';
+import EventArtwork from '../../components/event/EventArtwork';
 import { useEventStore } from '../../stores/eventStore';
 import { useAuthStore } from '../../stores/authStore';
 import { useLocation } from '../../hooks/useLocation';
@@ -26,7 +27,7 @@ export default function EventDetailScreen({ route }) {
   const removeEvent = useEventStore((s) => s.removeEvent);
   const event = events.find((item) => item.id === route.params?.eventId);
 
-  const { response, toggleGoing, toggleInterested } = useEventResponse(event?.id);
+  const { response, toggleGoing, toggleInterested, toggleNotGoing } = useEventResponse(event?.id);
   const hostName = useHostName(event?.creatorId);
 
   useEffect(() => {
@@ -94,18 +95,7 @@ export default function EventDetailScreen({ route }) {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        <View style={[styles.hero, { backgroundColor: '#E9F0FF' }]}>
-          {event.bannerUrl ? (
-            <Image source={{ uri: event.bannerUrl }} style={styles.heroImage} />
-          ) : (
-            <View style={styles.heroIcon}>
-              <Ionicons color={colors.primary} name="musical-notes" size={38} />
-            </View>
-          )}
-          <View style={styles.categoryBadge}>
-            <Text style={styles.categoryText}>{category}</Text>
-          </View>
-        </View>
+        <EventArtwork event={event} />
 
         <Text style={styles.title}>{title}</Text>
         <View style={styles.hostRow}>
@@ -123,6 +113,10 @@ export default function EventDetailScreen({ route }) {
           <View style={styles.chip}>
             <Ionicons color={colors.primary} name="location" size={13} />
             <Text style={styles.chipText}>{distanceStr}</Text>
+          </View>
+          <View style={styles.chip}>
+            <Ionicons color={colors.secondary} name="people" size={13} />
+            <Text style={styles.chipText}>{attendees} attendees</Text>
           </View>
         </View>
 
@@ -144,6 +138,7 @@ export default function EventDetailScreen({ route }) {
           onEdit={() => navigation.navigate('EditEvent', { eventId: event.id })}
           onToggleGoing={toggleGoing}
           onToggleInterested={toggleInterested}
+          onToggleNotGoing={toggleNotGoing}
         />
       </View>
     </View>
@@ -158,41 +153,7 @@ const styles = StyleSheet.create({
   content: {
     padding: spacing.md,
     paddingBottom: spacing.xl,
-  },
-  hero: {
-    alignItems: 'center',
-    borderRadius: radius.lg,
-    height: 245,
-    justifyContent: 'center',
-    overflow: 'hidden',
-    position: 'relative',
-  },
-  heroImage: {
-    ...StyleSheet.absoluteFillObject,
-    height: '100%',
-    width: '100%',
-  },
-  heroIcon: {
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.72)',
-    borderRadius: radius.full,
-    height: 70,
-    justifyContent: 'center',
-    width: 70,
-  },
-  categoryBadge: {
-    backgroundColor: 'rgba(15,23,42,0.7)',
-    borderRadius: radius.full,
-    bottom: spacing.md,
-    paddingHorizontal: 11,
-    paddingVertical: 5,
-    position: 'absolute',
-    right: spacing.md,
-  },
-  categoryText: {
-    color: '#FFFFFF',
-    fontFamily: 'Inter_600SemiBold',
-    fontSize: 10,
+    gap: spacing.md,
   },
   title: {
     color: colors.text,

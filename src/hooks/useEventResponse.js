@@ -14,6 +14,7 @@ export function useEventResponse(eventId) {
   
   const [isGoing, setIsGoing] = useState(false);
   const [isInterested, setIsInterested] = useState(false);
+  const [isNotGoing, setIsNotGoing] = useState(false);
 
   useEffect(() => {
     if (!user || !eventId) {
@@ -24,6 +25,7 @@ export function useEventResponse(eventId) {
 
     const participantRef = doc(db, COLLECTIONS.events, eventId, SUBCOLLECTIONS.participants, user.uid);
     const registrationRef = doc(db, COLLECTIONS.events, eventId, SUBCOLLECTIONS.registrations, user.uid);
+    const declineRef = doc(db, COLLECTIONS.events, eventId, SUBCOLLECTIONS.declines, user.uid);
 
     const unsubParticipants = onSnapshot(participantRef, (docSnap) => {
       setIsGoing(docSnap.exists());
@@ -33,9 +35,14 @@ export function useEventResponse(eventId) {
       setIsInterested(docSnap.exists());
     });
 
+    const unsubDeclines = onSnapshot(declineRef, (docSnap) => {
+      setIsNotGoing(docSnap.exists());
+    });
+
     return () => {
       unsubParticipants();
       unsubRegistrations();
+      unsubDeclines();
     };
   }, [eventId, user]);
 
@@ -44,13 +51,16 @@ export function useEventResponse(eventId) {
     const newGoingState = !isGoing;
     
     try {
-      // Mutually exclusive: if turning ON going, turn OFF interested
       if (newGoingState && isInterested) {
         await firestoreService.setEventInterest(eventId, user.uid, false);
         const event = events.find((e) => e.id === eventId);
         if (event) {
           updateEventStore(eventId, { registrationCount: Math.max(0, (event.registrationCount || 0) - 1) });
         }
+      }
+      
+      if (newGoingState && isNotGoing) {
+        await firestoreService.setEventDecline(eventId, user.uid, false);
       }
       
       await firestoreService.setEventParticipation(eventId, user.uid, newGoingState);
@@ -71,13 +81,16 @@ export function useEventResponse(eventId) {
     const newInterestState = !isInterested;
 
     try {
-      // Mutually exclusive: if turning ON interested, turn OFF going
       if (newInterestState && isGoing) {
         await firestoreService.setEventParticipation(eventId, user.uid, false);
         const event = events.find((e) => e.id === eventId);
         if (event) {
           updateEventStore(eventId, { participantCount: Math.max(0, (event.participantCount || 0) - 1) });
         }
+      }
+
+      if (newInterestState && isNotGoing) {
+        await firestoreService.setEventDecline(eventId, user.uid, false);
       }
 
       await firestoreService.setEventInterest(eventId, user.uid, newInterestState);
@@ -93,7 +106,34 @@ export function useEventResponse(eventId) {
     }
   };
 
-  const response = isGoing ? 'going' : isInterested ? 'interested' : null;
+  const toggleNotGoing = async () => {
+    if (!user || !eventId) return;
+    const newNotGoingState = !isNotGoing;
 
-  return { response, toggleGoing, toggleInterested };
+    try {
+      if (newNotGoingState && isGoing) {
+        await firestoreService.setEventParticipation(eventId, user.uid, false);
+        const event = events.find((e) => e.id === eventId);
+        if (event) {
+          updateEventStore(eventId, { participantCount: Math.max(0, (event.participantCount || 0) - 1) });
+        }
+      }
+
+      if (newNotGoingState && isInterested) {
+        await firestoreService.setEventInterest(eventId, user.uid, false);
+        const event = events.find((e) => e.id === eventId);
+        if (event) {
+          updateEventStore(eventId, { registrationCount: Math.max(0, (event.registrationCount || 0) - 1) });
+        }
+      }
+
+      await firestoreService.setEventDecline(eventId, user.uid, newNotGoingState);
+    } catch (error) {
+      console.error('Failed to toggle not going state:', error);
+    }
+  };
+
+  const response = isNotGoing ? 'not_going' : isGoing ? 'going' : isInterested ? 'interested' : null;
+
+  return { response, toggleGoing, toggleInterested, toggleNotGoing };
 }

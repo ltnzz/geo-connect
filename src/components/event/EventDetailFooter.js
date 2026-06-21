@@ -7,6 +7,7 @@ export default function EventDetailFooter({
   response,
   onToggleGoing,
   onToggleInterested,
+  onToggleNotGoing,
   onDelete,
   onEdit,
 }) {
@@ -35,6 +36,28 @@ export default function EventDetailFooter({
 
   return (
     <>
+      <Pressable
+        accessibilityRole="button"
+        onPress={onToggleNotGoing}
+        style={[
+          styles.responseButton,
+          response === 'not_going' && styles.notGoingSelected,
+        ]}
+      >
+        <Ionicons
+          color={response === 'not_going' ? '#E11D48' : colors.neutral}
+          name={response === 'not_going' ? 'close-circle' : 'close-circle-outline'}
+          size={18}
+        />
+        <Text
+          style={[
+            styles.buttonText,
+            response === 'not_going' && styles.notGoingTextSelected,
+          ]}
+        >
+          Can't Go
+        </Text>
+      </Pressable>
       <Pressable
         accessibilityRole="button"
         onPress={onToggleInterested}
@@ -118,7 +141,14 @@ const styles = StyleSheet.create({
     borderColor: colors.primary,
   },
   goingButton: {
-    flex: 2,
+    // previously flex: 2, now just flex: 1
+  },
+  notGoingSelected: {
+    backgroundColor: '#FFF1F2',
+    borderColor: '#E11D48',
+  },
+  notGoingTextSelected: {
+    color: '#E11D48',
   },
   goingText: {
     color: colors.primary,

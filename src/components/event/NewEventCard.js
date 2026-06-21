@@ -1,12 +1,12 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import EventArtwork from './EventArtwork';
+import { formatEventSchedule } from '../../utils/dateUtils';
 import { colors, radius, spacing } from '../../utils/theme';
 
 export default function NewEventCard({ event, onPress, fullWidth = false }) {
-  const startTime = event.startTime?.toDate ? event.startTime.toDate() : new Date(event.startTime);
-  const scheduleString = startTime.toLocaleDateString([], { month: 'short', day: 'numeric' });
-  const address = event.location?.city || 'Nearby';
+  const scheduleString = formatEventSchedule(event.startTime, event.endTime);
+  const address = event.location?.city || event.location?.address || 'TBD';
 
   return (
     <Pressable
@@ -43,42 +43,6 @@ const styles = StyleSheet.create({
   },
   trendingArtworkWrap: {
     position: 'relative',
-  },
-  artwork: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
-  },
-  compactArtwork: {
-    height: 120,
-  },
-  artworkImage: {
-    ...StyleSheet.absoluteFillObject,
-    borderRadius: radius.md,
-    height: '100%',
-    width: '100%',
-  },
-  artworkIcon: {
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.76)',
-    borderRadius: radius.full,
-    height: 48,
-    justifyContent: 'center',
-    width: 48,
-  },
-  artworkCategory: {
-    backgroundColor: 'rgba(15, 23, 42, 0.68)',
-    borderRadius: radius.full,
-    color: '#FFFFFF',
-    fontFamily: 'Inter_600SemiBold',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    position: 'absolute',
-  },
-  compactCategory: {
-    bottom: spacing.sm,
-    fontSize: 9,
-    right: spacing.sm,
   },
   trendingDistanceBadge: {
     backgroundColor: 'rgba(255, 255, 255, 0.9)',

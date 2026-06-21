@@ -155,6 +155,11 @@ service cloud.firestore {
         allow create, update, delete: if isOwner(userId);
       }
 
+      match /declines/{userId} {
+        allow read: if isSignedIn();
+        allow create, update, delete: if isOwner(userId);
+      }
+
       match /stories/{storyId} {
         allow read: if isSignedIn();
         allow create: if isSignedIn()

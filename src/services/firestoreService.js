@@ -684,6 +684,24 @@ export const firestoreService = {
     });
   },
 
+  async setEventDecline(eventId, userId, shouldDecline) {
+    const declineRef = doc(
+      db,
+      COLLECTIONS.events,
+      eventId,
+      SUBCOLLECTIONS.declines,
+      userId,
+    );
+    if (shouldDecline) {
+      await setDoc(declineRef, {
+        userId,
+        declinedAt: serverTimestamp(),
+      });
+    } else {
+      await deleteDoc(declineRef);
+    }
+  },
+
   async checkInToEvent(eventId, userId) {
     const checkinRef = doc(
       db,

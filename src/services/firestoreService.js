@@ -577,6 +577,7 @@ export const firestoreService = {
       description: data.description.trim(),
       bannerUrl: data.bannerUrl || '',
       categoryId: data.categoryId || null,
+      category: data.category || null,
       placeId: data.placeId || null,
       location: createLocation(data.location),
       radiusMeters: data.radiusMeters,
@@ -603,6 +604,7 @@ export const firestoreService = {
     if (data.description !== undefined) updates.description = data.description.trim();
     if (data.bannerUrl !== undefined) updates.bannerUrl = data.bannerUrl;
     if (data.categoryId !== undefined) updates.categoryId = data.categoryId;
+    if (data.category !== undefined) updates.category = data.category;
     if (data.placeId !== undefined) updates.placeId = data.placeId;
     if (data.location !== undefined) updates.location = createLocation(data.location);
     if (data.radiusMeters !== undefined) updates.radiusMeters = data.radiusMeters;

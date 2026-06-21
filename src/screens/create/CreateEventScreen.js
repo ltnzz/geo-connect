@@ -33,6 +33,8 @@ export default function CreateEventScreen() {
         creatorId: user.uid,
         title: formData.title,
         description: formData.description,
+        categoryId: formData.category,
+        category: formData.category,
         bannerUrl,
         location: formData.location,
         radiusMeters: 5000, // Default 5km radius for visibility
@@ -46,6 +48,7 @@ export default function CreateEventScreen() {
         creatorId: user.uid,
         title: formData.title.trim(),
         description: formData.description.trim(),
+        category: formData.category,
         bannerUrl,
         location: formData.location,
         startTime: startDateTime,

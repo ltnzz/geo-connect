@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { ActivityIndicator, Image, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useState, useEffect } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -7,6 +7,10 @@ import DateTimePickerBox from './DateTimePickerBox';
 import { useLocation } from '../../hooks/useLocation';
 import { colors, radius, spacing } from '../../utils/theme';
 import { imagePickerService } from '../../services/imagePickerService';
+
+const EVENT_CATEGORIES = [
+  'Music', 'Sports', 'Food & Drink', 'Arts', 'Networking', 'Technology', 'Community', 'Other'
+];
 
 export default function EventForm({
   initialValues,
@@ -19,6 +23,7 @@ export default function EventForm({
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [asset, setAsset] = useState(null);
+  const [category, setCategory] = useState(null);
 
   const [date, setDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -48,6 +53,7 @@ export default function EventForm({
       if (initialValues.title) setTitle(initialValues.title);
       if (initialValues.description) setDescription(initialValues.description);
       if (initialValues.bannerUrl) setAsset({ uri: initialValues.bannerUrl });
+      if (initialValues.category) setCategory(initialValues.category);
       
       if (initialValues.startTime) {
         setDate(initialValues.startTime);
@@ -105,6 +111,7 @@ export default function EventForm({
       title,
       description,
       asset,
+      category,
       location: currentLocation,
       date,
       time,
@@ -113,7 +120,7 @@ export default function EventForm({
     });
   };
 
-  const canSubmit = title.trim().length > 0 && description.trim().length > 0 && !!currentLocation && !!asset && !isPosting;
+  const canSubmit = title.trim().length > 0 && description.trim().length > 0 && !!currentLocation && !!asset && !!category && !isPosting;
 
   return (
     <View style={styles.container}>
@@ -124,6 +131,23 @@ export default function EventForm({
         value={title}
         onChangeText={setTitle}
       />
+
+      <Text style={styles.inputLabel}>Category</Text>
+      <View style={styles.categoryScroll}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryContainer}>
+          {EVENT_CATEGORIES.map((cat) => (
+            <Pressable
+              key={cat}
+              onPress={() => setCategory(cat)}
+              style={[styles.categoryChip, category === cat && styles.categoryChipSelected]}
+            >
+              <Text style={[styles.categoryChipText, category === cat && styles.categoryChipTextSelected]}>
+                {cat}
+              </Text>
+            </Pressable>
+          ))}
+        </ScrollView>
+      </View>
 
       <Text style={styles.inputLabel}>Event Dates</Text>
       <DateTimePickerBox
@@ -229,6 +253,35 @@ const styles = StyleSheet.create({
     fontFamily: 'Poppins_600SemiBold',
     fontSize: 14,
     marginBottom: spacing.sm,
+  },
+  categoryScroll: {
+    marginBottom: spacing.xl,
+    marginLeft: -spacing.md,
+    marginRight: -spacing.md,
+  },
+  categoryContainer: {
+    paddingHorizontal: spacing.md,
+    gap: spacing.sm,
+  },
+  categoryChip: {
+    backgroundColor: '#F1F5F9',
+    borderColor: '#E2E8F0',
+    borderRadius: radius.full,
+    borderWidth: 1,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 8,
+  },
+  categoryChipSelected: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  categoryChipText: {
+    color: '#64748B',
+    fontFamily: 'Poppins_500Medium',
+    fontSize: 13,
+  },
+  categoryChipTextSelected: {
+    color: '#FFFFFF',
   },
   eventLocationButton: {
     alignItems: 'center',

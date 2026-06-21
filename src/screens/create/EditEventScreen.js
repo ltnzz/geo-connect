@@ -32,6 +32,7 @@ export default function EditEventScreen() {
       setInitialValues({
         title: event.title || '',
         description: event.description || '',
+        category: event.category || null,
         bannerUrl: event.bannerUrl || null,
         location: event.location,
         startTime: startD,
@@ -67,6 +68,8 @@ export default function EditEventScreen() {
       const updateData = {
         title: formData.title,
         description: formData.description,
+        categoryId: formData.category,
+        category: formData.category,
         bannerUrl,
         location: formData.location,
         startTime: startDateTime,

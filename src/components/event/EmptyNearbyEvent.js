@@ -3,13 +3,17 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { colors, spacing } from '../../utils/theme';
 
-export default function EmptyNearbyEvent() {
+export default function EmptyNearbyEvent({ radius: filterRadius }) {
+  const radiusText = filterRadius === 'all' 
+    ? 'anywhere near you' 
+    : `within ${filterRadius} km of your location`;
+
   return (
     <View style={styles.emptyState}>
       <Ionicons color="#A5AFBD" name="location-outline" size={34} />
       <Text style={styles.emptyTitle}>No nearby events</Text>
       <Text style={styles.emptyText}>
-        There are no events within a 1 km radius of your location.
+        There are no events {radiusText}.
       </Text>
     </View>
   );

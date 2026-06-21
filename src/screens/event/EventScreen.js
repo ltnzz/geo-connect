@@ -166,7 +166,7 @@ export default function EventScreen() {
             onOpen={() => navigation.navigate('EventDetail', { eventId: featuredEvent.id })}
           />
         ) : (
-          <EmptyNearbyEvent />
+          <EmptyNearbyEvent radius={radiusFilter} />
         )}
 
         <EventSectionHeader

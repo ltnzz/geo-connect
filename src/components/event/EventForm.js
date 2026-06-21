@@ -15,6 +15,7 @@ const EVENT_CATEGORIES = [
 export default function EventForm({
   initialValues,
   onSubmit,
+  onChange,
   isPosting,
   submitButtonText,
 }) {
@@ -75,6 +76,23 @@ export default function EventForm({
       setCurrentLocation(location);
     }
   }, [location]);
+
+  // Expose form state to parent
+  useEffect(() => {
+    if (onChange) {
+      onChange({
+        title,
+        description,
+        asset,
+        category,
+        date,
+        time,
+        endDate,
+        endTime,
+        location: currentLocation,
+      });
+    }
+  }, [title, description, asset, category, date, time, endDate, endTime, currentLocation]);
 
   const handlePickImage = async () => {
     setError(null);

@@ -10,7 +10,7 @@ import { useEventStore } from '../../stores/eventStore';
 import { combineDateTime } from '../../utils/dateUtils';
 import { colors, spacing } from '../../utils/theme';
 
-export default function CreateEventScreen() {
+export default function CreateEventScreen({ initialDraft, onEventDataChange, onSuccess }) {
   const navigation = useNavigation();
   const user = useAuthStore((s) => s.user);
   const prependEvent = useEventStore((s) => s.prependEvent);
@@ -67,6 +67,7 @@ export default function CreateEventScreen() {
         createdAt: new Date(),
       });
 
+      if (onSuccess) onSuccess();
       navigation.navigate('Events');
     } catch (err) {
       setError(err.message || 'Failed to create event. Try again.');
@@ -79,7 +80,9 @@ export default function CreateEventScreen() {
     <View style={styles.container}>
       <EventForm
         key={formKey}
-        submitButtonText="CREATE EVENT"
+        initialValues={initialDraft?.eventData}
+        onChange={onEventDataChange}
+        submitButtonText={initialDraft ? "UPDATE EVENT" : "CREATE EVENT"}
         onSubmit={handleSubmit}
         isPosting={isPosting}
       />

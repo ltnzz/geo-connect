@@ -66,37 +66,47 @@ export default function DraftsScreen() {
     return d.toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
   };
 
-  const renderDraft = ({ item }) => (
-    <Pressable
-      style={({ pressed }) => [styles.draftCard, pressed && styles.pressed]}
-      onPress={() => handleLoadDraft(item)}
-    >
-      <View style={styles.draftContent}>
-        {item.assetUri ? (
-          <Image source={{ uri: item.assetUri }} style={styles.draftThumbnail} />
-        ) : (
-          <View style={[styles.draftThumbnail, styles.draftThumbnailPlaceholder]}>
-            <Ionicons name="document-text-outline" size={20} color={colors.neutral} />
-          </View>
-        )}
-        <View style={styles.draftTextContainer}>
-          <Text numberOfLines={2} style={styles.draftCaption}>
-            {item.content || 'No caption'}
-          </Text>
-          <Text style={styles.draftMeta}>
-            {formatDate(item.updatedAt)} · Radius {item.radius} km
-          </Text>
-        </View>
-      </View>
+  const renderDraft = ({ item }) => {
+    const isEvent = item.type === 'EVENT';
+    const thumbnailUrl = isEvent ? (item.eventData?.asset?.uri || item.eventData?.bannerUrl) : item.assetUri;
+    const titleText = isEvent ? (item.eventData?.title || 'Untitled Event') : (item.content || 'No caption');
+    const metaText = isEvent 
+      ? `Event Draft · ${formatDate(item.updatedAt)}`
+      : `${formatDate(item.updatedAt)} · Radius ${item.radius} km`;
+    const placeholderIcon = isEvent ? 'calendar' : 'document-text-outline';
+
+    return (
       <Pressable
-        onPress={() => handleDeleteDraft(item.id)}
-        style={styles.deleteButton}
-        hitSlop={8}
+        style={({ pressed }) => [styles.draftCard, pressed && styles.pressed]}
+        onPress={() => handleLoadDraft(item)}
       >
-        <Ionicons name="trash-outline" size={18} color="#E11D48" />
+        <View style={styles.draftContent}>
+          {thumbnailUrl ? (
+            <Image source={{ uri: thumbnailUrl }} style={styles.draftThumbnail} />
+          ) : (
+            <View style={[styles.draftThumbnail, styles.draftThumbnailPlaceholder]}>
+              <Ionicons name={placeholderIcon} size={20} color={colors.neutral} />
+            </View>
+          )}
+          <View style={styles.draftTextContainer}>
+            <Text numberOfLines={2} style={styles.draftCaption}>
+              {titleText}
+            </Text>
+            <Text style={styles.draftMeta}>
+              {metaText}
+            </Text>
+          </View>
+        </View>
+        <Pressable
+          onPress={() => handleDeleteDraft(item.id)}
+          style={styles.deleteButton}
+          hitSlop={8}
+        >
+          <Ionicons name="trash-outline" size={18} color="#E11D48" />
+        </Pressable>
       </Pressable>
-    </Pressable>
-  );
+    );
+  };
 
   const renderEmpty = () => (
     <View style={styles.emptyContainer}>

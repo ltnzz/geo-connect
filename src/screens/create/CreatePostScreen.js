@@ -34,28 +34,28 @@ export default function CreatePostScreen() {
   const [isPosting, setIsPosting] = useState(false);
   const [error, setError] = useState(null);
   const loadedDraftId = useRef(null);
+  
+  const [initialEventDraft, setInitialEventDraft] = useState(null);
+  const [eventFormData, setEventFormData] = useState(null);
 
   // Load draft from params
   useEffect(() => {
     const draft = route.params?.draft;
     if (draft) {
-      setActiveTab('POST');
-      setContent(draft.content || '');
-      if (draft.assetUri) setAsset({ uri: draft.assetUri });
-      if (draft.radius) setPostRadius(draft.radius);
       loadedDraftId.current = draft.id;
+      if (draft.type === 'EVENT') {
+        setActiveTab('EVENT');
+        setInitialEventDraft(draft);
+      } else {
+        setActiveTab('POST');
+        setContent(draft.content || '');
+        if (draft.assetUri) setAsset({ uri: draft.assetUri });
+        if (draft.radius) setPostRadius(draft.radius);
+      }
       // Clear params so it doesn't reload on focus
       navigation.setParams({ draft: undefined });
     }
   }, [route.params?.draft]);
-
-  useFocusEffect(
-    useCallback(() => {
-      return () => {
-        // Don't reset if we're just navigating to Drafts
-      };
-    }, [])
-  );
 
   const handlePickImage = async () => {
     setError(null);
@@ -130,9 +130,13 @@ export default function CreatePostScreen() {
   const canSubmit = content.trim().length > 0 && !!asset && !!location && !isPosting;
 
   const hasContent = content.trim().length > 0 || !!asset;
+  const hasEventContent = eventFormData?.title?.trim().length > 0 || !!eventFormData?.asset || eventFormData?.description?.trim().length > 0;
 
   const handleClose = () => {
-    if (!hasContent || activeTab !== 'POST') {
+    const isPostActive = activeTab === 'POST';
+    const isEventActive = activeTab === 'EVENT';
+
+    if ((isPostActive && !hasContent) || (isEventActive && !hasEventContent)) {
       navigation.goBack();
       return;
     }
@@ -149,23 +153,36 @@ export default function CreatePostScreen() {
           setError(null);
           clearLocation();
           loadedDraftId.current = null;
+          setInitialEventDraft(null);
           navigation.goBack();
         },
       },
       {
         text: 'Save Draft',
         onPress: async () => {
-          await draftService.saveDraft({
-            content,
-            assetUri: asset?.uri || null,
-            radius: postRadius,
-          });
+          if (isPostActive) {
+            await draftService.saveDraft({
+              id: loadedDraftId.current,
+              type: 'POST',
+              content,
+              assetUri: asset?.uri || null,
+              radius: postRadius,
+            });
+          } else if (isEventActive) {
+            await draftService.saveDraft({
+              id: loadedDraftId.current,
+              type: 'EVENT',
+              eventData: eventFormData,
+            });
+          }
+
           setContent('');
           setAsset(null);
           setPostRadius(5);
           setError(null);
           clearLocation();
           loadedDraftId.current = null;
+          setInitialEventDraft(null);
           navigation.goBack();
         },
       },
@@ -282,7 +299,16 @@ export default function CreatePostScreen() {
         </View>
 
         <View style={{ display: activeTab === 'EVENT' ? 'flex' : 'none' }}>
-          <CreateEventScreen />
+          <CreateEventScreen 
+            initialDraft={initialEventDraft}
+            onEventDataChange={setEventFormData}
+            onSuccess={() => {
+              if (loadedDraftId.current) {
+                draftService.deleteDraft(loadedDraftId.current);
+                loadedDraftId.current = null;
+              }
+            }}
+          />
         </View>
 
       </ScrollView>

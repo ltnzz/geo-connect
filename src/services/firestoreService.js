@@ -883,7 +883,6 @@ export const firestoreService = {
     assertFirebaseConfigured();
     const constraints = [orderBy('startTime', 'asc'), limit(pageSize)];
     if (cursor) constraints.push(startAfter(cursor));
-    // Also we could filter by startTime >= now, but for simplicity we just fetch
     const snapshot = await getDocs(query(collection(db, COLLECTIONS.events), ...constraints));
     const events = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
     const lastDoc = snapshot.docs[snapshot.docs.length - 1] ?? null;

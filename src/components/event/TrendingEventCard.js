@@ -1,9 +1,12 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import EventArtwork from './EventArtwork';
+import { useLocation } from '../../hooks/useLocation';
+import { formatDistanceString } from '../../utils/locationUtils';
 import { colors, radius, spacing } from '../../utils/theme';
 
 export default function TrendingEventCard({ event, onPress }) {
+  const { location, isFetchingLocation } = useLocation();
   let scheduleString = '';
   if (event.schedule) {
     scheduleString = event.schedule;
@@ -23,7 +26,7 @@ export default function TrendingEventCard({ event, onPress }) {
       <View style={styles.trendingArtworkWrap}>
         <EventArtwork compact event={event} />
         <View style={styles.trendingDistanceBadge}>
-          <Text style={styles.trendingDistance}>Nearby</Text>
+          <Text style={styles.trendingDistance}>{formatDistanceString(location, event.location, isFetchingLocation)}</Text>
         </View>
       </View>
       <View style={styles.trendingContent}>

@@ -4,10 +4,13 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import EventArtwork from './EventArtwork';
 import { useEventResponse } from '../../hooks/useEventResponse';
+import { useLocation } from '../../hooks/useLocation';
+import { formatDistanceString } from '../../utils/locationUtils';
 import { colors, radius, spacing } from '../../utils/theme';
 
 export default function FeaturedEventCard({ event, onOpen }) {
   const { response, toggleGoing, toggleInterested } = useEventResponse(event?.id);
+  const { location, isFetchingLocation } = useLocation();
 
   let scheduleString = '';
   if (event.schedule) {
@@ -24,7 +27,7 @@ export default function FeaturedEventCard({ event, onOpen }) {
           <View style={styles.statusDot} />
           <Text style={styles.statusText}>{event.status || 'Upcoming'}</Text>
         </View>
-        <Text style={styles.distance}>Nearby</Text>
+        <Text style={styles.distance}>{formatDistanceString(location, event.location, isFetchingLocation)}</Text>
       </View>
 
       <Pressable accessibilityRole="button" onPress={onOpen}>

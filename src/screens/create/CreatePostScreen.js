@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
-import { useState, useCallback } from 'react';
-import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View, } from 'react-native';
+import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { ActivityIndicator, Alert, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View, } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useLocation } from '../../hooks/useLocation';
@@ -12,6 +12,7 @@ import { firestoreService } from '../../services/firestoreService';
 import { imagePickerService } from '../../services/imagePickerService';
 import { useAuthStore } from '../../stores/authStore';
 import { useFeedStore } from '../../stores/feedstore';
+import { draftService } from '../../services/draftService';
 import { colors, radius, spacing } from '../../utils/theme';
 
 const RADIUS_OPTIONS = [1, 5, 10, 25, 50];
@@ -19,6 +20,7 @@ const RADIUS_OPTIONS = [1, 5, 10, 25, 50];
 export default function CreatePostScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
+  const route = useRoute();
   const user = useAuthStore((s) => s.user);
   const prependPost = useFeedStore((s) => s.prependPost);
 
@@ -27,20 +29,30 @@ export default function CreatePostScreen() {
   const [asset, setAsset] = useState(null);
 
   const { location, isFetchingLocation, locationError, handleGetLocation, clearLocation } = useLocation();
-  const [postRadius, setPostRadius] = useState(5); // Default 5 km
+  const [postRadius, setPostRadius] = useState(5);
 
   const [isPosting, setIsPosting] = useState(false);
   const [error, setError] = useState(null);
+  const loadedDraftId = useRef(null);
+
+  // Load draft from params
+  useEffect(() => {
+    const draft = route.params?.draft;
+    if (draft) {
+      setActiveTab('POST');
+      setContent(draft.content || '');
+      if (draft.assetUri) setAsset({ uri: draft.assetUri });
+      if (draft.radius) setPostRadius(draft.radius);
+      loadedDraftId.current = draft.id;
+      // Clear params so it doesn't reload on focus
+      navigation.setParams({ draft: undefined });
+    }
+  }, [route.params?.draft]);
 
   useFocusEffect(
     useCallback(() => {
       return () => {
-        setContent('');
-        setAsset(null);
-        setActiveTab('POST');
-        setPostRadius(5);
-        setError(null);
-        clearLocation();
+        // Don't reset if we're just navigating to Drafts
       };
     }, [])
   );
@@ -100,6 +112,13 @@ export default function CreatePostScreen() {
       setAsset(null);
       clearLocation();
       setPostRadius(5);
+
+      // Auto-delete draft if it was loaded
+      if (loadedDraftId.current) {
+        await draftService.deleteDraft(loadedDraftId.current);
+        loadedDraftId.current = null;
+      }
+
       navigation.goBack();
     } catch (err) {
       setError(err.message || 'Failed to create post. Try again.');
@@ -110,13 +129,59 @@ export default function CreatePostScreen() {
 
   const canSubmit = content.trim().length > 0 && !!asset && !!location && !isPosting;
 
+  const hasContent = content.trim().length > 0 || !!asset;
+
+  const handleClose = () => {
+    if (!hasContent || activeTab !== 'POST') {
+      navigation.goBack();
+      return;
+    }
+
+    Alert.alert('Save Draft?', 'You have unsaved content. Would you like to save it as a draft?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Discard',
+        style: 'destructive',
+        onPress: () => {
+          setContent('');
+          setAsset(null);
+          setPostRadius(5);
+          setError(null);
+          clearLocation();
+          loadedDraftId.current = null;
+          navigation.goBack();
+        },
+      },
+      {
+        text: 'Save Draft',
+        onPress: async () => {
+          await draftService.saveDraft({
+            content,
+            assetUri: asset?.uri || null,
+            radius: postRadius,
+          });
+          setContent('');
+          setAsset(null);
+          setPostRadius(5);
+          setError(null);
+          clearLocation();
+          loadedDraftId.current = null;
+          navigation.goBack();
+        },
+      },
+    ]);
+  };
+
   return (
     <View style={styles.screen}>
       <ScreenHeader
         leftIcon="close"
-        onLeftPress={() => navigation.goBack()}
+        onLeftPress={handleClose}
         rightComponent={
-          <Pressable onPress={() => { }} style={styles.draftButton}>
+          <Pressable 
+            onPress={() => navigation.navigate('Drafts')} 
+            style={styles.draftButton}
+          >
             <Text style={styles.draftText}>Drafts</Text>
           </Pressable>
         }

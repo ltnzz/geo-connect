@@ -36,3 +36,14 @@ export function formatEventSchedule(startTime, endTime) {
   }
   return `${startDateStr} - ${endDateStr}\n${startTimeStr} - ${endTimeStr}`;
 }
+
+export function combineDateTime(date, time) {
+  if (!date || !time) return new Date();
+  return new Date(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate(),
+    time.getHours(),
+    time.getMinutes()
+  );
+}

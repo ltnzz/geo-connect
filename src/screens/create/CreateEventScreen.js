@@ -1,137 +1,40 @@
-import { Ionicons } from '@expo/vector-icons';
-import { ActivityIndicator, Image, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { useState, useCallback } from 'react';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
+import { useState } from 'react';
+import { View, StyleSheet, Text } from 'react-native';
 
-import DateTimePickerBox from '../../components/event/DateTimePickerBox';
-import { useLocation } from '../../hooks/useLocation';
-import { colors, radius, spacing } from '../../utils/theme';
-import { imagePickerService } from '../../services/imagePickerService';
+import EventForm from '../../components/event/EventForm';
 import { cloudinaryService } from '../../services/cloudinaryService';
 import { firestoreService } from '../../services/firestoreService';
 import { useAuthStore } from '../../stores/authStore';
 import { useEventStore } from '../../stores/eventStore';
+import { combineDateTime } from '../../utils/dateUtils';
+import { colors, spacing } from '../../utils/theme';
 
 export default function CreateEventScreen() {
   const navigation = useNavigation();
-  const insets = useSafeAreaInsets();
   const user = useAuthStore((s) => s.user);
   const prependEvent = useEventStore((s) => s.prependEvent);
-
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [asset, setAsset] = useState(null);
   
   const [isPosting, setIsPosting] = useState(false);
   const [error, setError] = useState(null);
 
-  const [date, setDate] = useState(new Date());
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [time, setTime] = useState(new Date());
-  const [showTimePicker, setShowTimePicker] = useState(false);
-
-  const [endDate, setEndDate] = useState(() => {
-    const d = new Date();
-    d.setHours(d.getHours() + 2);
-    return d;
-  });
-  const [showEndDatePicker, setShowEndDatePicker] = useState(false);
-  const [endTime, setEndTime] = useState(() => {
-    const d = new Date();
-    d.setHours(d.getHours() + 2);
-    return d;
-  });
-  const [showEndTimePicker, setShowEndTimePicker] = useState(false);
-
-  const { location, isFetchingLocation, locationError, handleGetLocation, clearLocation } = useLocation();
-
-  useFocusEffect(
-    useCallback(() => {
-      return () => {
-        setTitle('');
-        setDescription('');
-        setAsset(null);
-        setDate(new Date());
-        setTime(new Date());
-        setShowDatePicker(false);
-        setShowTimePicker(false);
-        
-        const d = new Date();
-        d.setHours(d.getHours() + 2);
-        setEndDate(d);
-        setEndTime(d);
-        setShowEndDatePicker(false);
-        setShowEndTimePicker(false);
-        setError(null);
-        clearLocation();
-      };
-    }, [])
-  );
-
-  const handlePickImage = async () => {
-    setError(null);
-    try {
-      const picked = await imagePickerService.fromLibrary();
-      if (picked) setAsset(picked);
-    } catch (err) {
-      setError(err.message);
-    }
-  };
-
-
-
-  const onDateChange = (event, selectedDate) => {
-    setShowDatePicker(false);
-    if (selectedDate) setDate(selectedDate);
-  };
-
-  const onTimeChange = (event, selectedTime) => {
-    setShowTimePicker(false);
-    if (selectedTime) setTime(selectedTime);
-  };
-
-  const onEndDateChange = (event, selectedDate) => {
-    setShowEndDatePicker(false);
-    if (selectedDate) setEndDate(selectedDate);
-  };
-
-  const onEndTimeChange = (event, selectedTime) => {
-    setShowEndTimePicker(false);
-    if (selectedTime) setEndTime(selectedTime);
-  };
-
-  const handleSubmit = async () => {
+  const handleSubmit = async (formData) => {
     setError(null);
     setIsPosting(true);
 
     try {
-      // Combine Date and Time
-      const startDateTime = new Date(
-        date.getFullYear(),
-        date.getMonth(),
-        date.getDate(),
-        time.getHours(),
-        time.getMinutes()
-      );
+      const startDateTime = combineDateTime(formData.date, formData.time);
+      const endDateTime = combineDateTime(formData.endDate, formData.endTime);
 
-      const endDateTime = new Date(
-        endDate.getFullYear(),
-        endDate.getMonth(),
-        endDate.getDate(),
-        endTime.getHours(),
-        endTime.getMinutes()
-      );
-
-      const uploaded = await cloudinaryService.uploadImage(asset, { folder: 'events' });
+      const uploaded = await cloudinaryService.uploadImage(formData.asset, { folder: 'events' });
       const bannerUrl = uploaded.secureUrl;
 
       const eventId = await firestoreService.createEvent({
         creatorId: user.uid,
-        title,
-        description,
+        title: formData.title,
+        description: formData.description,
         bannerUrl,
-        location,
+        location: formData.location,
         radiusMeters: 5000, // Default 5km radius for visibility
         startTime: startDateTime,
         endTime: endDateTime,
@@ -141,11 +44,12 @@ export default function CreateEventScreen() {
       prependEvent({
         id: eventId,
         creatorId: user.uid,
-        title: title.trim(),
-        description: description.trim(),
+        title: formData.title.trim(),
+        description: formData.description.trim(),
         bannerUrl,
-        location,
+        location: formData.location,
         startTime: startDateTime,
+        endTime: endDateTime,
         participantCount: 0,
         createdAt: new Date(),
       });
@@ -158,104 +62,14 @@ export default function CreateEventScreen() {
     }
   };
 
-  const canSubmit = title.trim().length > 0 && description.trim().length > 0 && !!location && !!asset && !isPosting;
-
   return (
     <View style={styles.container}>
-      <TextInput
-        placeholder="Event Name..."
-        placeholderTextColor="#CBD5E1"
-        style={styles.eventNameInput}
-        value={title}
-        onChangeText={setTitle}
+      <EventForm
+        submitButtonText="CREATE EVENT"
+        onSubmit={handleSubmit}
+        isPosting={isPosting}
       />
-
-      <Text style={styles.inputLabel}>Event Dates</Text>
-      <DateTimePickerBox
-        val1={date}
-        val2={endDate}
-        showPicker1={showDatePicker}
-        showPicker2={showEndDatePicker}
-        setShowPicker1={setShowDatePicker}
-        setShowPicker2={setShowEndDatePicker}
-        onChange1={onDateChange}
-        onChange2={onEndDateChange}
-        mode="date"
-        icon="calendar-outline"
-      />
-
-      <Text style={styles.inputLabel}>Operating Hours</Text>
-      <DateTimePickerBox
-        val1={time}
-        val2={endTime}
-        showPicker1={showTimePicker}
-        showPicker2={showEndTimePicker}
-        setShowPicker1={setShowTimePicker}
-        setShowPicker2={setShowEndTimePicker}
-        onChange1={onTimeChange}
-        onChange2={onEndTimeChange}
-        mode="time"
-        icon="time-outline"
-      />
-
-      <Pressable style={styles.eventLocationButton} onPress={handleGetLocation} disabled={isFetchingLocation}>
-        <Ionicons color={colors.primary} name="location" size={18} />
-        <View style={styles.locationTextContainer}>
-          {isFetchingLocation ? (
-            <Text style={styles.eventLocationText}>Locating...</Text>
-          ) : location ? (
-            <>
-              <Text style={styles.eventLocationText}>{location.address}</Text>
-              <Text style={styles.eventLocationSub}>{location.city}</Text>
-            </>
-          ) : (
-            <Text style={styles.eventLocationText}>Choose Event Location</Text>
-          )}
-        </View>
-        {location && <Ionicons name="checkmark-circle" color={colors.primary} size={18} />}
-      </Pressable>
-
-      <TextInput
-        multiline
-        placeholder="What's this event about?"
-        placeholderTextColor="#CBD5E1"
-        style={styles.eventDescriptionInput}
-        value={description}
-        onChangeText={setDescription}
-      />
-
-      {!asset ? (
-        <Pressable style={styles.eventCoverButton} onPress={handlePickImage}>
-          <View style={styles.eventCoverIconContainer}>
-            <Ionicons color={colors.primary} name="add" size={20} />
-          </View>
-          <Text style={styles.eventCoverText}>Upload Event Cover</Text>
-        </Pressable>
-      ) : (
-        <View style={styles.imagePreviewContainer}>
-          <Image source={{ uri: asset.uri }} style={styles.imagePreview} />
-          <Pressable style={styles.removeImageButton} onPress={() => setAsset(null)}>
-            <Ionicons color={colors.text} name="close-circle" size={20} />
-          </Pressable>
-        </View>
-      )}
-
-      {error || locationError ? <Text style={styles.errorText}>{error || locationError}</Text> : null}
-
-      {/* Internal Footer for Submit */}
-      <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, spacing.md) }]}>
-        <Pressable
-          disabled={!canSubmit}
-          onPress={handleSubmit}
-          style={[styles.submitButton, !canSubmit && styles.submitButtonDisabled]}
-        >
-          {isPosting ? (
-            <ActivityIndicator color={colors.surface} />
-          ) : (
-            <Text style={[styles.submitButtonText, !canSubmit && styles.submitButtonTextDisabled]}>CREATE EVENT</Text>
-          )}
-        </Pressable>
-      </View>
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
     </View>
   );
 }
@@ -264,125 +78,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  eventNameInput: {
-    color: colors.text,
-    fontFamily: 'Poppins_700Bold',
-    fontSize: 28,
-    marginBottom: spacing.xl,
-  },
-  inputLabel: {
-    color: colors.text,
-    fontFamily: 'Poppins_600SemiBold',
-    fontSize: 14,
-    marginBottom: spacing.sm,
-  },
-  eventLocationButton: {
-    alignItems: 'center',
-    backgroundColor: '#F8FAFC',
-    borderColor: colors.border,
-    borderRadius: radius.sm,
-    borderWidth: 1,
-    flexDirection: 'row',
-    gap: spacing.sm,
-    marginBottom: spacing.xl,
-    padding: spacing.md,
-  },
-  locationTextContainer: {
-    flex: 1,
-  },
-  eventLocationText: {
-    color: colors.text,
-    fontFamily: 'Poppins_500Medium',
-    fontSize: 14,
-  },
-  eventLocationSub: {
-    color: colors.mutedText,
-    fontFamily: 'Poppins_400Regular',
-    fontSize: 12,
-  },
-  eventDescriptionInput: {
-    borderColor: colors.border,
-    borderRadius: radius.sm,
-    borderWidth: 1,
-    color: colors.text,
-    fontFamily: 'Poppins_400Regular',
-    fontSize: 16,
-    marginBottom: spacing.xl,
-    minHeight: 120,
-    padding: spacing.md,
-    textAlignVertical: 'top',
-  },
-  eventCoverButton: {
-    alignItems: 'center',
-    borderColor: '#CBD5E1',
-    borderRadius: radius.sm,
-    borderStyle: 'dashed',
-    borderWidth: 1.5,
-    height: 160,
-    justifyContent: 'center',
-    marginBottom: spacing.xl,
-    width: '100%',
-  },
-  eventCoverIconContainer: {
-    alignItems: 'center',
-    backgroundColor: '#DBEAFE',
-    borderRadius: radius.sm,
-    height: 40,
-    justifyContent: 'center',
-    marginBottom: spacing.sm,
-    width: 40,
-  },
-  eventCoverText: {
-    color: colors.neutral,
-    fontFamily: 'Poppins_400Regular',
-    fontSize: 14,
-  },
-  imagePreviewContainer: {
-    height: 160,
-    width: '100%',
-    marginBottom: spacing.xl,
-    borderRadius: radius.sm,
-    overflow: 'hidden',
-  },
-  imagePreview: {
-    width: '100%',
-    height: '100%',
-  },
-  removeImageButton: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    backgroundColor: 'rgba(255,255,255,0.8)',
-    borderRadius: 12,
-  },
   errorText: {
     color: colors.danger,
     fontFamily: 'Poppins_400Regular',
     fontSize: 12,
-    marginBottom: spacing.md,
-  },
-  footer: {
-    borderTopColor: colors.border,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    paddingVertical: spacing.md,
     marginTop: spacing.sm,
-  },
-  submitButton: {
-    alignItems: 'center',
-    backgroundColor: colors.primary,
-    borderRadius: radius.sm,
-    paddingVertical: 14,
-  },
-  submitButtonDisabled: {
-    backgroundColor: colors.border,
-  },
-  submitButtonText: {
-    color: colors.surface,
-    fontFamily: 'Poppins_600SemiBold',
-    fontSize: 14,
-    letterSpacing: 1,
-  },
-  submitButtonTextDisabled: {
-    color: '#94A3B8',
+    textAlign: 'center',
   },
 });

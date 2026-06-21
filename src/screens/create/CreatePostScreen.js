@@ -57,8 +57,6 @@ export default function CreatePostScreen() {
 
   const handleRemoveImage = () => setAsset(null);
 
-
-
   const handleToggleRadius = () => {
     const currentIndex = RADIUS_OPTIONS.indexOf(postRadius);
     const nextIndex = (currentIndex + 1) % RADIUS_OPTIONS.length;
@@ -100,7 +98,7 @@ export default function CreatePostScreen() {
 
       setContent('');
       setAsset(null);
-      setLocation(null);
+      clearLocation();
       setPostRadius(5);
       navigation.goBack();
     } catch (err) {

@@ -5,6 +5,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import EventArtwork from './EventArtwork';
 import { useEventResponse } from '../../hooks/useEventResponse';
 import { useLocation } from '../../hooks/useLocation';
+import { formatEventSchedule } from '../../utils/dateUtils';
 import { formatDistanceString } from '../../utils/locationUtils';
 import { colors, radius, spacing } from '../../utils/theme';
 
@@ -12,13 +13,7 @@ export default function FeaturedEventCard({ event, onOpen }) {
   const { response, toggleGoing, toggleInterested } = useEventResponse(event?.id);
   const { location, isFetchingLocation } = useLocation();
 
-  let scheduleString = '';
-  if (event.schedule) {
-    scheduleString = event.schedule;
-  } else if (event.startTime) {
-    const startTime = event.startTime?.toDate ? event.startTime.toDate() : new Date(event.startTime);
-    scheduleString = startTime.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
-  }
+  const scheduleString = formatEventSchedule(event.startTime, event.endTime);
 
   return (
     <View style={styles.featuredCard}>

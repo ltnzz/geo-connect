@@ -2,20 +2,14 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import EventArtwork from './EventArtwork';
 import { useLocation } from '../../hooks/useLocation';
+import { formatEventSchedule } from '../../utils/dateUtils';
 import { formatDistanceString } from '../../utils/locationUtils';
 import { colors, radius, spacing } from '../../utils/theme';
 
 export default function TrendingEventCard({ event, onPress }) {
   const { location, isFetchingLocation } = useLocation();
-  let scheduleString = '';
-  if (event.schedule) {
-    scheduleString = event.schedule;
-  } else if (event.startTime) {
-    const startTime = event.startTime?.toDate ? event.startTime.toDate() : new Date(event.startTime);
-    scheduleString = startTime.toLocaleDateString([], { month: 'short', day: 'numeric' });
-  }
-
-  const attendeesCount = event.attendees !== undefined ? event.attendees : (event.participantCount || 0);
+  const scheduleString = formatEventSchedule(event.startTime, event.endTime);
+  const attendeesCount = event.participantCount || 0;
 
   return (
     <Pressable

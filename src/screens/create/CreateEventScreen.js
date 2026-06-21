@@ -1,5 +1,5 @@
-import { useNavigation } from '@react-navigation/native';
-import { useState } from 'react';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useCallback, useState } from 'react';
 import { View, StyleSheet, Text } from 'react-native';
 
 import EventForm from '../../components/event/EventForm';
@@ -17,6 +17,16 @@ export default function CreateEventScreen() {
   
   const [isPosting, setIsPosting] = useState(false);
   const [error, setError] = useState(null);
+  const [formKey, setFormKey] = useState(0);
+
+  useFocusEffect(
+    useCallback(() => {
+      return () => {
+        setFormKey((prev) => prev + 1);
+        setError(null);
+      };
+    }, [])
+  );
 
   const handleSubmit = async (formData) => {
     setError(null);
@@ -68,6 +78,7 @@ export default function CreateEventScreen() {
   return (
     <View style={styles.container}>
       <EventForm
+        key={formKey}
         submitButtonText="CREATE EVENT"
         onSubmit={handleSubmit}
         isPosting={isPosting}

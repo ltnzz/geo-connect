@@ -1,6 +1,6 @@
-import { Ionicons } from '@expo/vector-icons';
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import EventArtwork from './EventArtwork';
 import { colors, radius, spacing } from '../../utils/theme';
 
 export default function NewEventCard({ event, onPress, fullWidth = false }) {
@@ -15,21 +15,7 @@ export default function NewEventCard({ event, onPress, fullWidth = false }) {
       style={({ pressed }) => [styles.trendingCard, fullWidth && { width: '100%' }, pressed && styles.pressed]}
     >
       <View style={styles.trendingArtworkWrap}>
-        <View style={[styles.artwork, styles.compactArtwork, !event.bannerUrl && { backgroundColor: '#E9F0FF' }]}>
-          {event.bannerUrl ? (
-            <Image source={{ uri: event.bannerUrl }} style={styles.artworkImage} />
-          ) : (
-            <View style={styles.artworkIcon}>
-              <Ionicons color={colors.primary} name="calendar" size={20} />
-            </View>
-          )}
-          {event.category ? (
-            <Text style={[styles.artworkCategory, styles.compactCategory]}>
-              {event.category}
-            </Text>
-          ) : null}
-        </View>
-
+        <EventArtwork compact event={event} />
         <View style={styles.trendingDistanceBadge}>
           <Text style={styles.trendingDistance}>New</Text>
         </View>

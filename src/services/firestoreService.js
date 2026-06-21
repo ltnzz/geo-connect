@@ -204,7 +204,7 @@ export const firestoreService = {
     return postRef.id;
   },
 
-  async addComment(postId, { userId, content, parentId = null }) {
+  async addComment(postId, { userId, content, parentId = null, replyToAuthorName = '' }) {
     const commentRef = doc(
       collection(db, COLLECTIONS.posts, postId, SUBCOLLECTIONS.comments),
     );
@@ -215,6 +215,7 @@ export const firestoreService = {
         userId,
         content: content.trim(),
         parentId,
+        replyToAuthorName,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
@@ -802,6 +803,12 @@ export const firestoreService = {
     const posts = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
     const lastDoc = snapshot.docs[snapshot.docs.length - 1] ?? null;
     return { posts, lastDoc };
+  },
+
+  async getPost(postId) {
+    assertFirebaseConfigured();
+    const snapshot = await getDoc(doc(db, COLLECTIONS.posts, postId));
+    return snapshot.exists() ? { id: snapshot.id, ...snapshot.data() } : null;
   },
 
   async searchPosts(searchText, maxResults = 25) {

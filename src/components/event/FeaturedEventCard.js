@@ -1,20 +1,19 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useState } from 'react';
+
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import EventArtwork from './EventArtwork';
+import { useEventResponse } from '../../hooks/useEventResponse';
+import { useLocation } from '../../hooks/useLocation';
+import { formatEventSchedule } from '../../utils/dateUtils';
+import { formatDistanceString } from '../../utils/locationUtils';
 import { colors, radius, spacing } from '../../utils/theme';
 
 export default function FeaturedEventCard({ event, onOpen }) {
-  const [response, setResponse] = useState(null);
+  const { response, toggleGoing, toggleInterested } = useEventResponse(event?.id);
+  const { location, isFetchingLocation } = useLocation();
 
-  let scheduleString = '';
-  if (event.schedule) {
-    scheduleString = event.schedule;
-  } else if (event.startTime) {
-    const startTime = event.startTime?.toDate ? event.startTime.toDate() : new Date(event.startTime);
-    scheduleString = startTime.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
-  }
+  const scheduleString = formatEventSchedule(event.startTime, event.endTime);
 
   return (
     <View style={styles.featuredCard}>
@@ -23,7 +22,7 @@ export default function FeaturedEventCard({ event, onOpen }) {
           <View style={styles.statusDot} />
           <Text style={styles.statusText}>{event.status || 'Upcoming'}</Text>
         </View>
-        <Text style={styles.distance}>Nearby</Text>
+        <Text style={styles.distance}>{formatDistanceString(location, event.location, isFetchingLocation)}</Text>
       </View>
 
       <Pressable accessibilityRole="button" onPress={onOpen}>
@@ -57,7 +56,7 @@ export default function FeaturedEventCard({ event, onOpen }) {
         <View style={styles.actionRow}>
           <Pressable
             accessibilityRole="button"
-            onPress={() => setResponse(response === 'going' ? null : 'going')}
+            onPress={toggleGoing}
             style={({ pressed }) => [
               styles.responseAction,
               response === 'going' && styles.goingActionSelected,
@@ -80,7 +79,7 @@ export default function FeaturedEventCard({ event, onOpen }) {
           </Pressable>
           <Pressable
             accessibilityRole="button"
-            onPress={() => setResponse(response === 'interested' ? null : 'interested')}
+            onPress={toggleInterested}
             style={({ pressed }) => [
               styles.responseAction,
               response === 'interested' && styles.secondaryActionSelected,

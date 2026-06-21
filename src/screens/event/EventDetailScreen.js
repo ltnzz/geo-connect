@@ -1,16 +1,22 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { Alert, Image, Share, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Image, Share, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 
 import ScreenHeader from '../../components/common/ScreenHeader';
+import EventDetailFooter from '../../components/event/EventDetailFooter';
+import EventArtwork from '../../components/event/EventArtwork';
 import { useEventStore } from '../../stores/eventStore';
 import { useAuthStore } from '../../stores/authStore';
 import { useLocation } from '../../hooks/useLocation';
-import { calculateDistance } from '../../utils/locationUtils';
+import { useEventResponse } from '../../hooks/useEventResponse';
+import { useHostName } from '../../hooks/useHostName';
+import { formatEventSchedule } from '../../utils/dateUtils';
+import { formatDistanceString } from '../../utils/locationUtils';
 import { firestoreService } from '../../services/firestoreService';
 import { colors, radius, spacing } from '../../utils/theme';
+import EventStorySection from '../../components/event/EventStorySection';
 
 export default function EventDetailScreen({ route }) {
   const navigation = useNavigation();
@@ -20,10 +26,14 @@ export default function EventDetailScreen({ route }) {
   const events = useEventStore((s) => s.events);
   const removeEvent = useEventStore((s) => s.removeEvent);
   const event = events.find((item) => item.id === route.params?.eventId);
-  
-  const [response, setResponse] = useState(null);
 
-  const isOwnEvent = user && event?.creatorId === user.uid;
+  const { response, toggleGoing, toggleInterested, toggleNotGoing } = useEventResponse(event?.id);
+  const hostName = useHostName(event?.creatorId);
+
+  useEffect(() => {
+    handleGetLocation();
+  }, [handleGetLocation]);
+
   if (!event) {
     return (
       <View style={[styles.screen, { justifyContent: 'center', alignItems: 'center' }]}>
@@ -32,60 +42,14 @@ export default function EventDetailScreen({ route }) {
     );
   }
 
+  const isOwnEvent = user && event.creatorId === user.uid;
   const title = event.title;
   const category = event.category || 'Event';
   const description = event.description;
   const venue = event.location?.city || event.location?.address || 'Nearby';
-
-  const [hostName, setHostName] = useState('Loading...');
-
-  useEffect(() => {
-    handleGetLocation();
-  }, [handleGetLocation]);
-
-  useEffect(() => {
-    if (event.creatorId) {
-      if (user && event.creatorId === user.uid) {
-        setHostName('You');
-      } else {
-        firestoreService.getUser(event.creatorId).then(creator => {
-          if (creator && creator.username) {
-            setHostName(creator.username);
-          } else {
-            setHostName('User');
-          }
-        }).catch(() => setHostName('User'));
-      }
-    }
-  }, [event.creatorId, user]);
-
-  const host = hostName;
   const attendees = event.participantCount || 0;
-  
-  let scheduleStr = event.schedule || '';
-  if (event.startTime) {
-    const startD = event.startTime?.toDate ? event.startTime.toDate() : new Date(event.startTime);
-    const endD = event.endTime?.toDate ? event.endTime.toDate() : (event.endTime ? new Date(event.endTime) : startD);
-
-    const startDateStr = startD.toLocaleDateString([], { day: 'numeric', month: 'short' });
-    const endDateStr = endD.toLocaleDateString([], { day: 'numeric', month: 'short' });
-    const startTimeStr = startD.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const endTimeStr = endD.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-    if (startDateStr === endDateStr) {
-      scheduleStr = `${startDateStr}, ${startTimeStr} - ${endTimeStr}`;
-    } else {
-      scheduleStr = `${startDateStr} - ${endDateStr}\n${startTimeStr} - ${endTimeStr}`;
-    }
-  }
-
-  const dist = location && event.location ? calculateDistance(
-    location.latitude,
-    location.longitude,
-    event.location.latitude,
-    event.location.longitude
-  ) : null;
-  const distanceStr = isFetchingLocation ? 'Calculating...' : (dist !== null ? `${dist.toFixed(1)} km away` : 'Nearby');
+  const scheduleStr = formatEventSchedule(event.startTime, event.endTime) || event.schedule || '';
+  const distanceStr = formatDistanceString(location, event.location, isFetchingLocation);
 
   const shareEvent = () =>
     Share.share({
@@ -131,25 +95,14 @@ export default function EventDetailScreen({ route }) {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        <View style={[styles.hero, { backgroundColor: '#E9F0FF' }]}>
-          {event.bannerUrl ? (
-            <Image source={{ uri: event.bannerUrl }} style={styles.heroImage} />
-          ) : (
-            <View style={styles.heroIcon}>
-              <Ionicons color={colors.primary} name="musical-notes" size={38} />
-            </View>
-          )}
-          <View style={styles.categoryBadge}>
-            <Text style={styles.categoryText}>{category}</Text>
-          </View>
-        </View>
+        <EventArtwork event={event} />
 
         <Text style={styles.title}>{title}</Text>
         <View style={styles.hostRow}>
           <View style={styles.hostAvatar}>
             <Ionicons color={colors.primary} name="people" size={15} />
           </View>
-          <Text style={styles.hostText}>Hosted by {host}</Text>
+          <Text style={styles.hostText}>Hosted by {hostName}</Text>
         </View>
 
         <View style={styles.chipRow}>
@@ -161,6 +114,10 @@ export default function EventDetailScreen({ route }) {
             <Ionicons color={colors.primary} name="location" size={13} />
             <Text style={styles.chipText}>{distanceStr}</Text>
           </View>
+          <View style={styles.chip}>
+            <Ionicons color={colors.secondary} name="people" size={13} />
+            <Text style={styles.chipText}>{attendees} attendees</Text>
+          </View>
         </View>
 
         <View style={styles.venueRow}>
@@ -170,100 +127,19 @@ export default function EventDetailScreen({ route }) {
 
         <Text style={styles.description}>{description}</Text>
 
-        <View style={styles.storyCard}>
-          <Text style={styles.storyTitle}>Attendees & Event Story</Text>
-          <View style={styles.attendeeRow}>
-            <View style={styles.avatars}>
-              {[0, 1, 2].map((index) => (
-                <View key={index} style={[styles.avatar, { left: index * 20 }]}>
-                  <Ionicons color="#8291A7" name="person" size={14} />
-                </View>
-              ))}
-            </View>
-            <Text style={styles.attendeeCount}>+{attendees} going</Text>
-          </View>
-        </View>
+        <EventStorySection eventId={event.id} eventLocation={event.location} />
       </ScrollView>
 
       <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, spacing.md) }]}>
-        {isOwnEvent ? (
-          <>
-            <Pressable
-              accessibilityRole="button"
-              onPress={handleDeleteEvent}
-              style={[styles.responseButton, { borderColor: '#FFE4E6', backgroundColor: '#FFF1F2' }]}
-            >
-              <Ionicons color="#E11D48" name="trash-outline" size={16} />
-              <Text style={[styles.interestedText, { color: '#E11D48' }]}>Delete</Text>
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => navigation.navigate('EditEvent', { eventId: event.id })}
-              style={[styles.responseButton, styles.goingButton, styles.goingSelected]}
-            >
-              <Ionicons color="#FFFFFF" name="pencil" size={16} />
-              <Text style={[styles.goingText, styles.goingTextSelected]}>Edit Event</Text>
-            </Pressable>
-          </>
-        ) : (
-          <>
-            <Pressable
-              accessibilityRole="button"
-              onPress={() =>
-                setResponse(response === 'interested' ? null : 'interested')
-              }
-              style={[
-                styles.responseButton,
-                response === 'interested' && styles.interestedSelected,
-              ]}
-            >
-              <Ionicons
-                color={
-                  response === 'interested' ? colors.tertiary : colors.neutral
-                }
-                name={
-                  response === 'interested' ? 'bookmark' : 'bookmark-outline'
-                }
-                size={16}
-              />
-              <Text
-                style={[
-                  styles.interestedText,
-                  response === 'interested' && styles.interestedTextSelected,
-                ]}
-              >
-                Interested
-              </Text>
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => setResponse(response === 'going' ? null : 'going')}
-              style={[
-                styles.responseButton,
-                styles.goingButton,
-                response === 'going' && styles.goingSelected,
-              ]}
-            >
-              <Ionicons
-                color={response === 'going' ? '#FFFFFF' : colors.primary}
-                name={
-                  response === 'going'
-                    ? 'checkmark-circle'
-                    : 'checkmark-circle-outline'
-                }
-                size={17}
-              />
-              <Text
-                style={[
-                  styles.goingText,
-                  response === 'going' && styles.goingTextSelected,
-                ]}
-              >
-                Going
-              </Text>
-            </Pressable>
-          </>
-        )}
+        <EventDetailFooter
+          isOwnEvent={isOwnEvent}
+          response={response}
+          onDelete={handleDeleteEvent}
+          onEdit={() => navigation.navigate('EditEvent', { eventId: event.id })}
+          onToggleGoing={toggleGoing}
+          onToggleInterested={toggleInterested}
+          onToggleNotGoing={toggleNotGoing}
+        />
       </View>
     </View>
   );
@@ -277,41 +153,7 @@ const styles = StyleSheet.create({
   content: {
     padding: spacing.md,
     paddingBottom: spacing.xl,
-  },
-  hero: {
-    alignItems: 'center',
-    borderRadius: radius.lg,
-    height: 245,
-    justifyContent: 'center',
-    overflow: 'hidden',
-    position: 'relative',
-  },
-  heroImage: {
-    ...StyleSheet.absoluteFillObject,
-    height: '100%',
-    width: '100%',
-  },
-  heroIcon: {
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.72)',
-    borderRadius: radius.full,
-    height: 70,
-    justifyContent: 'center',
-    width: 70,
-  },
-  categoryBadge: {
-    backgroundColor: 'rgba(15,23,42,0.7)',
-    borderRadius: radius.full,
-    bottom: spacing.md,
-    paddingHorizontal: 11,
-    paddingVertical: 5,
-    position: 'absolute',
-    right: spacing.md,
-  },
-  categoryText: {
-    color: '#FFFFFF',
-    fontFamily: 'Inter_600SemiBold',
-    fontSize: 10,
+    gap: spacing.md,
   },
   title: {
     color: colors.text,
@@ -429,44 +271,5 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: spacing.sm,
     padding: spacing.md,
-  },
-  responseButton: {
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderColor: '#C7D2E3',
-    borderRadius: radius.sm,
-    borderWidth: 1,
-    flex: 1,
-    flexDirection: 'row',
-    gap: 6,
-    height: 44,
-    justifyContent: 'center',
-  },
-  interestedSelected: {
-    backgroundColor: '#EAF8F2',
-    borderColor: colors.tertiary,
-  },
-  interestedText: {
-    color: colors.neutral,
-    fontFamily: 'Inter_600SemiBold',
-    fontSize: 12,
-  },
-  interestedTextSelected: {
-    color: colors.tertiary,
-  },
-  goingSelected: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
-  goingButton: {
-    flex: 2,
-  },
-  goingText: {
-    color: colors.primary,
-    fontFamily: 'Inter_600SemiBold',
-    fontSize: 12,
-  },
-  goingTextSelected: {
-    color: '#FFFFFF',
   },
 });

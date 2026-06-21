@@ -577,6 +577,7 @@ export const firestoreService = {
       description: data.description.trim(),
       bannerUrl: data.bannerUrl || '',
       categoryId: data.categoryId || null,
+      category: data.category || null,
       placeId: data.placeId || null,
       location: createLocation(data.location),
       radiusMeters: data.radiusMeters,
@@ -603,6 +604,7 @@ export const firestoreService = {
     if (data.description !== undefined) updates.description = data.description.trim();
     if (data.bannerUrl !== undefined) updates.bannerUrl = data.bannerUrl;
     if (data.categoryId !== undefined) updates.categoryId = data.categoryId;
+    if (data.category !== undefined) updates.category = data.category;
     if (data.placeId !== undefined) updates.placeId = data.placeId;
     if (data.location !== undefined) updates.location = createLocation(data.location);
     if (data.radiusMeters !== undefined) updates.radiusMeters = data.radiusMeters;
@@ -615,7 +617,7 @@ export const firestoreService = {
     await updateDoc(eventRef, updates);
   },
 
-  async setEventRegistered(eventId, userId, shouldRegister) {
+  async setEventInterest(eventId, userId, shouldRegister) {
     const eventRef = doc(db, COLLECTIONS.events, eventId);
     const registrationRef = doc(
       db,
@@ -648,7 +650,7 @@ export const firestoreService = {
     });
   },
 
-  async joinEvent(eventId, userId, joinMethod = 'manual') {
+  async setEventParticipation(eventId, userId, shouldJoin, joinMethod = 'manual') {
     const eventRef = doc(db, COLLECTIONS.events, eventId);
     const participantRef = doc(
       db,
@@ -661,7 +663,7 @@ export const firestoreService = {
     await runTransaction(db, async (transaction) => {
       const snapshot = await transaction.get(participantRef);
 
-      if (!snapshot.exists()) {
+      if (shouldJoin && !snapshot.exists()) {
         transaction.set(participantRef, {
           userId,
           eventId,
@@ -672,7 +674,59 @@ export const firestoreService = {
           participantCount: increment(1),
           updatedAt: serverTimestamp(),
         });
+      } else if (!shouldJoin && snapshot.exists()) {
+        transaction.delete(participantRef);
+        transaction.update(eventRef, {
+          participantCount: increment(-1),
+          updatedAt: serverTimestamp(),
+        });
       }
+    });
+  },
+
+  async setEventDecline(eventId, userId, shouldDecline) {
+    const declineRef = doc(
+      db,
+      COLLECTIONS.events,
+      eventId,
+      SUBCOLLECTIONS.declines,
+      userId,
+    );
+    if (shouldDecline) {
+      await setDoc(declineRef, {
+        userId,
+        declinedAt: serverTimestamp(),
+      });
+    } else {
+      await deleteDoc(declineRef);
+    }
+  },
+
+  async checkInToEvent(eventId, userId) {
+    const checkinRef = doc(
+      db,
+      COLLECTIONS.events,
+      eventId,
+      SUBCOLLECTIONS.checkins,
+      userId,
+    );
+    await setDoc(checkinRef, {
+      userId,
+      checkedInAt: serverTimestamp(),
+    });
+  },
+
+  async addEventStory(eventId, userId, imageUrl) {
+    const storiesRef = collection(
+      db,
+      COLLECTIONS.events,
+      eventId,
+      SUBCOLLECTIONS.stories,
+    );
+    await addDoc(storiesRef, {
+      userId,
+      imageUrl,
+      createdAt: serverTimestamp(),
     });
   },
 

@@ -1,5 +1,5 @@
 import { useNavigation } from '@react-navigation/native';
-import { ActivityIndicator, FlatList, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
 
 import ScreenHeader from '../../components/common/ScreenHeader';
 import NewEventCard from '../../components/event/NewEventCard';
@@ -26,20 +26,25 @@ export default function AllNewEventsScreen() {
         data={newEvents}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
-            <NewEventCard
-              event={item}
-              fullWidth
-              onPress={() => navigation.navigate('EventDetail', { eventId: item.id })}
-            />
-          )}
-          showsVerticalScrollIndicator={false}
-          onEndReached={hasMore ? fetchMoreEvents : null}
-          onEndReachedThreshold={0.5}
-          ListFooterComponent={
-            isLoadingMore ? (
-              <ActivityIndicator color={colors.primary} style={{ marginVertical: spacing.md }} />
-            ) : null
-          }
+          <NewEventCard
+            event={item}
+            fullWidth
+            onPress={() => navigation.navigate('EventDetail', { eventId: item.id })}
+          />
+        )}
+        showsVerticalScrollIndicator={false}
+        onEndReached={hasMore ? fetchMoreEvents : null}
+        onEndReachedThreshold={0.5}
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>No new events yet.</Text>
+          </View>
+        }
+        ListFooterComponent={
+          isLoadingMore ? (
+            <ActivityIndicator color={colors.primary} style={{ marginVertical: spacing.md }} />
+          ) : null
+        }
       />
     </View>
   );
@@ -54,5 +59,15 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     padding: spacing.md,
     paddingBottom: spacing.xxl,
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+  },
+  emptyText: {
+    color: colors.neutral,
+    fontFamily: 'Inter_400Regular',
+    fontSize: 14,
   },
 });

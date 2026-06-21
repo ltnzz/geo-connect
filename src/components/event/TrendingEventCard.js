@@ -1,18 +1,15 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import EventArtwork from './EventArtwork';
+import { useLocation } from '../../hooks/useLocation';
+import { formatEventSchedule } from '../../utils/dateUtils';
+import { formatDistanceString } from '../../utils/locationUtils';
 import { colors, radius, spacing } from '../../utils/theme';
 
 export default function TrendingEventCard({ event, onPress }) {
-  let scheduleString = '';
-  if (event.schedule) {
-    scheduleString = event.schedule;
-  } else if (event.startTime) {
-    const startTime = event.startTime?.toDate ? event.startTime.toDate() : new Date(event.startTime);
-    scheduleString = startTime.toLocaleDateString([], { month: 'short', day: 'numeric' });
-  }
-
-  const attendeesCount = event.attendees !== undefined ? event.attendees : (event.participantCount || 0);
+  const { location, isFetchingLocation } = useLocation();
+  const scheduleString = formatEventSchedule(event.startTime, event.endTime);
+  const attendeesCount = event.participantCount || 0;
 
   return (
     <Pressable
@@ -23,7 +20,7 @@ export default function TrendingEventCard({ event, onPress }) {
       <View style={styles.trendingArtworkWrap}>
         <EventArtwork compact event={event} />
         <View style={styles.trendingDistanceBadge}>
-          <Text style={styles.trendingDistance}>Nearby</Text>
+          <Text style={styles.trendingDistance}>{formatDistanceString(location, event.location, isFetchingLocation)}</Text>
         </View>
       </View>
       <View style={styles.trendingContent}>

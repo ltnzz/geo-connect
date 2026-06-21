@@ -21,6 +21,9 @@ export const SUBCOLLECTIONS = Object.freeze({
   pushTokens: 'pushTokens',
   registrations: 'registrations',
   participants: 'participants',
+  checkins: 'checkins',
+  stories: 'stories',
+  declines: 'declines',
 });
 
 export const NOTIFICATION_TYPES = Object.freeze({

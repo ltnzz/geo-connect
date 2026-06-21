@@ -17,3 +17,16 @@ export function calculateDistance(lat1, lon1, lat2, lon2) {
 function deg2rad(deg) {
   return deg * (Math.PI/180);
 }
+
+export function formatDistanceString(userLocation, eventLocation, isFetching) {
+  if (isFetching) return 'Calculating...';
+
+  const dist = userLocation && eventLocation ? calculateDistance(
+    userLocation.latitude,
+    userLocation.longitude,
+    eventLocation.latitude,
+    eventLocation.longitude
+  ) : null;
+
+  return dist !== null ? `${dist.toFixed(1)} km away` : 'Nearby';
+}

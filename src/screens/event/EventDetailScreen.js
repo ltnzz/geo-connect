@@ -2,13 +2,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { Alert, Image, Share, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 
 import ScreenHeader from '../../components/common/ScreenHeader';
 import EventDetailFooter from '../../components/event/EventDetailFooter';
 import { useEventStore } from '../../stores/eventStore';
 import { useAuthStore } from '../../stores/authStore';
 import { useLocation } from '../../hooks/useLocation';
+import { useEventResponse } from '../../hooks/useEventResponse';
 import { useHostName } from '../../hooks/useHostName';
 import { formatEventSchedule } from '../../utils/dateUtils';
 import { formatDistanceString } from '../../utils/locationUtils';
@@ -24,8 +25,7 @@ export default function EventDetailScreen({ route }) {
   const removeEvent = useEventStore((s) => s.removeEvent);
   const event = events.find((item) => item.id === route.params?.eventId);
 
-  // TODO: persist response (interested/going) to Firestore when registration feature is ready
-  const [response, setResponse] = useState(null);
+  const { response, toggleGoing, toggleInterested } = useEventResponse(event?.id);
   const hostName = useHostName(event?.creatorId);
 
   useEffect(() => {
@@ -151,9 +151,10 @@ export default function EventDetailScreen({ route }) {
         <EventDetailFooter
           isOwnEvent={isOwnEvent}
           response={response}
-          onResponseChange={setResponse}
           onDelete={handleDeleteEvent}
           onEdit={() => navigation.navigate('EditEvent', { eventId: event.id })}
+          onToggleGoing={toggleGoing}
+          onToggleInterested={toggleInterested}
         />
       </View>
     </View>

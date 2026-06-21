@@ -5,7 +5,8 @@ import { colors, radius, spacing } from '../../utils/theme';
 export default function EventDetailFooter({
   isOwnEvent,
   response,
-  onResponseChange,
+  onToggleGoing,
+  onToggleInterested,
   onDelete,
   onEdit,
 }) {
@@ -36,7 +37,7 @@ export default function EventDetailFooter({
     <>
       <Pressable
         accessibilityRole="button"
-        onPress={() => onResponseChange(response === 'interested' ? null : 'interested')}
+        onPress={onToggleInterested}
         style={[
           styles.responseButton,
           response === 'interested' && styles.interestedSelected,
@@ -58,7 +59,7 @@ export default function EventDetailFooter({
       </Pressable>
       <Pressable
         accessibilityRole="button"
-        onPress={() => onResponseChange(response === 'going' ? null : 'going')}
+        onPress={onToggleGoing}
         style={[
           styles.responseButton,
           styles.goingButton,

@@ -3,10 +3,11 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import EventArtwork from './EventArtwork';
+import { useEventResponse } from '../../hooks/useEventResponse';
 import { colors, radius, spacing } from '../../utils/theme';
 
 export default function FeaturedEventCard({ event, onOpen }) {
-  const [response, setResponse] = useState(null);
+  const { response, toggleGoing, toggleInterested } = useEventResponse(event?.id);
 
   let scheduleString = '';
   if (event.schedule) {
@@ -57,7 +58,7 @@ export default function FeaturedEventCard({ event, onOpen }) {
         <View style={styles.actionRow}>
           <Pressable
             accessibilityRole="button"
-            onPress={() => setResponse(response === 'going' ? null : 'going')}
+            onPress={toggleGoing}
             style={({ pressed }) => [
               styles.responseAction,
               response === 'going' && styles.goingActionSelected,
@@ -80,7 +81,7 @@ export default function FeaturedEventCard({ event, onOpen }) {
           </Pressable>
           <Pressable
             accessibilityRole="button"
-            onPress={() => setResponse(response === 'interested' ? null : 'interested')}
+            onPress={toggleInterested}
             style={({ pressed }) => [
               styles.responseAction,
               response === 'interested' && styles.secondaryActionSelected,

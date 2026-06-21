@@ -615,7 +615,7 @@ export const firestoreService = {
     await updateDoc(eventRef, updates);
   },
 
-  async setEventRegistered(eventId, userId, shouldRegister) {
+  async setEventInterest(eventId, userId, shouldRegister) {
     const eventRef = doc(db, COLLECTIONS.events, eventId);
     const registrationRef = doc(
       db,
@@ -648,7 +648,7 @@ export const firestoreService = {
     });
   },
 
-  async joinEvent(eventId, userId, joinMethod = 'manual') {
+  async setEventParticipation(eventId, userId, shouldJoin, joinMethod = 'manual') {
     const eventRef = doc(db, COLLECTIONS.events, eventId);
     const participantRef = doc(
       db,
@@ -661,7 +661,7 @@ export const firestoreService = {
     await runTransaction(db, async (transaction) => {
       const snapshot = await transaction.get(participantRef);
 
-      if (!snapshot.exists()) {
+      if (shouldJoin && !snapshot.exists()) {
         transaction.set(participantRef, {
           userId,
           eventId,
@@ -670,6 +670,12 @@ export const firestoreService = {
         });
         transaction.update(eventRef, {
           participantCount: increment(1),
+          updatedAt: serverTimestamp(),
+        });
+      } else if (!shouldJoin && snapshot.exists()) {
+        transaction.delete(participantRef);
+        transaction.update(eventRef, {
+          participantCount: increment(-1),
           updatedAt: serverTimestamp(),
         });
       }

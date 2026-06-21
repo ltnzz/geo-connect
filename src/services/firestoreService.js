@@ -684,6 +684,34 @@ export const firestoreService = {
     });
   },
 
+  async checkInToEvent(eventId, userId) {
+    const checkinRef = doc(
+      db,
+      COLLECTIONS.events,
+      eventId,
+      SUBCOLLECTIONS.checkins,
+      userId,
+    );
+    await setDoc(checkinRef, {
+      userId,
+      checkedInAt: serverTimestamp(),
+    });
+  },
+
+  async addEventStory(eventId, userId, imageUrl) {
+    const storiesRef = collection(
+      db,
+      COLLECTIONS.events,
+      eventId,
+      SUBCOLLECTIONS.stories,
+    );
+    await addDoc(storiesRef, {
+      userId,
+      imageUrl,
+      createdAt: serverTimestamp(),
+    });
+  },
+
   async createEventPromptLog(data) {
     return createDocument(COLLECTIONS.eventPromptLogs, {
       userId: data.userId,

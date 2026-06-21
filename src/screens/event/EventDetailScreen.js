@@ -15,6 +15,7 @@ import { formatEventSchedule } from '../../utils/dateUtils';
 import { formatDistanceString } from '../../utils/locationUtils';
 import { firestoreService } from '../../services/firestoreService';
 import { colors, radius, spacing } from '../../utils/theme';
+import EventStorySection from '../../components/event/EventStorySection';
 
 export default function EventDetailScreen({ route }) {
   const navigation = useNavigation();
@@ -132,19 +133,7 @@ export default function EventDetailScreen({ route }) {
 
         <Text style={styles.description}>{description}</Text>
 
-        <View style={styles.storyCard}>
-          <Text style={styles.storyTitle}>Attendees & Event Story</Text>
-          <View style={styles.attendeeRow}>
-            <View style={styles.avatars}>
-              {[0, 1, 2].map((index) => (
-                <View key={index} style={[styles.avatar, { left: index * 20 }]}>
-                  <Ionicons color="#8291A7" name="person" size={14} />
-                </View>
-              ))}
-            </View>
-            <Text style={styles.attendeeCount}>+{attendees} going</Text>
-          </View>
-        </View>
+        <EventStorySection eventId={event.id} eventLocation={event.location} />
       </ScrollView>
 
       <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, spacing.md) }]}>

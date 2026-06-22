@@ -31,7 +31,7 @@ const RADIUS_OPTIONS = [
   { label: '1 km', value: 1 },
   { label: '5 km', value: 5 },
   { label: '10 km', value: 10 },
-  { label: 'Kota', value: 25 },
+  { label: 'City', value: 25 },
 ];
 
 export default function EventScreen() {
@@ -42,7 +42,7 @@ export default function EventScreen() {
   const [selectedRadius, setSelectedRadius] = useState(5);
   const colors = useColors();
   const styles = useMemo(() => makeStyles(colors), [colors]);
-  
+
   const { events, isLoading, isOffline, fetchEvents } = useEventStore();
   const user = useAuthStore((state) => state.user);
   const {
@@ -78,41 +78,40 @@ export default function EventScreen() {
     firestoreService
       .getTrendingPlacesToday()
       .then(setTrendingPlaces)
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   const normalizedSearch = searchQuery.trim().toLowerCase();
-  
+
   // Real Events (for New Events section)
   const matchingReal = normalizedSearch
     ? events.filter((event) =>
-        [
-          event.title,
-          event.location?.address,
-          event.location?.city,
-          event.description,
-        ].some((value) => value?.toLowerCase().includes(normalizedSearch))
-      )
+      [
+        event.title,
+        event.location?.address,
+        event.location?.city,
+        event.description,
+      ].some((value) => value?.toLowerCase().includes(normalizedSearch))
+    )
     : events;
 
   const newEvents = filterRecentEvents(matchingReal);
 
   const nearbyEvents = location
     ? matchingReal
-        .map((event) => {
-          if (event.creatorId === user?.uid) return null;
-          if (!event.location || !event.location.latitude || !event.location.longitude) return null;
-          const dist = calculateDistance(
-            location.latitude,
-            location.longitude,
-            event.location.latitude,
-            event.location.longitude
-          );
-          if (dist === null || dist > selectedRadius) return null;
-          return { ...event, distance: dist };
-        })
-        .filter(Boolean)
-        .sort((a, b) => a.distance - b.distance)
+      .map((event) => {
+        if (!event.location || !event.location.latitude || !event.location.longitude) return null;
+        const dist = calculateDistance(
+          location.latitude,
+          location.longitude,
+          event.location.latitude,
+          event.location.longitude
+        );
+        if (dist === null || dist > selectedRadius) return null;
+        return { ...event, distance: dist };
+      })
+      .filter(Boolean)
+      .sort((a, b) => a.distance - b.distance)
     : [];
 
   const featuredEvent = nearbyEvents.length > 0 ? nearbyEvents[0] : null;

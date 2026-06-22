@@ -1,13 +1,10 @@
-const appJson = require('./app.json');
-
-module.exports = () => {
-  const config = appJson.expo;
-
+module.exports = ({ config }) => {
   return {
     ...config,
     owner: "boneeeeeeeeeeeee",
     plugins: [
       ...(config.plugins || []),
+      'expo-asset',
       'expo-audio',
       "@react-native-community/datetimepicker"
     ],

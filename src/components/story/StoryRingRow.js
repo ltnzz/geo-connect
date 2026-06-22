@@ -11,13 +11,14 @@ export default function StoryRingRow({
   currentUserAvatar,
   currentUserStories = [],
   onCurrentUserRingPress,
+  style,
 }) {
   const hasStories = currentUserStories && currentUserStories.length > 0;
   const colors = useColors();
   const styles = useMemo(() => makeStyles(colors), [colors]);
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, style]}>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -124,8 +125,6 @@ const makeStyles = (colors) => StyleSheet.create({
   container: {
     backgroundColor: 'transparent',
     paddingVertical: spacing.sm + 4,
-    marginHorizontal: -spacing.md,
-    marginTop: -spacing.md, // Flush directly underneath ScreenHeader
     marginBottom: spacing.md,
   },
   scrollContent: {

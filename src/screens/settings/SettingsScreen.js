@@ -47,24 +47,33 @@ function SectionLabel({ children, styles }) {
   return <Text style={styles.sectionLabel}>{children}</Text>;
 }
 
-function MenuRow({ label, description, onPress, last = false, styles, colors }) {
+function MenuRow({ icon, label, description, onPress, last = false, styles, colors, rightElement }) {
   return (
     <Pressable
-      accessibilityRole="button"
+      accessibilityRole={onPress ? "button" : "none"}
       onPress={onPress}
       style={({ pressed }) => [
         styles.menuRow,
         !last && styles.rowBorder,
-        pressed && styles.pressed,
+        pressed && onPress && styles.pressed,
       ]}
     >
+      {icon ? (
+        <View style={styles.menuIconWrapper}>
+          <Ionicons color={colors.primary} name={icon} size={17} />
+        </View>
+      ) : null}
       <View style={styles.menuCopy}>
         <Text style={styles.menuLabel}>{label}</Text>
         {description ? (
           <Text style={styles.menuDescription}>{description}</Text>
         ) : null}
       </View>
-      <Ionicons color={colors.neutral} name="chevron-forward" size={18} />
+      {rightElement !== undefined ? (
+        rightElement
+      ) : onPress ? (
+        <Ionicons color={colors.neutral} name="chevron-forward" size={18} />
+      ) : null}
     </Pressable>
   );
 }
@@ -223,14 +232,20 @@ export default function SettingsScreen() {
         <SectionLabel styles={styles}>ACCOUNT</SectionLabel>
         <View style={styles.card}>
           <MenuRow
+            icon="person-outline"
             label="Account Details"
             styles={styles}
             colors={colors}
-            onPress={() =>
-              Alert.alert('Account Details', 'Profile editing will be available soon.')
-            }
+            onPress={() => {
+              if (navigation.canGoBack()) {
+                navigation.goBack();
+              } else {
+                navigation.navigate('Profile');
+              }
+            }}
           />
           <MenuRow
+            icon="notifications-outline"
             label="Notifications"
             last
             styles={styles}
@@ -241,96 +256,74 @@ export default function SettingsScreen() {
 
         <SectionLabel styles={styles}>APPEARANCE</SectionLabel>
         <View style={styles.card}>
-          <View style={styles.invisibleRow}>
-            <View style={styles.lockIcon}>
-              <Ionicons color={colors.primary} name="contrast" size={17} />
-            </View>
-            <View style={styles.menuCopy}>
-              <Text style={styles.menuLabel}>Dark Mode</Text>
-              <Text style={styles.menuDescription}>
-                Switch between light and dark app appearance.
-              </Text>
-            </View>
-            <Switch
-              accessibilityLabel="Dark mode"
-              onValueChange={handleThemeToggle}
-              thumbColor="#FFFFFF"
-              trackColor={{ false: '#D8DEE8', true: colors.primary }}
-              value={localDarkMode}
-            />
-          </View>
+          <MenuRow
+            icon="contrast"
+            label="Dark Mode"
+            description="Switch between light and dark app appearance."
+            last
+            styles={styles}
+            colors={colors}
+            rightElement={
+              <Switch
+                accessibilityLabel="Dark mode"
+                onValueChange={handleThemeToggle}
+                thumbColor="#FFFFFF"
+                trackColor={{ false: '#D8DEE8', true: colors.primary }}
+                value={localDarkMode}
+              />
+            }
+          />
         </View>
 
         <SectionLabel styles={styles}>LOCATION VISIBILITY</SectionLabel>
         <View style={styles.card}>
-          <View style={[styles.invisibleRow, styles.rowBorder]}>
-            <View style={styles.lockIcon}>
-              <Ionicons color={colors.primary} name="lock-closed" size={17} />
-            </View>
-            <View style={styles.menuCopy}>
-              <Text style={styles.menuLabel}>Invisible Mode</Text>
-              <Text style={styles.menuDescription}>
-                Stay active without appearing in Nearby People.
-              </Text>
-            </View>
-            <Switch
-              accessibilityLabel="Invisible mode"
-              disabled={isSaving}
-              onValueChange={changeInvisibleMode}
-              thumbColor="#FFFFFF"
-              trackColor={{ false: '#D8DEE8', true: colors.primary }}
-              value={invisibleMode}
-            />
-          </View>
+          <MenuRow
+            icon="lock-closed"
+            label="Invisible Mode"
+            description="Stay active without appearing in Nearby People."
+            last
+            styles={styles}
+            colors={colors}
+            rightElement={
+              <Switch
+                accessibilityLabel="Invisible mode"
+                disabled={isSaving}
+                onValueChange={changeInvisibleMode}
+                thumbColor="#FFFFFF"
+                trackColor={{ false: '#D8DEE8', true: colors.primary }}
+                value={invisibleMode}
+              />
+            }
+          />
+        </View>
 
-          <View style={styles.precisionContent}>
-            <Text style={styles.precisionTitle}>Share Location Precision</Text>
-            {LOCATION_OPTIONS.map((option) => {
-              const isSelected = locationSharing === option.value;
-
-              return (
-                <Pressable
-                  accessibilityRole="radio"
-                  accessibilityState={{ selected: isSelected }}
-                  disabled={isSaving}
-                  key={option.value}
-                  onPress={() => changeLocationSharing(option.value)}
-                  style={({ pressed }) => [
-                    styles.option,
-                    isSelected && styles.optionSelected,
-                    pressed && styles.pressed,
-                  ]}
-                >
-                  <View style={styles.menuCopy}>
-                    <Text
-                      style={[
-                        styles.optionLabel,
-                        isSelected && styles.optionLabelSelected,
-                      ]}
-                    >
-                      {option.label}
-                    </Text>
-                    <Text style={styles.optionDescription}>
-                      {option.description}
-                    </Text>
-                  </View>
-                  <View
-                    style={[
-                      styles.radio,
-                      isSelected && styles.radioSelected,
-                    ]}
-                  >
+        <SectionLabel styles={styles}>SHARE LOCATION PRECISION</SectionLabel>
+        <View style={styles.card}>
+          {LOCATION_OPTIONS.map((option, index) => {
+            const isSelected = locationSharing === option.value;
+            return (
+              <MenuRow
+                key={option.value}
+                label={option.label}
+                description={option.description}
+                onPress={() => changeLocationSharing(option.value)}
+                last={index === LOCATION_OPTIONS.length - 1}
+                styles={styles}
+                colors={colors}
+                rightElement={
+                  <View style={[styles.radio, isSelected && styles.radioSelected]}>
                     {isSelected ? <View style={styles.radioDot} /> : null}
                   </View>
-                </Pressable>
-              );
-            })}
-          </View>
+                }
+              />
+            );
+          })}
         </View>
 
         <SectionLabel styles={styles}>DATA MANAGEMENT</SectionLabel>
         <View style={styles.card}>
           <MenuRow
+            icon="location-outline"
             description="View and delete your past geodata."
             label="Location History"
             last
@@ -340,47 +333,27 @@ export default function SettingsScreen() {
           />
         </View>
 
-        <Pressable
-          accessibilityRole="button"
-          disabled={isSaving}
-          onPress={deleteLocationData}
-          style={({ pressed }) => [
-            styles.deleteButton,
-            pressed && styles.pressed,
-          ]}
-        >
-          {isSaving ? (
-            <ActivityIndicator color={colors.danger} size="small" />
-          ) : (
-            <Text style={styles.deleteText}>Delete All Location Data</Text>
-          )}
-        </Pressable>
+        <SectionLabel styles={styles}>DANGER ZONE</SectionLabel>
+        <View style={[styles.card, styles.dangerCard]}>
+          <MenuRow
+            icon="trash-outline"
+            label="Delete All Location Data"
+            styles={styles}
+            colors={{ ...colors, primary: colors.danger, text: colors.danger }}
+            onPress={deleteLocationData}
+          />
+          <MenuRow
+            icon="log-out-outline"
+            label="Log Out"
+            last
+            styles={styles}
+            colors={{ ...colors, primary: colors.danger, text: colors.danger }}
+            onPress={() => setIsLogoutConfirmVisible(true)}
+          />
+        </View>
         <Text style={styles.deleteHint}>
-          This action is permanent and cannot be undone.
+          Account deletion and data wiping are permanent actions.
         </Text>
-
-        <Pressable
-          accessibilityRole="button"
-          disabled={isAuthLoading}
-          onPress={() => setIsLogoutConfirmVisible(true)}
-          style={({ pressed }) => [
-            styles.logoutButton,
-            pressed && styles.pressed,
-          ]}
-        >
-          {isAuthLoading ? (
-            <ActivityIndicator color={colors.mutedText} size="small" />
-          ) : (
-            <>
-              <Ionicons
-                color={colors.mutedText}
-                name="log-out-outline"
-                size={18}
-              />
-              <Text style={styles.logoutText}>Log Out</Text>
-            </>
-          )}
-        </Pressable>
       </ScrollView>
 
       <Modal
@@ -544,13 +517,7 @@ const makeStyles = (colors) => StyleSheet.create({
     lineHeight: 15,
     marginTop: 2,
   },
-  invisibleRow: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    minHeight: 76,
-    padding: spacing.md,
-  },
-  lockIcon: {
+  menuIconWrapper: {
     alignItems: 'center',
     backgroundColor: `${colors.primary}1A`,
     borderRadius: radius.sm,
@@ -558,41 +525,6 @@ const makeStyles = (colors) => StyleSheet.create({
     justifyContent: 'center',
     marginRight: spacing.sm,
     width: 34,
-  },
-  precisionContent: {
-    padding: spacing.md,
-  },
-  precisionTitle: {
-    color: colors.text,
-    fontFamily: 'Poppins_600SemiBold',
-    fontSize: 12,
-    marginBottom: spacing.sm,
-  },
-  option: {
-    alignItems: 'center',
-    borderRadius: radius.sm,
-    flexDirection: 'row',
-    minHeight: 54,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.sm,
-  },
-  optionSelected: {
-    backgroundColor: `${colors.primary}15`,
-  },
-  optionLabel: {
-    color: colors.mutedText,
-    fontFamily: 'Poppins_400Regular',
-    fontSize: 12,
-  },
-  optionLabelSelected: {
-    color: colors.primary,
-    fontFamily: 'Poppins_600SemiBold',
-  },
-  optionDescription: {
-    color: colors.mutedText,
-    fontFamily: 'Poppins_400Regular',
-    fontSize: 9,
-    marginTop: 1,
   },
   radio: {
     alignItems: 'center',
@@ -613,41 +545,8 @@ const makeStyles = (colors) => StyleSheet.create({
     height: 10,
     width: 10,
   },
-  deleteButton: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 62,
-    minHeight: 42,
-  },
-  deleteText: {
-    color: colors.danger,
-    fontFamily: 'Poppins_600SemiBold',
-    fontSize: 12,
-  },
-  deleteHint: {
-    color: colors.mutedText,
-    fontFamily: 'Poppins_400Regular',
-    fontSize: 9,
-    marginTop: spacing.sm,
-    textAlign: 'center',
-  },
-  logoutButton: {
-    alignItems: 'center',
-    alignSelf: 'center',
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    flexDirection: 'row',
-    gap: spacing.sm,
-    height: 44,
-    justifyContent: 'center',
-    marginTop: spacing.xl,
-    paddingHorizontal: spacing.xl,
-  },
-  logoutText: {
-    color: colors.mutedText,
-    fontFamily: 'Poppins_600SemiBold',
-    fontSize: 12,
+  dangerCard: {
+    borderColor: `${colors.danger}30`,
   },
   modalBackdrop: {
     alignItems: 'center',

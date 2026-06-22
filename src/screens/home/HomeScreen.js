@@ -14,7 +14,7 @@ import { useEventStore } from '../../stores/eventStore';
 import { firestoreService } from '../../services/firestoreService';
 import { imagePickerService } from '../../services/imagePickerService';
 import { cloudinaryService } from '../../services/cloudinaryService';
-import { useColors, spacing } from '../../utils/theme';
+import { useColors, spacing, radius } from '../../utils/theme';
 import { useLocation } from '../../hooks/useLocation';
 
 
@@ -171,13 +171,20 @@ export default function HomeScreen() {
       <ScreenHeader onSearchIconPress={() => navigation.navigate('Search')} />
       {isOffline ? (
         <View style={styles.offlineBanner}>
-          <Text style={styles.offlineText}>Offline mode - showing cached posts</Text>
+          <View style={styles.offlineInner}>
+            <Ionicons name="cloud-offline-outline" size={14} color="#FFFFFF" style={styles.offlineIcon} />
+            <Text style={styles.offlineText}>Anda sedang offline. Menampilkan data tersimpan.</Text>
+          </View>
         </View>
       ) : null}
       <FlatList
         contentContainerStyle={styles.listContent}
         data={posts}
         keyExtractor={(item) => item._listKey || item.id}
+        initialNumToRender={5}
+        maxToRenderPerBatch={5}
+        windowSize={11}
+        removeClippedSubviews={true}
         onEndReached={handleEndReached}
         onEndReachedThreshold={0.4}
         onRefresh={() => {
@@ -190,6 +197,7 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={
           <StoryRingRow
+            style={{ marginTop: -spacing.md, marginHorizontal: -spacing.md }}
             groupedStories={otherUsersStoriesGroups}
             currentUserAvatar={currentUserAvatar}
             currentUserStories={currentUserStoriesGroup?.stories}
@@ -273,14 +281,35 @@ const makeStyles = (colors) => StyleSheet.create({
     marginTop: spacing.sm,
   },
   offlineBanner: {
-    backgroundColor: `${colors.secondary}15`,
+    backgroundColor: 'transparent',
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
+    position: 'absolute',
+    top: 70, // Below header
+    left: 0,
+    right: 0,
+    zIndex: 10,
+    alignItems: 'center',
+  },
+  offlineInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.danger,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 6,
+    borderRadius: radius.full,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  offlineIcon: {
+    marginRight: 6,
   },
   offlineText: {
-    color: colors.secondary,
+    color: '#FFFFFF',
     fontFamily: 'Poppins_600SemiBold',
     fontSize: 11,
-    textAlign: 'center',
   },
 });

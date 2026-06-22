@@ -3,8 +3,6 @@ import { create } from 'zustand';
 import { authService } from '../services/authService';
 import { firestoreService } from '../services/firestoreService';
 import { notificationService } from '../services/notificationService';
-import { useFeedStore } from './feedstore';
-import { useEventStore } from './eventStore';
 
 export const useAuthStore = create((set) => ({
   user: null,
@@ -88,6 +86,9 @@ export const useAuthStore = create((set) => ({
           .catch(() => {});
       }
       await authService.logout();
+
+      const { useFeedStore } = require('./feedstore');
+      const { useEventStore } = require('./eventStore');
 
       useFeedStore.setState({ posts: [], lastDoc: null, hasMore: true, loopPage: 0, deletedPostIds: [], isOffline: false, error: null });
       useEventStore.setState({ events: [], lastDoc: null, hasMore: true, isOffline: false, error: null });

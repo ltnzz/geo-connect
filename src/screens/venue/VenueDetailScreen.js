@@ -68,7 +68,13 @@ export default function VenueDetailScreen({ navigation, route }) {
   useEffect(() => {
     loadVenue();
     handleGetLocation();
-  }, [placeId]);
+
+    const unsubscribe = navigation.addListener('focus', () => {
+      loadVenue();
+    });
+
+    return unsubscribe;
+  }, [placeId, navigation]);
 
   const checkIn = async () => {
     if (!user?.uid || !place?.location || isCheckingIn) {

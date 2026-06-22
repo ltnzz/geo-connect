@@ -288,6 +288,24 @@ export const firestoreService = {
     return postRef.id;
   },
 
+  async deletePost(postId, authorId) {
+    assertFirebaseConfigured();
+    const postRef = doc(db, COLLECTIONS.posts, postId);
+    const userRef = doc(db, COLLECTIONS.users, authorId);
+
+    await runTransaction(db, async (transaction) => {
+      const postSnap = await transaction.get(postRef);
+      if (!postSnap.exists()) {
+        throw new Error('Post does not exist.');
+      }
+      transaction.delete(postRef);
+      transaction.update(userRef, {
+        postsCount: increment(-1),
+        updatedAt: serverTimestamp(),
+      });
+    });
+  },
+
   async addComment(postId, { userId, content, parentId = null, replyToAuthorName = '' }) {
     const commentRef = doc(
       collection(db, COLLECTIONS.posts, postId, SUBCOLLECTIONS.comments),
@@ -1250,6 +1268,47 @@ export const firestoreService = {
           event.location?.city,
         ].some((value) => value?.toLowerCase().includes(normalizedSearch)),
       );
+  },
+
+  async searchPlaces(searchText, maxResults = 25) {
+    assertFirebaseConfigured();
+    const normalizedSearch = searchText.trim().toLowerCase();
+
+    if (!normalizedSearch) {
+      return [];
+    }
+
+    const snapshot = await getDocs(
+      query(
+        collection(db, COLLECTIONS.places),
+        limit(maxResults),
+      ),
+    );
+
+    return snapshot.docs
+      .map((documentSnapshot) => ({ id: documentSnapshot.id, ...documentSnapshot.data() }))
+      .filter((place) =>
+        [
+          place.name,
+          place.category,
+          place.address,
+          place.city,
+        ].some((value) => value?.toLowerCase().includes(normalizedSearch)),
+      );
+  },
+
+  async getAllPlaces(maxResults = 25) {
+    assertFirebaseConfigured();
+    const snapshot = await getDocs(
+      query(
+        collection(db, COLLECTIONS.places),
+        limit(maxResults),
+      ),
+    );
+    return snapshot.docs.map((documentSnapshot) => ({
+      id: documentSnapshot.id,
+      ...documentSnapshot.data(),
+    }));
   },
 
   async getLikedPostIds(postIds, userId) {

@@ -48,6 +48,7 @@ const cacheFeed = async (posts) => {
 
 export const useFeedStore = create((set, get) => ({
   posts: [],
+  deletedPostIds: [],
   lastDoc: null,
   isLoading: false,
   isRefreshing: false,
@@ -212,6 +213,14 @@ export const useFeedStore = create((set, get) => ({
 
   prependPost: (post) =>
     set((s) => ({ posts: [{ ...post, isLiked: false }, ...s.posts] })),
+
+  deletePost: async (postId, authorId) => {
+    set((s) => ({
+      posts: s.posts.filter((p) => p.id !== postId),
+      deletedPostIds: [...s.deletedPostIds, postId],
+    }));
+    await firestoreService.deletePost(postId, authorId);
+  },
 
   fetchPost: async (postId, currentUserId) => {
     const cached = get().posts.find((p) => p.id === postId);

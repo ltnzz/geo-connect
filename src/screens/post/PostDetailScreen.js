@@ -120,7 +120,7 @@ function CommentThread({ comment, replies, currentUserId, onDelete, onReply, sty
   );
 }
 
-function PostHeader({ post, currentUserId, onLike, onBookmark, showFollow, isFollowing, onToggleFollow, styles, colors }) {
+function PostHeader({ post, currentUserId, onLike, onBookmark, showFollow, isFollowing, onToggleFollow, styles, colors, onDeletePost }) {
   const locationLabel = getLocationLabel(post);
 
   return (
@@ -159,6 +159,13 @@ function PostHeader({ post, currentUserId, onLike, onBookmark, showFollow, isFol
             >
               {isFollowing ? 'Following' : 'Follow'}
             </Text>
+          </Pressable>
+        ) : post.authorId === currentUserId ? (
+          <Pressable
+            onPress={onDeletePost}
+            style={styles.deletePostIcon}
+          >
+            <Ionicons name="trash-outline" size={20} color={colors.danger} />
           </Pressable>
         ) : null}
       </View>
@@ -217,6 +224,7 @@ export default function PostDetailScreen({ route }) {
   const fetchComments = useFeedStore((s) => s.fetchComments);
   const addComment = useFeedStore((s) => s.addComment);
   const deleteComment = useFeedStore((s) => s.deleteComment);
+  const deletePost = useFeedStore((s) => s.deletePost);
   const commentsByPost = useFeedStore((s) => s.commentsByPost);
   const commentsLoadingByPost = useFeedStore((s) => s.commentsLoadingByPost);
   const livePosts = useFeedStore((s) => s.posts);
@@ -326,6 +334,32 @@ export default function PostDetailScreen({ route }) {
     );
   };
 
+  const handleDeletePost = () => {
+    Alert.alert(
+      'Hapus Postingan',
+      'Apakah Anda yakin ingin menghapus postingan ini secara permanen?',
+      [
+        {
+          text: 'Batal',
+          style: 'cancel',
+        },
+        {
+          text: 'Hapus',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deletePost(postId, currentUserId);
+              navigation.goBack();
+            } catch (err) {
+              Alert.alert('Gagal menghapus', err.message || 'Silakan coba lagi nanti.');
+            }
+          },
+        },
+      ],
+      { cancelable: true }
+    );
+  };
+
   const handleReply = (comment) => {
 
     const threadRootId = comment.parentId || comment.id;
@@ -377,6 +411,7 @@ export default function PostDetailScreen({ route }) {
               showFollow={!!currentUserId && post.authorId !== currentUserId}
               isFollowing={!!followingByUser[post.authorId]}
               onToggleFollow={handleToggleFollow}
+              onDeletePost={handleDeletePost}
               styles={styles}
               colors={colors}
             />
@@ -500,6 +535,9 @@ const makeStyles = (colors) => StyleSheet.create({
     borderWidth: 1,
     paddingHorizontal: 14,
     paddingVertical: 6,
+  },
+  deletePostIcon: {
+    padding: spacing.xs,
   },
   followButtonActive: {
     backgroundColor: colors.background,

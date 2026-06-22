@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { firestoreService } from '../services/firestoreService';
 import { notificationService } from '../services/notificationService';
 import { NOTIFICATION_TYPES } from '../constants/firestore';
+import { useAuthStore } from './authStore';
 
 const PAGE_SIZE = 10;
 const FEED_CACHE_KEY = '@aroundu:feed-cache';
@@ -71,7 +72,15 @@ export const useFeedStore = create((set, get) => ({
         ? await firestoreService.getLikedPostIds(enrichedPosts.map((p) => p.id), currentUserId)
         : new Set();
 
-      const nextPosts = enrichedPosts.map((p) => ({ ...p, isLiked: likedIds.has(p.id) }));
+      const bookmarkedIds = currentUserId
+        ? await firestoreService.getBookmarkedPostIds(currentUserId)
+        : new Set();
+
+      const nextPosts = enrichedPosts.map((p) => ({
+        ...p,
+        isLiked: likedIds.has(p.id),
+        isBookmarked: bookmarkedIds.has(p.id),
+      }));
       await cacheFeed(nextPosts);
 
       set({
@@ -104,7 +113,15 @@ export const useFeedStore = create((set, get) => ({
         ? await firestoreService.getLikedPostIds(enrichedPosts.map((p) => p.id), currentUserId)
         : new Set();
 
-      const nextPosts = enrichedPosts.map((p) => ({ ...p, isLiked: likedIds.has(p.id) }));
+      const bookmarkedIds = currentUserId
+        ? await firestoreService.getBookmarkedPostIds(currentUserId)
+        : new Set();
+
+      const nextPosts = enrichedPosts.map((p) => ({
+        ...p,
+        isLiked: likedIds.has(p.id),
+        isBookmarked: bookmarkedIds.has(p.id),
+      }));
       await cacheFeed(nextPosts);
 
       set({
@@ -165,10 +182,18 @@ export const useFeedStore = create((set, get) => ({
         ? await firestoreService.getLikedPostIds(enrichedNewPosts.map((p) => p.id), currentUserId)
         : new Set();
 
+      const bookmarkedIds = currentUserId
+        ? await firestoreService.getBookmarkedPostIds(currentUserId)
+        : new Set();
+
       set((s) => {
         const mergedPosts = [
           ...s.posts,
-          ...enrichedNewPosts.map((p) => ({ ...p, isLiked: likedIds.has(p.id) })),
+          ...enrichedNewPosts.map((p) => ({
+            ...p,
+            isLiked: likedIds.has(p.id),
+            isBookmarked: bookmarkedIds.has(p.id),
+          })),
         ];
         cacheFeed(mergedPosts);
 
@@ -200,11 +225,24 @@ export const useFeedStore = create((set, get) => ({
       ? await firestoreService.getLikedPostIds([enriched.id], currentUserId)
       : new Set();
 
-    return { ...enriched, isLiked: likedIds.has(enriched.id) };
+    const bookmarkedIds = currentUserId
+      ? await firestoreService.getBookmarkedPostIds(currentUserId)
+      : new Set();
+
+    return {
+      ...enriched,
+      isLiked: likedIds.has(enriched.id),
+      isBookmarked: bookmarkedIds.has(enriched.id),
+    };
   },
 
-  toggleLike: async (postId, userId) => {
-    const target = get().posts.find((p) => p.id === postId);
+  toggleLike: async (postId, userId, postObj = null) => {
+    let target = get().posts.find((p) => p.id === postId);
+    if (!target && postObj) {
+      set((s) => ({ posts: [...s.posts, postObj] }));
+      target = postObj;
+    }
+
     if (!target) return;
 
     const wasLiked = !!target.isLiked;
@@ -222,9 +260,10 @@ export const useFeedStore = create((set, get) => ({
     try {
       await firestoreService.setPostLiked(postId, userId, nextLiked);
       if (nextLiked && target.authorId) {
+        const currentUser = useAuthStore.getState().user;
         await firestoreService.createNotification({
           actorId: userId,
-          actorUsername: 'someone',
+          actorUsername: currentUser?.username || 'someone',
           postId,
           recipientId: target.authorId,
           type: NOTIFICATION_TYPES.like,
@@ -242,6 +281,44 @@ export const useFeedStore = create((set, get) => ({
             : p,
         ),
         error: 'Failed to update like. Please try again.',
+      }));
+    }
+  },
+
+  toggleBookmark: async (postId, userId, postObj = null) => {
+    let target = get().posts.find((p) => p.id === postId);
+    if (!target && postObj) {
+      set((s) => ({ posts: [...s.posts, postObj] }));
+      target = postObj;
+    }
+
+    if (!target) return;
+
+    const wasBookmarked = !!target.isBookmarked;
+    const nextBookmarked = !wasBookmarked;
+
+    set((s) => ({
+      posts: s.posts.map((p) =>
+        p.id === postId
+          ? { ...p, isBookmarked: nextBookmarked }
+          : p,
+      ),
+    }));
+
+    try {
+      await firestoreService.setBookmarked(userId, postId, nextBookmarked);
+      await notificationService.showLocalNotification({
+        title: nextBookmarked ? 'Post Bookmarked' : 'Post Unbookmarked',
+        body: nextBookmarked ? 'Saved to your bookmarks.' : 'Removed from your bookmarks.',
+      }).catch(() => {});
+    } catch (err) {
+      set((s) => ({
+        posts: s.posts.map((p) =>
+          p.id === postId
+            ? { ...p, isBookmarked: wasBookmarked }
+            : p,
+        ),
+        error: 'Failed to update bookmark. Please try again.',
       }));
     }
   },
@@ -301,9 +378,10 @@ export const useFeedStore = create((set, get) => ({
       const post = get().posts.find((p) => p.id === postId);
 
       if (post?.authorId) {
+        const currentUser = useAuthStore.getState().user;
         await firestoreService.createNotification({
           actorId: userId,
-          actorUsername: author?.username || 'someone',
+          actorUsername: currentUser?.username || 'someone',
           postId,
           recipientId: post.authorId,
           type: NOTIFICATION_TYPES.comment,
@@ -388,9 +466,10 @@ export const useFeedStore = create((set, get) => ({
     try {
       await firestoreService.setFollowing(currentUserId, targetUserId, nextFollowing);
       if (nextFollowing) {
+        const currentUser = useAuthStore.getState().user;
         await firestoreService.createNotification({
           actorId: currentUserId,
-          actorUsername: 'someone',
+          actorUsername: currentUser?.username || 'someone',
           recipientId: targetUserId,
           type: NOTIFICATION_TYPES.follow,
         }).catch(() => {});

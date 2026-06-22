@@ -3,6 +3,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Image,
   KeyboardAvoidingView,
@@ -20,7 +21,7 @@ import ScreenHeader from '../../components/common/ScreenHeader';
 import { useAuthStore } from '../../stores/authStore';
 import { useFeedStore } from '../../stores/feedstore';
 import { formatCount, formatRelativeTime } from '../../utils/format';
-import { colors, radius, spacing } from '../../utils/theme';
+import { useColors, radius, spacing } from '../../utils/theme';
 
 const getLocationLabel = (post) => {
   if (typeof post?.location === 'string') {
@@ -35,7 +36,7 @@ const getLocationLabel = (post) => {
   );
 };
 
-function CommentRow({ comment, isReply, canDelete, onDelete, onReply }) {
+function CommentRow({ comment, isReply, canDelete, onDelete, onReply, styles, colors }) {
   return (
     <View style={[styles.commentRow, isReply && styles.commentRowReply]}>
       {comment.authorAvatar ? (
@@ -73,21 +74,26 @@ function CommentRow({ comment, isReply, canDelete, onDelete, onReply }) {
 
         <Text style={styles.commentContent}>{comment.content}</Text>
 
-        <Pressable hitSlop={8} onPress={onReply} style={styles.replyButton}>
-          <Text style={styles.replyButtonText}>Balas</Text>
-        </Pressable>
-      </View>
+        <View style={styles.commentActionsRow}>
+          <Pressable hitSlop={8} onPress={onReply} style={styles.replyButton}>
+            <Text style={styles.replyButtonText}>Balas</Text>
+          </Pressable>
 
-      {canDelete ? (
-        <Pressable hitSlop={8} onPress={onDelete} style={styles.commentDelete}>
-          <Ionicons name="trash-outline" size={16} color={colors.mutedText} />
-        </Pressable>
-      ) : null}
+          {canDelete ? (
+            <>
+              <Text style={styles.actionSeparator}>•</Text>
+              <Pressable hitSlop={8} onPress={onDelete} style={styles.deleteButton}>
+                <Text style={styles.deleteButtonText}>Hapus</Text>
+              </Pressable>
+            </>
+          ) : null}
+        </View>
+      </View>
     </View>
   );
 }
 
-function CommentThread({ comment, replies, currentUserId, onDelete, onReply }) {
+function CommentThread({ comment, replies, currentUserId, onDelete, onReply, styles, colors }) {
   return (
     <View>
       <CommentRow
@@ -95,6 +101,8 @@ function CommentThread({ comment, replies, currentUserId, onDelete, onReply }) {
         canDelete={comment.userId === currentUserId}
         onDelete={() => onDelete(comment.id)}
         onReply={() => onReply(comment)}
+        styles={styles}
+        colors={colors}
       />
       {replies.map((reply) => (
         <CommentRow
@@ -104,13 +112,15 @@ function CommentThread({ comment, replies, currentUserId, onDelete, onReply }) {
           key={reply.id}
           onDelete={() => onDelete(reply.id)}
           onReply={() => onReply(comment)}
+          styles={styles}
+          colors={colors}
         />
       ))}
     </View>
   );
 }
 
-function PostHeader({ post, currentUserId, onLike, showFollow, isFollowing, onToggleFollow }) {
+function PostHeader({ post, currentUserId, onLike, onBookmark, showFollow, isFollowing, onToggleFollow, styles, colors }) {
   const locationLabel = getLocationLabel(post);
 
   return (
@@ -161,18 +171,28 @@ function PostHeader({ post, currentUserId, onLike, showFollow, isFollowing, onTo
       <Text style={styles.time}>{formatRelativeTime(post.createdAt)}</Text>
 
       <View style={styles.actions}>
-        <Pressable hitSlop={8} onPress={onLike} style={styles.action}>
+        <View style={{ flexDirection: 'row', gap: 16 }}>
+          <Pressable hitSlop={8} onPress={onLike} style={styles.action}>
+            <Ionicons
+              color={post.isLiked ? colors.danger : colors.text}
+              name={post.isLiked ? 'heart' : 'heart-outline'}
+              size={22}
+            />
+            <Text style={styles.actionText}>{formatCount(post.likesCount || 0)}</Text>
+          </Pressable>
+          <View style={styles.action}>
+            <Ionicons color={colors.text} name="chatbubble-outline" size={21} />
+            <Text style={styles.actionText}>{formatCount(post.commentsCount || 0)}</Text>
+          </View>
+        </View>
+
+        <Pressable hitSlop={8} onPress={onBookmark} style={styles.action}>
           <Ionicons
-            color={post.isLiked ? colors.danger : colors.text}
-            name={post.isLiked ? 'heart' : 'heart-outline'}
+            color={post.isBookmarked ? colors.primary : colors.text}
+            name={post.isBookmarked ? 'bookmark' : 'bookmark-outline'}
             size={22}
           />
-          <Text style={styles.actionText}>{formatCount(post.likesCount || 0)}</Text>
         </Pressable>
-        <View style={styles.action}>
-          <Ionicons color={colors.text} name="chatbubble-outline" size={21} />
-          <Text style={styles.actionText}>{formatCount(post.commentsCount || 0)}</Text>
-        </View>
       </View>
 
       <View style={styles.commentsDivider}>
@@ -192,6 +212,7 @@ export default function PostDetailScreen({ route }) {
   const currentUserId = currentUser?.uid;
 
   const toggleLike = useFeedStore((s) => s.toggleLike);
+  const toggleBookmark = useFeedStore((s) => s.toggleBookmark);
   const fetchPost = useFeedStore((s) => s.fetchPost);
   const fetchComments = useFeedStore((s) => s.fetchComments);
   const addComment = useFeedStore((s) => s.addComment);
@@ -210,6 +231,8 @@ export default function PostDetailScreen({ route }) {
   const [draft, setDraft] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [replyingTo, setReplyingTo] = useState(null);
+  const colors = useColors();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
 
   const comments = commentsByPost[postId] || [];
   const isLoadingComments = !!commentsLoadingByPost[postId];
@@ -252,7 +275,12 @@ export default function PostDetailScreen({ route }) {
 
   const handleLike = () => {
     if (!currentUserId) return;
-    toggleLike(postId, currentUserId);
+    toggleLike(postId, currentUserId, post);
+  };
+
+  const handleBookmark = () => {
+    if (!currentUserId) return;
+    toggleBookmark(postId, currentUserId, post);
   };
 
   const handleToggleFollow = () => {
@@ -280,7 +308,22 @@ export default function PostDetailScreen({ route }) {
   };
 
   const handleDeleteComment = (commentId) => {
-    deleteComment(postId, commentId);
+    Alert.alert(
+      'Hapus Komentar',
+      'Apakah Anda yakin ingin menghapus komentar ini?',
+      [
+        {
+          text: 'Batal',
+          style: 'cancel',
+        },
+        {
+          text: 'Hapus',
+          style: 'destructive',
+          onPress: () => deleteComment(postId, commentId),
+        },
+      ],
+      { cancelable: true }
+    );
   };
 
   const handleReply = (comment) => {
@@ -330,9 +373,12 @@ export default function PostDetailScreen({ route }) {
               post={post}
               currentUserId={currentUserId}
               onLike={handleLike}
+              onBookmark={handleBookmark}
               showFollow={!!currentUserId && post.authorId !== currentUserId}
               isFollowing={!!followingByUser[post.authorId]}
               onToggleFollow={handleToggleFollow}
+              styles={styles}
+              colors={colors}
             />
           }
           ListEmptyComponent={
@@ -356,6 +402,8 @@ export default function PostDetailScreen({ route }) {
               onDelete={handleDeleteComment}
               onReply={handleReply}
               replies={item.replies}
+              styles={styles}
+              colors={colors}
             />
           )}
           showsVerticalScrollIndicator={false}
@@ -408,9 +456,9 @@ export default function PostDetailScreen({ route }) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors) => StyleSheet.create({
   screen: {
-    backgroundColor: '#FBFCFF',
+    backgroundColor: colors.background,
     flex: 1,
   },
   center: {
@@ -423,7 +471,7 @@ const styles = StyleSheet.create({
   },
   post: {
     backgroundColor: colors.surface,
-    borderBottomColor: '#E8EDF4',
+    borderBottomColor: colors.border,
     borderBottomWidth: 8,
     paddingBottom: spacing.md,
   },
@@ -439,7 +487,7 @@ const styles = StyleSheet.create({
   },
   avatarPlaceholder: {
     alignItems: 'center',
-    backgroundColor: '#F1F5F9',
+    backgroundColor: colors.background,
     justifyContent: 'center',
   },
   authorInfo: {
@@ -454,7 +502,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   followButtonActive: {
-    backgroundColor: '#F1F5F9',
+    backgroundColor: colors.background,
     borderColor: colors.border,
   },
   followButtonText: {
@@ -484,7 +532,7 @@ const styles = StyleSheet.create({
   },
   mediaImage: {
     aspectRatio: 1,
-    backgroundColor: '#DCE4EF',
+    backgroundColor: colors.border,
     width: '100%',
   },
   caption: {
@@ -504,9 +552,10 @@ const styles = StyleSheet.create({
   },
   actions: {
     alignItems: 'center',
-    borderTopColor: '#E8EDF4',
+    borderTopColor: colors.border,
     borderTopWidth: StyleSheet.hairlineWidth,
     flexDirection: 'row',
+    justifyContent: 'space-between',
     marginTop: spacing.md,
     paddingHorizontal: spacing.md,
     paddingTop: spacing.md,
@@ -548,7 +597,7 @@ const styles = StyleSheet.create({
   },
   commentRow: {
     backgroundColor: colors.surface,
-    borderBottomColor: '#F1F5F9',
+    borderBottomColor: colors.border,
     borderBottomWidth: StyleSheet.hairlineWidth,
     flexDirection: 'row',
     padding: spacing.md,
@@ -571,7 +620,7 @@ const styles = StyleSheet.create({
   },
   commentAvatarPlaceholder: {
     alignItems: 'center',
-    backgroundColor: '#F1F5F9',
+    backgroundColor: colors.background,
     justifyContent: 'center',
   },
   commentBody: {
@@ -580,7 +629,7 @@ const styles = StyleSheet.create({
   commentHeaderRow: {
     alignItems: 'center',
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    gap: 8,
   },
   commentAuthor: {
     color: colors.text,
@@ -588,7 +637,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   commentTime: {
-    color: colors.mutedText,
+    color: colors.neutral,
     fontFamily: 'Poppins_400Regular',
     fontSize: 10,
   },
@@ -599,18 +648,27 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     marginTop: 2,
   },
+  commentActionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 6,
+    gap: 8,
+  },
+  actionSeparator: {
+    color: colors.neutral,
+    fontSize: 10,
+  },
   replyButton: {
     alignSelf: 'flex-start',
-    marginTop: 4,
   },
   replyButtonText: {
-    color: colors.mutedText,
+    color: colors.neutral,
     fontFamily: 'Poppins_600SemiBold',
     fontSize: 11,
   },
   mentionTag: {
     alignSelf: 'flex-start',
-    backgroundColor: '#EAF1FF',
+    backgroundColor: `${colors.primary}1A`,
     borderRadius: radius.sm,
     marginTop: 2,
     paddingHorizontal: 6,
@@ -621,14 +679,17 @@ const styles = StyleSheet.create({
     fontFamily: 'Poppins_600SemiBold',
     fontSize: 11,
   },
-  commentDelete: {
+  deleteButton: {
     alignSelf: 'flex-start',
-    marginLeft: spacing.sm,
-    padding: 4,
+  },
+  deleteButtonText: {
+    color: colors.danger,
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 11,
   },
   replyBar: {
     alignItems: 'center',
-    backgroundColor: '#F1F5F9',
+    backgroundColor: colors.background,
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingHorizontal: spacing.md,
@@ -659,7 +720,7 @@ const styles = StyleSheet.create({
     width: 30,
   },
   input: {
-    backgroundColor: '#F1F5F9',
+    backgroundColor: colors.background,
     borderRadius: radius.lg,
     color: colors.text,
     flex: 1,

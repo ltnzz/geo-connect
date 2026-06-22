@@ -72,6 +72,10 @@ export const useAuthStore = create((set) => ({
 
     try {
       const currentUser = useAuthStore.getState().user;
+
+      // Clear user state early to trigger listener unsubscribes
+      set({ user: null });
+
       if (currentUser?.uid) {
         await Promise.race([
           notificationService.unregisterDevice(currentUser.uid),
@@ -82,7 +86,7 @@ export const useAuthStore = create((set) => ({
           .catch(() => {});
       }
       await authService.logout();
-      set({ user: null, isLoading: false });
+      set({ isLoading: false });
       return true;
     } catch {
       set({ error: 'Unable to log out. Please try again.', isLoading: false });

@@ -41,11 +41,11 @@ functions/lib/
 .env.*
 !.env.example
 .env*.local
-google-services.json
 
 # typescript
 *.tsbuildinfo
 
 # generated native folders
 /ios
-/android
+/android/build
+/android/.gradle

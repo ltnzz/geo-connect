@@ -27,11 +27,19 @@ import { calculateDistance } from '../../utils/locationUtils';
 import { useLocation } from '../../hooks/useLocation';
 import { useColors, radius, spacing } from '../../utils/theme';
 
+const RADIUS_OPTIONS = [
+  { label: '1 km', value: 1 },
+  { label: '5 km', value: 5 },
+  { label: '10 km', value: 10 },
+  { label: 'Kota', value: 25 },
+];
+
 export default function EventScreen() {
   const navigation = useNavigation();
   const [searchQuery, setSearchQuery] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [trendingPlaces, setTrendingPlaces] = useState([]);
+  const [selectedRadius, setSelectedRadius] = useState(5);
   const colors = useColors();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   
@@ -100,7 +108,7 @@ export default function EventScreen() {
             event.location.latitude,
             event.location.longitude
           );
-          if (dist === null || dist > 1) return null;
+          if (dist === null || dist > selectedRadius) return null;
           return { ...event, distance: dist };
         })
         .filter(Boolean)
@@ -114,7 +122,8 @@ export default function EventScreen() {
     .sort((a, b) => (b.participantCount || 0) - (a.participantCount || 0))
     .slice(0, 5);
 
-  const nearbySubtitle = 'Events within 1 km of your location.';
+  const radiusLabel = RADIUS_OPTIONS.find((o) => o.value === selectedRadius)?.label ?? `${selectedRadius} km`;
+  const nearbySubtitle = `Events within ${radiusLabel} of your location.`;
 
   return (
     <View style={styles.screen}>
@@ -144,6 +153,33 @@ export default function EventScreen() {
         <Text style={styles.heading}>Nearby Events</Text>
         <Text style={styles.subtitle}>{nearbySubtitle}</Text>
 
+        <ScrollView
+          contentContainerStyle={styles.radiusRow}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+        >
+          {RADIUS_OPTIONS.map((option) => (
+            <Pressable
+              accessibilityRole="button"
+              key={option.value}
+              onPress={() => setSelectedRadius(option.value)}
+              style={[
+                styles.radiusPill,
+                selectedRadius === option.value && styles.radiusPillActive,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.radiusPillText,
+                  selectedRadius === option.value && styles.radiusPillTextActive,
+                ]}
+              >
+                {option.label}
+              </Text>
+            </Pressable>
+          ))}
+        </ScrollView>
+
         {isLoading || isFetchingLocation ? (
           <ActivityIndicator style={{ marginTop: spacing.xl }} color={colors.primary} size="large" />
         ) : featuredEvent ? (
@@ -152,7 +188,7 @@ export default function EventScreen() {
             onOpen={() => navigation.navigate('EventDetail', { eventId: featuredEvent.id })}
           />
         ) : (
-          <EmptyNearbyEvent radius={1} />
+          <EmptyNearbyEvent radius={selectedRadius} />
         )}
 
         <EventSectionHeader
@@ -276,6 +312,30 @@ const makeStyles = (colors) => StyleSheet.create({
     gap: spacing.sm,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.md,
+  },
+  radiusRow: {
+    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  radiusPill: {
+    borderColor: colors.border,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+  },
+  radiusPillActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  radiusPillText: {
+    color: colors.neutral,
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 12,
+  },
+  radiusPillTextActive: {
+    color: '#FFFFFF',
   },
   emptyNewEventsText: {
     color: colors.neutral,

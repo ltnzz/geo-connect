@@ -12,7 +12,11 @@ import {
 } from 'react-native';
 
 import ScreenHeader from '../../components/common/ScreenHeader';
+import StoryRingRow from '../../components/story/StoryRingRow';
+import StoryViewerModal from '../../components/story/StoryViewerModal';
 import { firestoreService } from '../../services/firestoreService';
+import { cloudinaryService } from '../../services/cloudinaryService';
+import { imagePickerService } from '../../services/imagePickerService';
 import { useAuthStore } from '../../stores/authStore';
 import { useLocation } from '../../hooks/useLocation';
 import { locationService } from '../../services/locationService';
@@ -27,10 +31,34 @@ export default function VenueDetailScreen({ navigation, route }) {
   const [place, setPlace] = useState(route.params?.place || null);
   const [posts, setPosts] = useState([]);
   const [leaderboard, setLeaderboard] = useState([]);
+  const [venueStories, setVenueStories] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isCheckingIn, setIsCheckingIn] = useState(false);
+  const [isUploadingStory, setIsUploadingStory] = useState(false);
+  const [isStoryViewerVisible, setIsStoryViewerVisible] = useState(false);
+  const [viewerStories, setViewerStories] = useState([]);
+  const [viewerInitialIndex, setViewerInitialIndex] = useState(0);
   const colors = useColors();
   const styles = useMemo(() => makeStyles(colors), [colors]);
+
+  const currentUserStoriesGroup = venueStories.length > 0
+    ? venueStories.reduce((groups, story) => {
+        if (!story.userId) return groups;
+        if (!groups[story.userId]) {
+          groups[story.userId] = {
+            userId: story.userId,
+            username: story.username || 'aroundu',
+            userAvatar: story.userAvatar || '',
+            stories: [],
+          };
+        }
+        groups[story.userId].stories.push(story);
+        return groups;
+      }, {})
+    : {};
+  const groupedVenueStories = Object.values(currentUserStoriesGroup);
+  const myStoryGroup = groupedVenueStories.find((g) => g.userId === user?.uid);
+  const othersStoryGroups = groupedVenueStories.filter((g) => g.userId !== user?.uid);
 
   const loadVenue = async () => {
     if (!placeId) {
@@ -39,10 +67,11 @@ export default function VenueDetailScreen({ navigation, route }) {
 
     setIsLoading(true);
     try {
-      const [nextPlace, rawPosts, nextLeaderboard] = await Promise.all([
+      const [nextPlace, rawPosts, nextLeaderboard, stories] = await Promise.all([
         firestoreService.getPlace(placeId),
         firestoreService.getPlacePosts(placeId),
         firestoreService.getPlaceLeaderboard(placeId),
+        firestoreService.getVenueStories(placeId).catch(() => []),
       ]);
 
       const likedIds = rawPosts.length && user?.uid
@@ -62,6 +91,7 @@ export default function VenueDetailScreen({ navigation, route }) {
       setPlace(nextPlace);
       setPosts(enrichedPosts);
       setLeaderboard(nextLeaderboard);
+      setVenueStories(stories);
     } finally {
       setIsLoading(false);
     }
@@ -127,6 +157,36 @@ export default function VenueDetailScreen({ navigation, route }) {
     }
   };
 
+  const handleAddVenueStory = async () => {
+    if (!user?.uid) {
+      Alert.alert('Login Required', 'Please log in to add a story.');
+      return;
+    }
+    try {
+      const picked = await imagePickerService.fromLibrary();
+      if (!picked) return;
+
+      setIsUploadingStory(true);
+      const uploadResult = await cloudinaryService.uploadImage(picked, { folder: 'stories' });
+      await firestoreService.createStory({
+        userId: user.uid,
+        username: user.username || 'aroundu',
+        userAvatar: user.avatarUrl || '',
+        mediaUrl: uploadResult.url,
+        placeId,
+        placeName: place?.name || '',
+        eventId: null,
+        eventTitle: '',
+      });
+      await loadVenue();
+      Alert.alert('Story Shared', `Your story was shared at ${place?.name || 'this venue'}.`);
+    } catch (err) {
+      Alert.alert('Upload Failed', err.message || 'Something went wrong.');
+    } finally {
+      setIsUploadingStory(false);
+    }
+  };
+
   return (
     <View style={styles.screen}>
       <ScreenHeader showBack title="Venue Profile" />
@@ -150,6 +210,33 @@ export default function VenueDetailScreen({ navigation, route }) {
             {[place?.category, place?.city].filter(Boolean).join(' - ') || 'Nearby place'}
           </Text>
           <Text style={styles.address}>{place?.address || 'Address unavailable'}</Text>
+
+          {(groupedVenueStories.length > 0 || true) ? (
+            <View style={styles.storySection}>
+              <Text style={styles.sectionTitle}>Venue Stories</Text>
+              <StoryRingRow
+                groupedStories={othersStoryGroups}
+                currentUserAvatar={user?.avatarUrl}
+                currentUserStories={myStoryGroup?.stories}
+                onRingPress={(group) => {
+                  setViewerStories(group.stories);
+                  setViewerInitialIndex(0);
+                  setIsStoryViewerVisible(true);
+                }}
+                onCurrentUserRingPress={() => {
+                  if (myStoryGroup) {
+                    setViewerStories(myStoryGroup.stories);
+                    setViewerInitialIndex(0);
+                    setIsStoryViewerVisible(true);
+                  }
+                }}
+                onAddStoryPress={handleAddVenueStory}
+              />
+              {isUploadingStory ? (
+                <ActivityIndicator color={colors.primary} style={{ marginVertical: 4 }} />
+              ) : null}
+            </View>
+          ) : null}
 
           <View style={styles.stats}>
             <View style={styles.stat}>
@@ -225,6 +312,13 @@ export default function VenueDetailScreen({ navigation, route }) {
           )}
         </ScrollView>
       )}
+
+      <StoryViewerModal
+        visible={isStoryViewerVisible}
+        stories={viewerStories}
+        initialIndex={viewerInitialIndex}
+        onClose={() => setIsStoryViewerVisible(false)}
+      />
     </View>
   );
 }
@@ -273,6 +367,9 @@ const makeStyles = (colors) => StyleSheet.create({
     fontSize: 12,
     lineHeight: 18,
     marginTop: spacing.sm,
+  },
+  storySection: {
+    marginTop: spacing.lg,
   },
   stats: {
     backgroundColor: colors.surface,

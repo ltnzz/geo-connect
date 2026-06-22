@@ -71,7 +71,7 @@ export default function EventScreen() {
       .getTrendingPlacesToday()
       .then(setTrendingPlaces)
       .catch(() => {});
-  }, [events.length, fetchEvents, handleGetLocation, isLoading]);
+  }, []);
 
   const normalizedSearch = searchQuery.trim().toLowerCase();
   

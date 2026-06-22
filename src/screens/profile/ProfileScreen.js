@@ -46,9 +46,11 @@ const getPostLocationLabel = (post) => {
   return post.location?.name || post.placeName || post.city || 'AroundU';
 };
 
-export default function ProfileScreen() {
+export default function ProfileScreen({ route }) {
   const navigation = useNavigation();
+  const viewedUserId = route?.params?.userId;
   const user = useAuthStore((state) => state.user);
+  const currentUser = user;
   const updateCurrentUser = useAuthStore((state) => state.updateCurrentUser);
   const [activeSegment, setActiveSegment] = useState('posts');
   const [profilePosts, setProfilePosts] = useState([]);
@@ -60,6 +62,7 @@ export default function ProfileScreen() {
   const [isEditVisible, setIsEditVisible] = useState(false);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [isLocationPickerVisible, setIsLocationPickerVisible] = useState(false);
+  const [profileUser, setProfileUser] = useState(null);
   const [editForm, setEditForm] = useState({
     username: user?.username || '',
     bio: user?.bio || '',
@@ -67,8 +70,8 @@ export default function ProfileScreen() {
     profileLocation: user?.profileLocation || null,
   });
 
-  const username = user?.username || 'aroundu';
-  const city = user?.city || 'Jakarta';
+  const username = profileUser?.username || user?.username || 'aroundu';
+  const city = profileUser?.city || user?.city || 'Jakarta';
   const visiblePosts = activeSegment === 'posts' ? profilePosts : savedPosts;
   const events = useEventStore((state) => state.events);
   const fetchEvents = useEventStore((state) => state.fetchEvents);
@@ -92,12 +95,16 @@ export default function ProfileScreen() {
       setIsPostsLoading(true);
       setPostsError('');
 
-      Promise.all([
-        firestoreService.getUser(user.uid),
-        firestoreService.getUserPosts(user.uid),
-      ])
+        const targetUserId = viewedUserId || user.uid;
+
+        Promise.all([
+        firestoreService.getUser(targetUserId),
+        firestoreService.getUserPosts(targetUserId),
+        ])
+
         .then(([profile, posts]) => {
           if (isActive && profile) {
+            setProfileUser(profile);
             updateCurrentUser({
               followersCount: profile.followersCount ?? 0,
               followingCount: profile.followingCount ?? 0,
@@ -232,17 +239,19 @@ export default function ProfileScreen() {
           </Text>
         </View>
 
-        {user?.bio ? (
-          <Text style={styles.bioText}>{user.bio}</Text>
+        {(profileUser?.bio || user?.bio) ? (
+          <Text style={styles.bioText}>{profileUser?.bio || user?.bio}</Text>
         ) : null}
 
-        <Pressable
-          accessibilityRole="button"
-          onPress={openEditProfile}
-          style={({ pressed }) => [styles.editButton, pressed && styles.pressed]}
-        >
-          <Text style={styles.editButtonText}>Edit Profile</Text>
-        </Pressable>
+        {!viewedUserId && (
+          <Pressable
+            accessibilityRole="button"
+            onPress={openEditProfile}
+            style={styles.editButton}
+          >
+            <Text>Edit Profile</Text>
+          </Pressable>
+        )}
 
         <View style={styles.statsCard}>
           <View style={styles.stat}>

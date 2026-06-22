@@ -156,7 +156,14 @@ export default function SearchScreen() {
     const isFollowing = !!followingByUser[targetUserId];
 
     return (
-      <View style={styles.personRow}>
+      <Pressable
+        style={styles.personRow}
+        onPress={() =>
+          navigation.navigate('UserDetail', {
+            userId: targetUserId,
+          })
+        }
+      >
         <View style={styles.avatar}>
           {item.avatarUrl ? (
             <Image source={{ uri: item.avatarUrl }} style={styles.avatarImage} />
@@ -183,7 +190,7 @@ export default function SearchScreen() {
             </Text>
           </Pressable>
         ) : null}
-      </View>
+      </Pressable>
     );
   };
 

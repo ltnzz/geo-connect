@@ -39,23 +39,53 @@ export default function PostCard({ post }) {
     <Pressable onPress={handleOpenDetail} style={styles.card}>
       <View style={styles.header}>
         <View style={styles.userInfo}>
-          
+
+        <Pressable
+          onPress={() =>
+            navigation.navigate('UserDetail', {
+              userId: post.userId || post.authorId || post.ownerId,
+            })
+          }
+        >
           {post.authorAvatar ? (
-            <Image source={{ uri: post.authorAvatar }} style={styles.avatar} />
+            <Image
+              source={{ uri: post.authorAvatar }}
+              style={styles.avatar}
+            />
           ) : (
             <View style={[styles.avatar, styles.avatarPlaceholder]}>
-              <Ionicons name="person" size={20} color={colors.mutedText} />
+              <Ionicons
+                name="person"
+                size={20}
+                color={colors.mutedText}
+              />
             </View>
           )}
+        </Pressable>
 
-          <View>
-            <Text style={styles.userName}>{post.authorName}</Text>
-            
-            <View style={styles.locationRow}>
-              <Ionicons color={colors.primary} name="location-outline" size={12} />
-              <Text style={styles.locationText}>{locationLabel}</Text>
-            </View>
-          </View>
+          <Pressable
+    onPress={() =>
+      navigation.navigate('UserDetail', {
+        userId: post.userId || post.authorId || post.ownerId,
+      })
+    }
+  >
+    <Text style={styles.userName}>
+      {post.authorName}
+    </Text>
+
+    <View style={styles.locationRow}>
+      <Ionicons
+        color={colors.primary}
+        name="location-outline"
+        size={12}
+      />
+      <Text style={styles.locationText}>
+        {locationLabel}
+      </Text>
+    </View>
+  </Pressable>
+
         </View>
 
         <View style={styles.distanceBadge}>

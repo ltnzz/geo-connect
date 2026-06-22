@@ -12,6 +12,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 
 import ScreenHeader from '../../components/common/ScreenHeader';
 import { useAuthStore } from '../../stores/authStore';
@@ -43,24 +44,40 @@ const orderPostsFromSelection = (posts, initialPostId) => {
   return [...posts.slice(selectedIndex), ...posts.slice(0, selectedIndex)];
 };
 
-function CommentItem({ comment, currentUserId, onDelete }) {
+function CommentItem({ comment, currentUserId, onDelete, navigation }) {
   const isOwnComment = comment.userId === currentUserId;
   const author = comment.authorName || comment.author?.username || 'AroundU user';
 
   return (
     <View style={styles.commentRow}>
-      <View style={styles.commentAvatar}>
+<Pressable
+  onPress={() =>
+    navigation.navigate('UserDetail', {
+      userId: comment.userId,
+    })
+  }
+>
+  <View style={styles.commentAvatar}>
         {comment.authorAvatar ? (
           <Image source={{ uri: comment.authorAvatar }} style={styles.avatarImage} />
         ) : (
           <Ionicons color="#9AA5B5" name="person" size={15} />
         )}
       </View>
+    </Pressable>
       <View style={styles.commentBubble}>
         <View style={styles.commentHeader}>
-          <Text numberOfLines={1} style={styles.commentAuthor}>
-            {author}
-          </Text>
+      <Pressable
+        onPress={() =>
+          navigation.navigate('UserDetail', {
+            userId: comment.userId,
+          })
+        }
+      >
+        <Text numberOfLines={1} style={styles.commentAuthor}>
+          {author}
+        </Text>
+      </Pressable>
           {comment._pending ? (
             <Text style={styles.pendingText}>Sending</Text>
           ) : null}
@@ -144,6 +161,7 @@ function PostDetailCard({ post }) {
 }
 
 export default function PostDetailScreen({ route }) {
+  const navigation = useNavigation();
   const routePosts = route.params?.posts || [];
   const initialPostId = route.params?.initialPostId || route.params?.postId;
   const feedPosts = useFeedStore((state) => state.posts);
@@ -212,12 +230,13 @@ export default function PostDetailScreen({ route }) {
             <Text style={styles.noComments}>No comments yet. Start the conversation.</Text>
           ) : null}
           {comments.map((comment) => (
-            <CommentItem
-              comment={comment}
-              currentUserId={currentUser?.uid}
-              key={comment.id}
-              onDelete={(commentId) => deleteComment(postId, commentId)}
-            />
+          <CommentItem
+            comment={comment}
+            currentUserId={currentUser?.uid}
+            navigation={navigation}
+            key={comment.id}
+            onDelete={(commentId) => deleteComment(postId, commentId)}
+          />
           ))}
         </View>
       </ScrollView>

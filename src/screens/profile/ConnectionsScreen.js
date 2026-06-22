@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
+import { useNavigation } from '@react-navigation/native';
 import {
   ActivityIndicator,
   Image,
@@ -18,6 +19,7 @@ import { colors, radius, spacing } from '../../utils/theme';
 const CONNECTION_TYPES = ['followers', 'following'];
 
 export default function ConnectionsScreen({ route }) {
+  const navigation = useNavigation();
   const currentUser = useAuthStore((state) => state.user);
   const userId = route.params?.userId || currentUser?.uid;
   const [activeType, setActiveType] = useState(
@@ -118,7 +120,15 @@ export default function ConnectionsScreen({ route }) {
           showsVerticalScrollIndicator={false}
         >
           {connections.map((profile) => (
-            <View key={profile.id} style={styles.personRow}>
+            <Pressable
+              key={profile.id}
+              style={styles.personRow}
+              onPress={() =>
+                navigation.navigate('UserDetail', {
+                  userId: profile.id,
+                })
+              }
+            >
               <View style={styles.avatar}>
                 {profile.avatarUrl ? (
                   <Image source={{ uri: profile.avatarUrl }} style={styles.image} />
@@ -135,7 +145,7 @@ export default function ConnectionsScreen({ route }) {
                   {profile.city || 'AroundU'}
                 </Text>
               </View>
-            </View>
+            </Pressable>
           ))}
         </ScrollView>
       ) : null}

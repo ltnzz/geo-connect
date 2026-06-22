@@ -23,7 +23,7 @@ export function useEventCheckin(eventId) {
       setHasCheckedIn(docSnap.exists());
       setIsLoading(false);
     }, (error) => {
-      console.error('Error fetching check-in status:', error);
+      console.warn('Error fetching check-in status:', error.message);
       setIsLoading(false);
     });
 

@@ -1,7 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { useMemo } from 'react';
 
-import { colors, radius, spacing } from '../../utils/theme';
+import { useColors, radius, spacing } from '../../utils/theme';
 
 export default function SearchBar({
   value,
@@ -10,6 +11,9 @@ export default function SearchBar({
   placeholder = 'Search around you',
   autoFocus = true,
 }) {
+  const colors = useColors();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+
   return (
     <View style={styles.container}>
       <View style={styles.searchContainer}>
@@ -38,7 +42,7 @@ export default function SearchBar({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors) => StyleSheet.create({
   container: {
     backgroundColor: colors.surface,
     paddingBottom: spacing.md,

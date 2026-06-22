@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { useState } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -18,7 +18,7 @@ import { LOCATION_SHARING } from '../../constants/firestore';
 import { firestoreService } from '../../services/firestoreService';
 import { useAuthStore } from '../../stores/authStore';
 import { useThemeStore } from '../../stores/themeStore';
-import { colors, radius, spacing } from '../../utils/theme';
+import { useColors, radius, spacing } from '../../utils/theme';
 
 const LOCATION_OPTIONS = [
   {
@@ -43,11 +43,11 @@ const LOCATION_OPTIONS = [
   },
 ];
 
-function SectionLabel({ children }) {
+function SectionLabel({ children, styles }) {
   return <Text style={styles.sectionLabel}>{children}</Text>;
 }
 
-function MenuRow({ label, description, onPress, last = false }) {
+function MenuRow({ label, description, onPress, last = false, styles, colors }) {
   return (
     <Pressable
       accessibilityRole="button"
@@ -64,7 +64,7 @@ function MenuRow({ label, description, onPress, last = false }) {
           <Text style={styles.menuDescription}>{description}</Text>
         ) : null}
       </View>
-      <Ionicons color="#9AA5B5" name="chevron-forward" size={18} />
+      <Ionicons color={colors.neutral} name="chevron-forward" size={18} />
     </Pressable>
   );
 }
@@ -77,14 +77,33 @@ export default function SettingsScreen() {
   const isAuthLoading = useAuthStore((state) => state.isLoading);
   const themeMode = useThemeStore((state) => state.mode);
   const setThemeMode = useThemeStore((state) => state.setThemeMode);
+  const colors = useColors();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const [isSaving, setIsSaving] = useState(false);
   const [isLogoutConfirmVisible, setIsLogoutConfirmVisible] = useState(false);
+  const [isHistoryVisible, setIsHistoryVisible] = useState(false);
+  const [isHistoryLoading, setIsHistoryLoading] = useState(false);
+  const [locationHistory, setLocationHistory] = useState([]);
   const [invisibleMode, setInvisibleMode] = useState(
     user?.invisibleMode ?? false,
   );
   const [locationSharing, setLocationSharing] = useState(
     user?.locationSharing || LOCATION_SHARING.hidden,
   );
+
+  const [localDarkMode, setLocalDarkMode] = useState(themeMode === 'dark');
+
+  useEffect(() => {
+    setLocalDarkMode(themeMode === 'dark');
+  }, [themeMode]);
+
+  const handleThemeToggle = (value) => {
+    setLocalDarkMode(value);
+    // Defer the heavy theme rendering recalculation by 150ms to allow switch slide animation to run smoothly on Native thread
+    setTimeout(() => {
+      setThemeMode(value ? 'dark' : 'light');
+    }, 150);
+  };
 
   const savePrivacySetting = async (updates) => {
     if (!user?.uid || isSaving) {
@@ -121,12 +140,26 @@ export default function SettingsScreen() {
     savePrivacySetting({ locationSharing: value }).catch(() => {});
   };
 
-  const isDarkMode = themeMode === 'dark';
-  const themeStyles = {
-    card: isDarkMode ? styles.darkCard : null,
-    screen: isDarkMode ? styles.darkScreen : null,
-    text: isDarkMode ? styles.darkText : null,
+  const openLocationHistory = async () => {
+    setIsHistoryVisible(true);
+
+    if (!user?.uid) {
+      setLocationHistory([]);
+      return;
+    }
+
+    setIsHistoryLoading(true);
+    try {
+      const history = await firestoreService.getLocationHistory(user.uid);
+      setLocationHistory(history);
+    } catch {
+      setLocationHistory([]);
+    } finally {
+      setIsHistoryLoading(false);
+    }
   };
+
+  const isDarkMode = themeMode === 'dark';
 
   const deleteLocationData = () => {
     Alert.alert(
@@ -144,8 +177,7 @@ export default function SettingsScreen() {
 
             setIsSaving(true);
             try {
-              await firestoreService.clearPrivateLocation(user.uid);
-              await firestoreService.clearSharedLocation(user.uid);
+              await firestoreService.clearLocationHistory(user.uid);
               await firestoreService.updateUser(user.uid, {
                 invisibleMode: true,
                 locationSharing: LOCATION_SHARING.hidden,
@@ -181,17 +213,19 @@ export default function SettingsScreen() {
   };
 
   return (
-    <View style={[styles.screen, themeStyles.screen]}>
+    <View style={styles.screen}>
       <ScreenHeader showBack title="Settings & Privacy" />
 
       <ScrollView
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        <SectionLabel>ACCOUNT</SectionLabel>
-        <View style={[styles.card, themeStyles.card]}>
+        <SectionLabel styles={styles}>ACCOUNT</SectionLabel>
+        <View style={styles.card}>
           <MenuRow
             label="Account Details"
+            styles={styles}
+            colors={colors}
             onPress={() =>
               Alert.alert('Account Details', 'Profile editing will be available soon.')
             }
@@ -199,40 +233,42 @@ export default function SettingsScreen() {
           <MenuRow
             label="Notifications"
             last
+            styles={styles}
+            colors={colors}
             onPress={() => navigation.navigate('Notification')}
           />
         </View>
 
-        <SectionLabel>APPEARANCE</SectionLabel>
-        <View style={[styles.card, themeStyles.card]}>
+        <SectionLabel styles={styles}>APPEARANCE</SectionLabel>
+        <View style={styles.card}>
           <View style={styles.invisibleRow}>
             <View style={styles.lockIcon}>
               <Ionicons color={colors.primary} name="contrast" size={17} />
             </View>
             <View style={styles.menuCopy}>
-              <Text style={[styles.menuLabel, themeStyles.text]}>Dark Mode</Text>
+              <Text style={styles.menuLabel}>Dark Mode</Text>
               <Text style={styles.menuDescription}>
                 Switch between light and dark app appearance.
               </Text>
             </View>
             <Switch
               accessibilityLabel="Dark mode"
-              onValueChange={(value) => setThemeMode(value ? 'dark' : 'light')}
+              onValueChange={handleThemeToggle}
               thumbColor="#FFFFFF"
               trackColor={{ false: '#D8DEE8', true: colors.primary }}
-              value={isDarkMode}
+              value={localDarkMode}
             />
           </View>
         </View>
 
-        <SectionLabel>LOCATION VISIBILITY</SectionLabel>
-        <View style={[styles.card, themeStyles.card]}>
+        <SectionLabel styles={styles}>LOCATION VISIBILITY</SectionLabel>
+        <View style={styles.card}>
           <View style={[styles.invisibleRow, styles.rowBorder]}>
             <View style={styles.lockIcon}>
               <Ionicons color={colors.primary} name="lock-closed" size={17} />
             </View>
             <View style={styles.menuCopy}>
-              <Text style={[styles.menuLabel, themeStyles.text]}>Invisible Mode</Text>
+              <Text style={styles.menuLabel}>Invisible Mode</Text>
               <Text style={styles.menuDescription}>
                 Stay active without appearing in Nearby People.
               </Text>
@@ -292,18 +328,15 @@ export default function SettingsScreen() {
           </View>
         </View>
 
-        <SectionLabel>DATA MANAGEMENT</SectionLabel>
-        <View style={[styles.card, themeStyles.card]}>
+        <SectionLabel styles={styles}>DATA MANAGEMENT</SectionLabel>
+        <View style={styles.card}>
           <MenuRow
             description="View and delete your past geodata."
             label="Location History"
             last
-            onPress={() =>
-              Alert.alert(
-                'Location History',
-                'No location history is stored on this device.',
-              )
-            }
+            styles={styles}
+            colors={colors}
+            onPress={openLocationHistory}
           />
         </View>
 
@@ -388,13 +421,78 @@ export default function SettingsScreen() {
           </View>
         </View>
       </Modal>
+
+      <Modal
+        animationType="slide"
+        onRequestClose={() => setIsHistoryVisible(false)}
+        transparent
+        visible={isHistoryVisible}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.historyModal}>
+            <View style={styles.historyHeader}>
+              <Text style={styles.logoutModalTitle}>Location History</Text>
+              <Pressable
+                accessibilityLabel="Close location history"
+                accessibilityRole="button"
+                onPress={() => setIsHistoryVisible(false)}
+                style={styles.historyClose}
+              >
+                <Ionicons color={colors.neutral} name="close" size={21} />
+              </Pressable>
+            </View>
+
+            {isHistoryLoading ? (
+              <ActivityIndicator color={colors.primary} style={styles.historyLoader} />
+            ) : locationHistory.length ? (
+              <ScrollView style={styles.historyList}>
+                {locationHistory.map((entry) => (
+                  <View key={entry.id} style={styles.historyRow}>
+                    <View style={styles.historyIcon}>
+                      <Ionicons
+                        color={colors.primary}
+                        name={entry.type === 'checkin' ? 'business' : 'location'}
+                        size={16}
+                      />
+                    </View>
+                    <View style={styles.menuCopy}>
+                      <Text style={styles.menuLabel}>{entry.title}</Text>
+                      <Text style={styles.menuDescription}>
+                        {entry.subtitle}
+                      </Text>
+                      {Number.isFinite(entry.latitude) && Number.isFinite(entry.longitude) ? (
+                        <Text style={styles.historyCoordinate}>
+                          {entry.latitude.toFixed(5)}, {entry.longitude.toFixed(5)}
+                        </Text>
+                      ) : null}
+                    </View>
+                  </View>
+                ))}
+              </ScrollView>
+            ) : (
+              <Text style={styles.logoutModalText}>
+                No location history is stored for this account.
+              </Text>
+            )}
+
+            <Pressable
+              accessibilityRole="button"
+              disabled={isSaving}
+              onPress={deleteLocationData}
+              style={styles.historyDeleteButton}
+            >
+              <Text style={styles.deleteText}>Delete Location History</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors) => StyleSheet.create({
   screen: {
-    backgroundColor: '#F8FAFD',
+    backgroundColor: colors.background,
     flex: 1,
   },
   content: {
@@ -402,7 +500,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
   },
   sectionLabel: {
-    color: '#687386',
+    color: colors.mutedText,
     fontFamily: 'Poppins_600SemiBold',
     fontSize: 10,
     letterSpacing: 0.7,
@@ -411,11 +509,11 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: colors.surface,
-    borderColor: '#E0E6EF',
+    borderColor: colors.border,
     borderRadius: radius.lg,
     borderWidth: 1,
     overflow: 'hidden',
-    shadowColor: '#64748B',
+    shadowColor: colors.neutral,
     shadowOffset: { height: 3, width: 0 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
@@ -428,19 +526,19 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   rowBorder: {
-    borderBottomColor: '#E9EDF3',
+    borderBottomColor: colors.border,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   menuCopy: {
     flex: 1,
   },
   menuLabel: {
-    color: '#344054',
+    color: colors.text,
     fontFamily: 'Poppins_600SemiBold',
     fontSize: 13,
   },
   menuDescription: {
-    color: '#8A94A6',
+    color: colors.mutedText,
     fontFamily: 'Poppins_400Regular',
     fontSize: 10,
     lineHeight: 15,
@@ -454,7 +552,7 @@ const styles = StyleSheet.create({
   },
   lockIcon: {
     alignItems: 'center',
-    backgroundColor: '#EAF1FF',
+    backgroundColor: `${colors.primary}1A`,
     borderRadius: radius.sm,
     height: 34,
     justifyContent: 'center',
@@ -465,7 +563,7 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   precisionTitle: {
-    color: '#4A5568',
+    color: colors.text,
     fontFamily: 'Poppins_600SemiBold',
     fontSize: 12,
     marginBottom: spacing.sm,
@@ -479,10 +577,10 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
   },
   optionSelected: {
-    backgroundColor: '#EEF4FF',
+    backgroundColor: `${colors.primary}15`,
   },
   optionLabel: {
-    color: '#697386',
+    color: colors.mutedText,
     fontFamily: 'Poppins_400Regular',
     fontSize: 12,
   },
@@ -491,14 +589,14 @@ const styles = StyleSheet.create({
     fontFamily: 'Poppins_600SemiBold',
   },
   optionDescription: {
-    color: '#9AA5B5',
+    color: colors.mutedText,
     fontFamily: 'Poppins_400Regular',
     fontSize: 9,
     marginTop: 1,
   },
   radio: {
     alignItems: 'center',
-    borderColor: '#CBD5E1',
+    borderColor: colors.border,
     borderRadius: radius.full,
     borderWidth: 1,
     height: 18,
@@ -527,7 +625,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   deleteHint: {
-    color: '#9AA5B5',
+    color: colors.mutedText,
     fontFamily: 'Poppins_400Regular',
     fontSize: 9,
     marginTop: spacing.sm,
@@ -536,7 +634,7 @@ const styles = StyleSheet.create({
   logoutButton: {
     alignItems: 'center',
     alignSelf: 'center',
-    borderColor: '#CBD5E1',
+    borderColor: colors.border,
     borderRadius: radius.md,
     borderWidth: 1,
     flexDirection: 'row',
@@ -567,7 +665,7 @@ const styles = StyleSheet.create({
   },
   logoutModalIcon: {
     alignItems: 'center',
-    backgroundColor: '#FEF2F2',
+    backgroundColor: `${colors.danger}15`,
     borderRadius: radius.full,
     height: 50,
     justifyContent: 'center',
@@ -595,7 +693,7 @@ const styles = StyleSheet.create({
   },
   cancelLogoutButton: {
     alignItems: 'center',
-    borderColor: '#CBD5E1',
+    borderColor: colors.border,
     borderRadius: radius.md,
     borderWidth: 1,
     flex: 1,
@@ -620,17 +718,60 @@ const styles = StyleSheet.create({
     fontFamily: 'Poppins_600SemiBold',
     fontSize: 12,
   },
+  historyModal: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    maxHeight: '78%',
+    padding: spacing.lg,
+    width: '100%',
+  },
+  historyHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: spacing.md,
+  },
+  historyClose: {
+    padding: spacing.xs,
+  },
+  historyLoader: {
+    marginVertical: spacing.xl,
+  },
+  historyList: {
+    maxHeight: 340,
+  },
+  historyRow: {
+    alignItems: 'center',
+    borderBottomColor: colors.border,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    flexDirection: 'row',
+    paddingVertical: spacing.md,
+  },
+  historyIcon: {
+    alignItems: 'center',
+    backgroundColor: `${colors.primary}1A`,
+    borderRadius: radius.sm,
+    height: 34,
+    justifyContent: 'center',
+    marginRight: spacing.sm,
+    width: 34,
+  },
+  historyCoordinate: {
+    color: colors.mutedText,
+    fontFamily: 'Poppins_400Regular',
+    fontSize: 9,
+    marginTop: 2,
+  },
+  historyDeleteButton: {
+    alignItems: 'center',
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    height: 42,
+    justifyContent: 'center',
+    marginTop: spacing.md,
+  },
   pressed: {
     opacity: 0.65,
-  },
-  darkScreen: {
-    backgroundColor: '#0F172A',
-  },
-  darkCard: {
-    backgroundColor: '#172033',
-    borderColor: '#334155',
-  },
-  darkText: {
-    color: '#F8FAFC',
   },
 });

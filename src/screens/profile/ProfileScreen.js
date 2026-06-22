@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useMemo } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -20,7 +20,7 @@ import ProfileLocationPicker from '../../components/profile/ProfileLocationPicke
 import { useAuthStore } from '../../stores/authStore';
 import { useEventStore } from '../../stores/eventStore';
 import { firestoreService } from '../../services/firestoreService';
-import { colors, radius, spacing } from '../../utils/theme';
+import { useColors, radius, spacing } from '../../utils/theme';
 
 const POST_COLORS = ['#E9F0FF', '#E9FDF5', '#FFF7E8', '#F3E8FF', '#FFECEF'];
 
@@ -50,6 +50,8 @@ export default function ProfileScreen() {
   const navigation = useNavigation();
   const user = useAuthStore((state) => state.user);
   const updateCurrentUser = useAuthStore((state) => state.updateCurrentUser);
+  const colors = useColors();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const [activeSegment, setActiveSegment] = useState('posts');
   const [profilePosts, setProfilePosts] = useState([]);
   const [isPostsLoading, setIsPostsLoading] = useState(false);
@@ -95,17 +97,28 @@ export default function ProfileScreen() {
       Promise.all([
         firestoreService.getUser(user.uid),
         firestoreService.getUserPosts(user.uid),
+        firestoreService.getBookmarkedPostIds(user.uid),
       ])
-        .then(([profile, posts]) => {
-          if (isActive && profile) {
-            updateCurrentUser({
-              followersCount: profile.followersCount ?? 0,
-              followingCount: profile.followingCount ?? 0,
-              postsCount: profile.postsCount ?? posts.length,
-            });
-            setProfilePosts(posts);
-          } else if (isActive) {
-            setProfilePosts(posts);
+        .then(async ([profile, posts, bookmarkedIds]) => {
+          const likedIds = posts.length
+            ? await firestoreService.getLikedPostIds(posts.map((p) => p.id), user.uid)
+            : new Set();
+
+          const enrichedPosts = posts.map((p) => ({
+            ...p,
+            isLiked: likedIds.has(p.id),
+            isBookmarked: bookmarkedIds.has(p.id),
+          }));
+
+          if (isActive) {
+            if (profile) {
+              updateCurrentUser({
+                followersCount: profile.followersCount ?? 0,
+                followingCount: profile.followingCount ?? 0,
+                postsCount: profile.postsCount ?? enrichedPosts.length,
+              });
+            }
+            setProfilePosts(enrichedPosts);
           }
         })
         .catch(() => {
@@ -134,11 +147,23 @@ export default function ProfileScreen() {
     setIsSavedLoading(true);
     setSavedError('');
 
-    firestoreService
-      .getBookmarkedPosts(user.uid)
-      .then((posts) => {
+    Promise.all([
+      firestoreService.getBookmarkedPosts(user.uid),
+      firestoreService.getBookmarkedPostIds(user.uid),
+    ])
+      .then(async ([posts, bookmarkedIds]) => {
+        const likedIds = posts.length
+          ? await firestoreService.getLikedPostIds(posts.map((p) => p.id), user.uid)
+          : new Set();
+
+        const enrichedPosts = posts.map((p) => ({
+          ...p,
+          isLiked: likedIds.has(p.id),
+          isBookmarked: bookmarkedIds.has(p.id),
+        }));
+
         if (isActive) {
-          setSavedPosts(posts);
+          setSavedPosts(enrichedPosts);
         }
       })
       .catch(() => {
@@ -217,7 +242,7 @@ export default function ProfileScreen() {
           {user?.avatarUrl ? (
             <Image source={{ uri: user.avatarUrl }} style={styles.avatarImage} />
           ) : (
-            <Ionicons color="#A9B4C5" name="person-outline" size={44} />
+            <Ionicons color={colors.neutral} name="person-outline" size={44} />
           )}
         </View>
 
@@ -374,7 +399,7 @@ export default function ProfileScreen() {
         !postsError &&
         visiblePosts.length === 0 ? (
           <View style={styles.feedState}>
-            <Ionicons color="#AAB2C0" name="grid-outline" size={28} />
+            <Ionicons color={colors.neutral} name="grid-outline" size={28} />
             <Text style={styles.feedStateTitle}>No posts yet</Text>
             <Text style={styles.feedStateText}>
               Posts you create will appear here.
@@ -401,7 +426,7 @@ export default function ProfileScreen() {
         !savedError &&
         visiblePosts.length === 0 ? (
           <View style={styles.feedState}>
-            <Ionicons color="#AAB2C0" name="bookmark-outline" size={28} />
+            <Ionicons color={colors.neutral} name="bookmark-outline" size={28} />
             <Text style={styles.feedStateTitle}>No saved posts yet</Text>
             <Text style={styles.feedStateText}>
               Posts you bookmark will appear here.
@@ -411,7 +436,7 @@ export default function ProfileScreen() {
 
         {activeSegment === 'events' && userEvents.length === 0 ? (
           <View style={styles.feedState}>
-            <Ionicons color="#AAB2C0" name="calendar-outline" size={28} />
+            <Ionicons color={colors.neutral} name="calendar-outline" size={28} />
             <Text style={styles.feedStateTitle}>No events created yet</Text>
             <Text style={styles.feedStateText}>
               Events you create will appear here.
@@ -429,7 +454,7 @@ export default function ProfileScreen() {
                 onPress={() => navigation.navigate('EventDetail', { eventId: event.id })}
                 style={({ pressed }) => [
                   styles.feedItem,
-                  { backgroundColor: '#E9F0FF' },
+                  { backgroundColor: colors.background },
                   pressed && styles.pressed,
                 ]}
               >
@@ -462,9 +487,10 @@ export default function ProfileScreen() {
                 accessibilityRole="button"
                 key={post.id}
                 onPress={() =>
-                  navigation.navigate('PostDetail', {
+                  navigation.navigate('ProfileFeed', {
                     initialPostId: post.id,
                     posts: visiblePosts,
+                    title: activeSegment === 'posts' ? 'Posts' : 'Saved',
                   })
                 }
                 style={({ pressed }) => [
@@ -517,7 +543,7 @@ export default function ProfileScreen() {
               autoCapitalize="none"
               onChangeText={(value) => updateEditField('username', value)}
               placeholder="username"
-              placeholderTextColor="#AAB2C0"
+              placeholderTextColor={colors.neutral}
               style={styles.input}
               value={editForm.username}
             />
@@ -547,7 +573,7 @@ export default function ProfileScreen() {
               multiline
               onChangeText={(value) => updateEditField('bio', value)}
               placeholder="Tell people what you are into"
-              placeholderTextColor="#AAB2C0"
+              placeholderTextColor={colors.neutral}
               style={[styles.input, styles.bioInput]}
               value={editForm.bio}
             />
@@ -584,9 +610,9 @@ export default function ProfileScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors) => StyleSheet.create({
   screen: {
-    backgroundColor: '#FBFCFF',
+    backgroundColor: colors.background,
     flex: 1,
   },
   content: {
@@ -597,15 +623,15 @@ const styles = StyleSheet.create({
   },
   avatar: {
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderColor: '#EEF2F7',
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
     borderRadius: radius.lg,
     borderWidth: 1,
     height: 92,
     justifyContent: 'center',
     marginTop: 22,
     overflow: 'hidden',
-    shadowColor: '#64748B',
+    shadowColor: colors.neutral,
     shadowOffset: {
       height: 3,
       width: 0,
@@ -619,7 +645,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   name: {
-    color: '#273142',
+    color: colors.text,
     fontFamily: 'Poppins_600SemiBold',
     fontSize: 19,
     marginTop: 14,
@@ -632,12 +658,12 @@ const styles = StyleSheet.create({
     maxWidth: '90%',
   },
   metaText: {
-    color: '#8A94A6',
+    color: colors.mutedText,
     fontFamily: 'Poppins_400Regular',
     fontSize: 12,
   },
   bioText: {
-    color: '#526173',
+    color: colors.text,
     fontFamily: 'Poppins_400Regular',
     fontSize: 12,
     lineHeight: 18,
@@ -647,8 +673,8 @@ const styles = StyleSheet.create({
   },
   editButton: {
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderColor: '#CFD7E5',
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
     borderRadius: radius.md,
     borderWidth: 1,
     height: 40,
@@ -657,21 +683,21 @@ const styles = StyleSheet.create({
     width: 156,
   },
   editButtonText: {
-    color: '#465268',
+    color: colors.mutedText,
     fontFamily: 'Poppins_400Regular',
     fontSize: 13,
   },
   statsCard: {
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderColor: '#D9E0EB',
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
     borderRadius: radius.md,
     borderWidth: 1,
     flexDirection: 'row',
     height: 76,
     marginTop: 34,
     paddingHorizontal: 8,
-    shadowColor: '#64748B',
+    shadowColor: colors.neutral,
     shadowOffset: {
       height: 3,
       width: 0,
@@ -686,25 +712,25 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   statValue: {
-    color: '#3D485B',
+    color: colors.text,
     fontFamily: 'Poppins_600SemiBold',
     fontSize: 14,
   },
   statLabel: {
-    color: '#9AA3B2',
+    color: colors.mutedText,
     fontFamily: 'Poppins_400Regular',
     fontSize: 10,
     marginTop: 1,
   },
   divider: {
-    backgroundColor: '#E9EDF3',
+    backgroundColor: colors.border,
     height: 34,
     width: StyleSheet.hairlineWidth,
   },
   segments: {
     alignItems: 'center',
     alignSelf: 'stretch',
-    borderBottomColor: '#E8EDF4',
+    borderBottomColor: colors.border,
     borderBottomWidth: StyleSheet.hairlineWidth,
     flexDirection: 'row',
     marginTop: 28,
@@ -732,12 +758,10 @@ const styles = StyleSheet.create({
   },
   feedGrid: {
     alignSelf: 'stretch',
-    backgroundColor: '#E8EEF7',
-    borderRadius: radius.sm,
     flexDirection: 'row',
     flexWrap: 'wrap',
+    gap: 2,
     marginTop: 12,
-    overflow: 'hidden',
   },
   eventList: {
     alignSelf: 'stretch',
@@ -750,9 +774,11 @@ const styles = StyleSheet.create({
   },
   feedItem: {
     aspectRatio: 1,
+    backgroundColor: colors.background,
+    borderRadius: radius.sm,
     justifyContent: 'flex-end',
     overflow: 'hidden',
-    width: '33.3333%',
+    width: '32.9%',
   },
   feedImage: {
     ...StyleSheet.absoluteFillObject,
@@ -781,13 +807,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
   },
   feedStateTitle: {
-    color: '#465268',
+    color: colors.text,
     fontFamily: 'Poppins_600SemiBold',
     fontSize: 14,
     marginTop: spacing.sm,
   },
   feedStateText: {
-    color: '#8A94A6',
+    color: colors.mutedText,
     fontFamily: 'Poppins_400Regular',
     fontSize: 12,
     marginTop: spacing.xs,
@@ -822,14 +848,14 @@ const styles = StyleSheet.create({
     padding: spacing.xs,
   },
   inputLabel: {
-    color: '#526173',
+    color: colors.mutedText,
     fontFamily: 'Poppins_600SemiBold',
     fontSize: 11,
     marginBottom: 6,
     marginTop: spacing.sm,
   },
   input: {
-    borderColor: '#D9E0EB',
+    borderColor: colors.border,
     borderRadius: radius.sm,
     borderWidth: 1,
     color: colors.text,
@@ -845,7 +871,7 @@ const styles = StyleSheet.create({
   },
   locationPickerButton: {
     alignItems: 'center',
-    borderColor: '#D9E0EB',
+    borderColor: colors.border,
     borderRadius: radius.sm,
     borderWidth: 1,
     flexDirection: 'row',
@@ -854,7 +880,7 @@ const styles = StyleSheet.create({
   },
   locationPickerIcon: {
     alignItems: 'center',
-    backgroundColor: '#EAF1FF',
+    backgroundColor: `${colors.primary}1A`,
     borderRadius: radius.full,
     height: 34,
     justifyContent: 'center',

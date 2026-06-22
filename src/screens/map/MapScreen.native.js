@@ -571,6 +571,14 @@ export default function MapScreen() {
     [region.latitudeDelta, region.longitudeDelta],
   );
 
+  const handleRegionChangeComplete = (newRegion) => {
+    setRegion(newRegion);
+    setCenter({
+      latitude: newRegion.latitude,
+      longitude: newRegion.longitude,
+    });
+  };
+
   const recenter = () => {
     loadCurrentLocation();
   };
@@ -583,8 +591,9 @@ export default function MapScreen() {
         <MapView
           initialRegion={INITIAL_REGION}
           onPress={() => setSelectedCluster(null)}
-          onRegionChangeComplete={setRegion}
+          onRegionChangeComplete={handleRegionChangeComplete}
           ref={mapRef}
+
           showsCompass={false}
           showsMyLocationButton={false}
           showsUserLocation={isEnabled}

@@ -40,7 +40,7 @@ export function useEventResponse(eventId) {
     const unsubRegistrations = onSnapshot(
       registrationRef,
       (docSnap) => {
-        setIsInterested(docSnap.exists());
+        setIsInterested(docSnap.exists() && docSnap.data()?.status === 'interested');
       },
       (error) => {
         console.warn('Error fetching event registration status:', error.message);

@@ -1,38 +1,40 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { Animated, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { colors, radius, spacing } from '../../utils/theme';
+import { useColors, radius, spacing } from '../../utils/theme';
 
-function SkeletonBlock({ style }) {
+function SkeletonBlock({ style, styles }) {
   return <View style={[styles.block, style]} />;
 }
 
-function PostSkeleton() {
+function PostSkeleton({ styles }) {
   return (
     <View style={styles.card}>
       <View style={styles.authorRow}>
-        <SkeletonBlock style={styles.avatar} />
+        <SkeletonBlock style={styles.avatar} styles={styles} />
         <View style={styles.authorText}>
-          <SkeletonBlock style={styles.authorName} />
-          <SkeletonBlock style={styles.location} />
+          <SkeletonBlock style={styles.authorName} styles={styles} />
+          <SkeletonBlock style={styles.location} styles={styles} />
         </View>
       </View>
 
-      <SkeletonBlock style={styles.captionLong} />
-      <SkeletonBlock style={styles.captionShort} />
-      <SkeletonBlock style={styles.postImage} />
+      <SkeletonBlock style={styles.captionLong} styles={styles} />
+      <SkeletonBlock style={styles.captionShort} styles={styles} />
+      <SkeletonBlock style={styles.postImage} styles={styles} />
 
       <View style={styles.actionRow}>
-        <SkeletonBlock style={styles.action} />
-        <SkeletonBlock style={styles.action} />
-        <SkeletonBlock style={styles.actionSmall} />
+        <SkeletonBlock style={styles.action} styles={styles} />
+        <SkeletonBlock style={styles.action} styles={styles} />
+        <SkeletonBlock style={styles.actionSmall} styles={styles} />
       </View>
     </View>
   );
 }
 
 export default function HomeSkeleton() {
+  const colors = useColors();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const opacity = useRef(new Animated.Value(0.48)).current;
 
   useEffect(() => {
@@ -65,34 +67,34 @@ export default function HomeSkeleton() {
         <Animated.View style={{ opacity }}>
           <View style={styles.header}>
             <View>
-              <SkeletonBlock style={styles.greeting} />
-              <SkeletonBlock style={styles.heading} />
+              <SkeletonBlock style={styles.greeting} styles={styles} />
+              <SkeletonBlock style={styles.heading} styles={styles} />
             </View>
-            <SkeletonBlock style={styles.headerAvatar} />
+            <SkeletonBlock style={styles.headerAvatar} styles={styles} />
           </View>
 
-          <SkeletonBlock style={styles.search} />
+          <SkeletonBlock style={styles.search} styles={styles} />
 
           <View style={styles.sectionHeader}>
-            <SkeletonBlock style={styles.sectionTitle} />
-            <SkeletonBlock style={styles.sectionAction} />
+            <SkeletonBlock style={styles.sectionTitle} styles={styles} />
+            <SkeletonBlock style={styles.sectionAction} styles={styles} />
           </View>
 
           <View style={styles.categoryRow}>
-            <SkeletonBlock style={styles.category} />
-            <SkeletonBlock style={styles.category} />
-            <SkeletonBlock style={styles.category} />
+            <SkeletonBlock style={styles.category} styles={styles} />
+            <SkeletonBlock style={styles.category} styles={styles} />
+            <SkeletonBlock style={styles.category} styles={styles} />
           </View>
 
-          <PostSkeleton />
-          <PostSkeleton />
+          <PostSkeleton styles={styles} />
+          <PostSkeleton styles={styles} />
         </Animated.View>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors) => StyleSheet.create({
   screen: {
     backgroundColor: colors.background,
     flex: 1,
@@ -102,7 +104,7 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xl,
   },
   block: {
-    backgroundColor: '#DCE6F4',
+    backgroundColor: colors.border,
     borderRadius: radius.sm,
   },
   header: {

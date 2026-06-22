@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import {
   ActivityIndicator,
   Image,
@@ -13,7 +13,7 @@ import {
 import ScreenHeader from '../../components/common/ScreenHeader';
 import { firestoreService } from '../../services/firestoreService';
 import { useAuthStore } from '../../stores/authStore';
-import { colors, radius, spacing } from '../../utils/theme';
+import { useColors, radius, spacing } from '../../utils/theme';
 
 const CONNECTION_TYPES = ['followers', 'following'];
 
@@ -28,6 +28,8 @@ export default function ConnectionsScreen({ route }) {
   const [connections, setConnections] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  const colors = useColors();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
 
   useEffect(() => {
     if (!userId) {
@@ -102,7 +104,7 @@ export default function ConnectionsScreen({ route }) {
 
       {!isLoading && !error && connections.length === 0 ? (
         <View style={styles.state}>
-          <Ionicons color="#AAB2C0" name="people-outline" size={34} />
+          <Ionicons color={colors.neutral} name="people-outline" size={34} />
           <Text style={styles.stateTitle}>No {activeType} yet</Text>
           <Text style={styles.stateText}>
             {activeType === 'followers'
@@ -123,7 +125,7 @@ export default function ConnectionsScreen({ route }) {
                 {profile.avatarUrl ? (
                   <Image source={{ uri: profile.avatarUrl }} style={styles.image} />
                 ) : (
-                  <Ionicons color="#A9B4C5" name="person-outline" size={25} />
+                  <Ionicons color={colors.neutral} name="person-outline" size={25} />
                 )}
               </View>
 
@@ -143,14 +145,14 @@ export default function ConnectionsScreen({ route }) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors) => StyleSheet.create({
   screen: {
-    backgroundColor: '#FBFCFF',
+    backgroundColor: colors.background,
     flex: 1,
   },
   tabs: {
     backgroundColor: colors.surface,
-    borderBottomColor: '#E8EDF4',
+    borderBottomColor: colors.border,
     borderBottomWidth: StyleSheet.hairlineWidth,
     flexDirection: 'row',
   },
@@ -178,7 +180,7 @@ const styles = StyleSheet.create({
   personRow: {
     alignItems: 'center',
     backgroundColor: colors.surface,
-    borderColor: '#E1E7F0',
+    borderColor: colors.border,
     borderRadius: radius.md,
     borderWidth: 1,
     flexDirection: 'row',
@@ -187,7 +189,7 @@ const styles = StyleSheet.create({
   },
   avatar: {
     alignItems: 'center',
-    backgroundColor: '#F4F7FB',
+    backgroundColor: colors.background,
     borderRadius: radius.md,
     height: 48,
     justifyContent: 'center',

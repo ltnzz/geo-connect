@@ -9,7 +9,7 @@ import {
   updateDoc,
   where,
 } from 'firebase/firestore';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -23,7 +23,7 @@ import ScreenHeader from '../../components/common/ScreenHeader';
 import { db } from '../../config/firebase';
 import { COLLECTIONS, NOTIFICATION_TYPES } from '../../constants/firestore';
 import { useAuthStore } from '../../stores/authStore';
-import { colors, radius, spacing } from '../../utils/theme';
+import { useColors, radius, spacing } from '../../utils/theme';
 
 const notificationCopy = {
   [NOTIFICATION_TYPES.comment]: {
@@ -54,6 +54,8 @@ export default function NotificationScreen() {
   const userId = useAuthStore((state) => state.user?.uid);
   const [items, setItems] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const colors = useColors();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
 
   useEffect(() => {
     if (!userId) {
@@ -80,7 +82,10 @@ export default function NotificationScreen() {
         );
         setIsLoading(false);
       },
-      () => setIsLoading(false),
+      (error) => {
+        console.error('Error fetching notifications:', error);
+        setIsLoading(false);
+      },
     );
   }, [userId]);
 
@@ -159,7 +164,7 @@ export default function NotificationScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors) => StyleSheet.create({
   screen: {
     backgroundColor: colors.background,
     flex: 1,
@@ -203,12 +208,12 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   unreadItem: {
-    backgroundColor: '#EFF6FF',
-    borderColor: '#BFDBFE',
+    backgroundColor: `${colors.primary}12`,
+    borderColor: `${colors.primary}33`,
   },
   icon: {
     alignItems: 'center',
-    backgroundColor: colors.surface,
+    backgroundColor: colors.background,
     borderRadius: radius.full,
     height: 42,
     justifyContent: 'center',

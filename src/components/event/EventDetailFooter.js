@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { colors, radius, spacing } from '../../utils/theme';
+import { useColors, radius, spacing } from '../../utils/theme';
 
 export default function EventDetailFooter({
   isOwnEvent,
@@ -11,6 +12,9 @@ export default function EventDetailFooter({
   onDelete,
   onEdit,
 }) {
+  const colors = useColors();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+
   if (isOwnEvent) {
     return (
       <>
@@ -19,8 +23,8 @@ export default function EventDetailFooter({
           onPress={onDelete}
           style={[styles.responseButton, styles.deleteButton]}
         >
-          <Ionicons color="#E11D48" name="trash-outline" size={16} />
-          <Text style={[styles.buttonText, { color: '#E11D48' }]}>Delete</Text>
+          <Ionicons color={colors.danger} name="trash-outline" size={16} />
+          <Text style={[styles.buttonText, { color: colors.danger }]}>Delete</Text>
         </Pressable>
         <Pressable
           accessibilityRole="button"
@@ -45,7 +49,7 @@ export default function EventDetailFooter({
         ]}
       >
         <Ionicons
-          color={response === 'not_going' ? '#E11D48' : colors.neutral}
+          color={response === 'not_going' ? colors.danger : colors.neutral}
           name={response === 'not_going' ? 'close-circle' : 'close-circle-outline'}
           size={18}
         />
@@ -107,11 +111,11 @@ export default function EventDetailFooter({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors) => StyleSheet.create({
   responseButton: {
     alignItems: 'center',
     backgroundColor: colors.surface,
-    borderColor: '#C7D2E3',
+    borderColor: colors.border,
     borderRadius: radius.sm,
     borderWidth: 1,
     flex: 1,
@@ -121,11 +125,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   deleteButton: {
-    borderColor: '#FFE4E6',
-    backgroundColor: '#FFF1F2',
+    borderColor: colors.danger + '33',
+    backgroundColor: colors.danger + '1A',
   },
   interestedSelected: {
-    backgroundColor: '#EAF8F2',
+    backgroundColor: colors.tertiary + '1A',
     borderColor: colors.tertiary,
   },
   buttonText: {
@@ -144,11 +148,11 @@ const styles = StyleSheet.create({
     // previously flex: 2, now just flex: 1
   },
   notGoingSelected: {
-    backgroundColor: '#FFF1F2',
-    borderColor: '#E11D48',
+    backgroundColor: colors.danger + '1A',
+    borderColor: colors.danger,
   },
   notGoingTextSelected: {
-    color: '#E11D48',
+    color: colors.danger,
   },
   goingText: {
     color: colors.primary,
@@ -159,3 +163,4 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
 });
+

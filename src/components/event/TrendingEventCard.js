@@ -1,12 +1,15 @@
+import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import EventArtwork from './EventArtwork';
 import { useLocation } from '../../hooks/useLocation';
 import { formatEventSchedule } from '../../utils/dateUtils';
 import { formatDistanceString } from '../../utils/locationUtils';
-import { colors, radius, spacing } from '../../utils/theme';
+import { useColors, radius, spacing } from '../../utils/theme';
 
 export default function TrendingEventCard({ event, onPress }) {
+  const colors = useColors();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const { location, isFetchingLocation } = useLocation();
   const scheduleString = formatEventSchedule(event.startTime, event.endTime);
   const attendeesCount = event.participantCount || 0;
@@ -35,10 +38,10 @@ export default function TrendingEventCard({ event, onPress }) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors) => StyleSheet.create({
   trendingCard: {
     backgroundColor: colors.surface,
-    borderColor: '#E0E6EF',
+    borderColor: colors.border,
     borderRadius: radius.md,
     borderWidth: 1,
     overflow: 'hidden',
@@ -48,7 +51,7 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   trendingDistanceBadge: {
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    backgroundColor: colors.surface + 'E6',
     borderRadius: radius.full,
     paddingHorizontal: 7,
     paddingVertical: 3,
@@ -57,7 +60,7 @@ const styles = StyleSheet.create({
     top: spacing.sm,
   },
   trendingDistance: {
-    color: '#526173',
+    color: colors.mutedText,
     fontFamily: 'Inter_600SemiBold',
     fontSize: 9,
   },
@@ -65,7 +68,7 @@ const styles = StyleSheet.create({
     padding: 10,
   },
   trendingTitle: {
-    color: '#263244',
+    color: colors.text,
     fontFamily: 'Inter_600SemiBold',
     fontSize: 12,
   },
@@ -79,3 +82,4 @@ const styles = StyleSheet.create({
     opacity: 0.72,
   },
 });
+

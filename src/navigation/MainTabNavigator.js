@@ -1,15 +1,15 @@
 import { Ionicons } from '@expo/vector-icons';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { NavigationContainer } from '@react-navigation/native';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useMemo } from 'react';
 
 import CreatePostScreen from '../screens/create/CreatePostScreen';
 import EventScreen from '../screens/event/EventScreen';
 import HomeScreen from '../screens/home/HomeScreen';
 import MapScreen from '../screens/map/MapScreen';
 import ProfileScreen from '../screens/profile/ProfileScreen';
-import { colors } from '../utils/theme';
+import { useColors } from '../utils/theme';
 
 const Tab = createBottomTabNavigator();
 
@@ -20,7 +20,7 @@ const TAB_ICONS = {
   Profile: ['person', 'person-outline'],
 };
 
-function CameraTabButton({ accessibilityState, onPress }) {
+function CameraTabButton({ accessibilityState, onPress, styles, colors }) {
   const isSelected = accessibilityState?.selected;
 
   return (
@@ -41,6 +41,8 @@ function CameraTabButton({ accessibilityState, onPress }) {
 
 export default function MainTabNavigator() {
   const insets = useSafeAreaInsets();
+  const colors = useColors();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   
   return (
     <Tab.Navigator
@@ -73,7 +75,7 @@ export default function MainTabNavigator() {
         name="Create"
         options={{
           tabBarStyle: { display: 'none' },
-          tabBarButton: (props) => <CameraTabButton {...props} />,
+          tabBarButton: (props) => <CameraTabButton {...props} styles={styles} colors={colors} />,
           tabBarLabel: '',
         }}
       />
@@ -83,17 +85,17 @@ export default function MainTabNavigator() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors) => StyleSheet.create({
   tabBar: {
-    backgroundColor: '#FCFCFD',
-    borderTopColor: '#D8DEE8',
+    backgroundColor: colors.surface,
+    borderTopColor: colors.border,
     borderTopWidth: StyleSheet.hairlineWidth,
     bottom: 0,
     elevation: 14,
     height: 66,
     paddingBottom: 8,
     paddingTop: 8,
-    shadowColor: '#0F172A',
+    shadowColor: colors.neutral,
     shadowOffset: {
       height: -3,
       width: 0,
@@ -125,7 +127,7 @@ const styles = StyleSheet.create({
     elevation: 8,
     height: 42,
     justifyContent: 'center',
-    shadowColor: '#0F172A',
+    shadowColor: colors.neutral,
     shadowOffset: {
       height: 4,
       width: 0,

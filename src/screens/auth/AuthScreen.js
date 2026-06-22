@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import {
   ActivityIndicator,
   Keyboard,
@@ -21,7 +21,7 @@ import {
   isExpoGo,
   isGoogleAuthConfigured,
 } from '../../config/googleAuth';
-import { colors, radius, spacing } from '../../utils/theme';
+import { useColors, radius, spacing } from '../../utils/theme';
 
 let googleSigninModule;
 
@@ -79,6 +79,8 @@ export default function AuthScreen() {
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [focusedField, setFocusedField] = useState(null);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
+  const colors = useColors();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
 
   const usernameRef = useRef(null);
   const emailRef = useRef(null);
@@ -444,7 +446,7 @@ export default function AuthScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors) => StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: colors.background,
@@ -582,8 +584,8 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   errorBox: {
-    backgroundColor: '#FEF2F2',
-    borderColor: '#FECACA',
+    backgroundColor: `${colors.danger}15`,
+    borderColor: `${colors.danger}33`,
     borderRadius: radius.sm,
     borderWidth: 1,
     marginBottom: spacing.md,
@@ -632,6 +634,8 @@ const styles = StyleSheet.create({
     color: '#4285F4',
     fontFamily: 'Poppins_700Bold',
     fontSize: 14,
+    width: '100%',
+    textAlign: 'center',
   },
   googleButtonText: {
     color: colors.text,

@@ -1,7 +1,10 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import {
   ActivityIndicator,
+  FlatList,
+  Image,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -18,18 +21,20 @@ import EventSectionHeader from '../../components/event/EventSectionHeader';
 import EmptyNearbyEvent from '../../components/event/EmptyNearbyEvent';
 import { useEventStore } from '../../stores/eventStore';
 import { useAuthStore } from '../../stores/authStore';
+import { firestoreService } from '../../services/firestoreService';
 import { filterRecentEvents } from '../../utils/dateUtils';
 import { calculateDistance } from '../../utils/locationUtils';
 import { useLocation } from '../../hooks/useLocation';
-import { colors, radius, spacing } from '../../utils/theme';
-
-
+import { useColors, radius, spacing } from '../../utils/theme';
 
 export default function EventScreen() {
   const navigation = useNavigation();
   const [searchQuery, setSearchQuery] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [radiusFilter, setRadiusFilter] = useState(5); // 1, 5, 10, 'all'
+  const [trendingPlaces, setTrendingPlaces] = useState([]);
+  const colors = useColors();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   
   const { events, isLoading, isOffline, fetchEvents } = useEventStore();
   const user = useAuthStore((state) => state.user);
@@ -45,6 +50,10 @@ export default function EventScreen() {
       await Promise.all([
         fetchEvents(),
         handleGetLocation(),
+        firestoreService
+          .getTrendingPlacesToday()
+          .then(setTrendingPlaces)
+          .catch(() => []),
       ]);
     } finally {
       setIsRefreshing(false);
@@ -59,7 +68,11 @@ export default function EventScreen() {
 
   useEffect(() => {
     handleGetLocation();
-  }, [handleGetLocation]);
+    firestoreService
+      .getTrendingPlacesToday()
+      .then(setTrendingPlaces)
+      .catch(() => {});
+  }, [events.length, fetchEvents, handleGetLocation, isLoading]);
 
   const normalizedSearch = searchQuery.trim().toLowerCase();
   
@@ -116,7 +129,6 @@ export default function EventScreen() {
           <Text style={styles.offlineText}>Offline mode - showing cached events</Text>
         </View>
       ) : null}
-
 
       <ScrollView
         contentContainerStyle={styles.content}
@@ -194,6 +206,47 @@ export default function EventScreen() {
           <Text style={styles.emptyNewEventsText}>No new events recently.</Text>
         )}
 
+        {trendingPlaces.length > 0 ? (
+          <>
+            <EventSectionHeader
+              buttonText="View map"
+              onButtonPress={() => navigation.navigate('Maps')}
+              title="Trending Places Today"
+            />
+            <FlatList
+              contentContainerStyle={styles.trendingList}
+              data={trendingPlaces}
+              horizontal
+              keyExtractor={(place) => place.id}
+              renderItem={({ item }) => (
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() =>
+                    navigation.navigate('VenueDetail', {
+                      place: item,
+                      placeId: item.id,
+                    })
+                  }
+                  style={styles.placeCard}
+                >
+                  {item.photoUrl ? (
+                    <Image source={{ uri: item.photoUrl }} style={styles.placeImage} />
+                  ) : (
+                    <View style={styles.placeImage}>
+                      <Ionicons color={colors.secondary} name="business" size={24} />
+                    </View>
+                  )}
+                  <Text numberOfLines={1} style={styles.placeTitle}>{item.name}</Text>
+                  <Text numberOfLines={1} style={styles.placeMeta}>
+                    {item.checkinsToday} check-ins today
+                  </Text>
+                </Pressable>
+              )}
+              showsHorizontalScrollIndicator={false}
+            />
+          </>
+        ) : null}
+
         {trendingEvents.length > 0 ? (
           <>
             <EventSectionHeader
@@ -222,9 +275,9 @@ export default function EventScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors) => StyleSheet.create({
   screen: {
-    backgroundColor: '#F8F9FF',
+    backgroundColor: colors.background,
     flex: 1,
   },
   content: {
@@ -240,8 +293,8 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   filterChip: {
-    backgroundColor: '#FFFFFF',
-    borderColor: '#E2E8F0',
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
     borderRadius: radius.full,
     borderWidth: 1,
     paddingHorizontal: 12,
@@ -286,14 +339,46 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
     marginBottom: spacing.lg,
   },
-
+  placeCard: {
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    overflow: 'hidden',
+    width: 148,
+  },
+  placeImage: {
+    alignItems: 'center',
+    backgroundColor: `${colors.secondary}15`,
+    height: 88,
+    justifyContent: 'center',
+    width: '100%',
+  },
+  placeTitle: {
+    color: colors.text,
+    fontFamily: 'Inter_700Bold',
+    fontSize: 13,
+    marginTop: spacing.sm,
+    paddingHorizontal: spacing.sm,
+  },
+  placeMeta: {
+    color: colors.neutral,
+    fontFamily: 'Inter_400Regular',
+    fontSize: 10,
+    paddingBottom: spacing.sm,
+    paddingHorizontal: spacing.sm,
+    paddingTop: 2,
+  },
+  pressed: {
+    opacity: 0.72,
+  },
   offlineBanner: {
-    backgroundColor: '#FEF3C7',
+    backgroundColor: `${colors.secondary}15`,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
   },
   offlineText: {
-    color: '#92400E',
+    color: colors.secondary,
     fontFamily: 'Inter_600SemiBold',
     fontSize: 11,
     textAlign: 'center',

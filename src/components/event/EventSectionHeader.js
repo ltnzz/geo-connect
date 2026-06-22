@@ -1,9 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { colors, spacing } from '../../utils/theme';
+import { useColors, spacing } from '../../utils/theme';
 
 export default function EventSectionHeader({ title, buttonText, onButtonPress, showButton = true }) {
+  const colors = useColors();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+
   return (
     <View style={styles.sectionHeader}>
       <Text style={styles.sectionTitle}>{title}</Text>
@@ -21,7 +25,7 @@ export default function EventSectionHeader({ title, buttonText, onButtonPress, s
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors) => StyleSheet.create({
   sectionHeader: {
     alignItems: 'center',
     flexDirection: 'row',
@@ -46,3 +50,4 @@ const styles = StyleSheet.create({
     fontSize: 11,
   },
 });
+

@@ -1,10 +1,14 @@
 import { Ionicons } from '@expo/vector-icons';
 import { StyleSheet, Text, View } from 'react-native';
+import { useMemo } from 'react';
 
 import ScreenHeader from '../../components/common/ScreenHeader';
-import { colors, spacing } from '../../utils/theme';
+import { useColors, spacing } from '../../utils/theme';
 
 export default function MapScreen() {
+  const colors = useColors();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+
   return (
     <View style={styles.screen}>
       <ScreenHeader title="Explore Map" />
@@ -20,14 +24,14 @@ export default function MapScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors) => StyleSheet.create({
   screen: {
     backgroundColor: colors.background,
     flex: 1,
   },
   content: {
     alignItems: 'center',
-    backgroundColor: '#EAF0F8',
+    backgroundColor: colors.background,
     flex: 1,
     justifyContent: 'center',
     padding: spacing.xl,

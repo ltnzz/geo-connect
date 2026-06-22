@@ -1,4 +1,6 @@
-export const colors = Object.freeze({
+import { useThemeStore } from '../stores/themeStore';
+
+export const lightColors = Object.freeze({
   primary: '#2563EB',
   secondary: '#F59E0B',
   tertiary: '#10B981',
@@ -10,6 +12,28 @@ export const colors = Object.freeze({
   mutedText: '#475569',
   border: '#CBD5E1',
 });
+
+export const darkColors = Object.freeze({
+  primary: '#3B82F6',
+  secondary: '#FBBF24',
+  tertiary: '#34D399',
+  neutral: '#94A3B8',
+  danger: '#F87171',
+  surface: '#1E293B',
+  background: '#0F172A',
+  text: '#F1F5F9',
+  mutedText: '#94A3B8',
+  border: '#334155',
+});
+
+/** Backward-compat alias — always returns light palette (for module-level usage) */
+export const colors = lightColors;
+
+/** Hook: returns the correct color palette based on the current theme mode */
+export function useColors() {
+  const mode = useThemeStore((s) => s.mode);
+  return mode === 'dark' ? darkColors : lightColors;
+}
 
 export const spacing = Object.freeze({
   xs: 4,

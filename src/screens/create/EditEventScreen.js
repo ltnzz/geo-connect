@@ -1,5 +1,5 @@
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { View, StyleSheet, Text, ScrollView } from 'react-native';
 
 import ScreenHeader from '../../components/common/ScreenHeader';
@@ -8,11 +8,13 @@ import { cloudinaryService } from '../../services/cloudinaryService';
 import { firestoreService } from '../../services/firestoreService';
 import { useEventStore } from '../../stores/eventStore';
 import { combineDateTime } from '../../utils/dateUtils';
-import { colors, spacing } from '../../utils/theme';
+import { useColors, spacing } from '../../utils/theme';
 
 export default function EditEventScreen() {
   const navigation = useNavigation();
   const route = useRoute();
+  const colors = useColors();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
 
   const eventId = route.params?.eventId;
   const events = useEventStore((s) => s.events);
@@ -44,7 +46,7 @@ export default function EditEventScreen() {
   if (!event) {
     return (
       <View style={[styles.screen, { justifyContent: 'center', alignItems: 'center' }]}>
-        <Text>Event not found.</Text>
+        <Text style={{ color: colors.text }}>Event not found.</Text>
       </View>
     );
   }
@@ -107,10 +109,10 @@ export default function EditEventScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors) => StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
   },
   container: {
     flex: 1,

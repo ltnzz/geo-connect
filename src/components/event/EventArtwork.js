@@ -1,8 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useMemo } from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
-import { colors, radius, spacing } from '../../utils/theme';
+import { useColors, radius, spacing } from '../../utils/theme';
 
 export default function EventArtwork({ event, compact = false }) {
+  const colors = useColors();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+
   if (event.bannerUrl) {
     return (
       <View style={[styles.artwork, compact && styles.compactArtwork]}>
@@ -21,7 +25,7 @@ export default function EventArtwork({ event, compact = false }) {
       style={[
         styles.artwork,
         compact && styles.compactArtwork,
-        { backgroundColor: '#E9F0FF' },
+        styles.fallbackBackground,
       ]}
     >
       <View style={styles.artworkIcon}>
@@ -36,7 +40,7 @@ export default function EventArtwork({ event, compact = false }) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors) => StyleSheet.create({
   artwork: {
     alignItems: 'center',
     height: 190,
@@ -46,6 +50,9 @@ const styles = StyleSheet.create({
   compactArtwork: {
     height: 120,
   },
+  fallbackBackground: {
+    backgroundColor: colors.primary + '1A',
+  },
   artworkImage: {
     ...StyleSheet.absoluteFillObject,
     borderRadius: radius.md,
@@ -54,7 +61,7 @@ const styles = StyleSheet.create({
   },
   artworkIcon: {
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.76)',
+    backgroundColor: colors.surface + 'C2',
     borderRadius: radius.full,
     height: 48,
     justifyContent: 'center',
@@ -78,3 +85,4 @@ const styles = StyleSheet.create({
     right: spacing.sm,
   },
 });
+

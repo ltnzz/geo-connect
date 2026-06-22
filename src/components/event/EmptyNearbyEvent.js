@@ -1,16 +1,18 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-
-import { colors, spacing } from '../../utils/theme';
+import { useColors, spacing } from '../../utils/theme';
 
 export default function EmptyNearbyEvent({ radius: filterRadius }) {
+  const colors = useColors();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const radiusText = filterRadius === 'all' 
     ? 'anywhere near you' 
     : `within ${filterRadius} km of your location`;
 
   return (
     <View style={styles.emptyState}>
-      <Ionicons color="#A5AFBD" name="location-outline" size={34} />
+      <Ionicons color={colors.neutral} name="location-outline" size={34} />
       <Text style={styles.emptyTitle}>No nearby events</Text>
       <Text style={styles.emptyText}>
         There are no events {radiusText}.
@@ -19,7 +21,7 @@ export default function EmptyNearbyEvent({ radius: filterRadius }) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors) => StyleSheet.create({
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -27,7 +29,7 @@ const styles = StyleSheet.create({
     minHeight: 260,
   },
   emptyTitle: {
-    color: '#465268',
+    color: colors.text,
     fontFamily: 'Inter_600SemiBold',
     fontSize: 15,
     marginTop: spacing.sm,
@@ -39,3 +41,4 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
 });
+

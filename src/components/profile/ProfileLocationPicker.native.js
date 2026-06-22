@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import {
   ActivityIndicator,
   Modal,
@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 
-import { colors, radius, spacing } from '../../utils/theme';
+import { useColors, radius, spacing } from '../../utils/theme';
 
 const DEFAULT_REGION = {
   latitude: -6.2088,
@@ -35,6 +35,8 @@ export default function ProfileLocationPicker({ onClose, onSelect, visible }) {
   const [label, setLabel] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const colors = useColors();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
 
   useEffect(() => {
     if (!visible) {
@@ -158,7 +160,7 @@ export default function ProfileLocationPicker({ onClose, onSelect, visible }) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors) => StyleSheet.create({
   screen: {
     backgroundColor: colors.background,
     flex: 1,
@@ -166,7 +168,7 @@ const styles = StyleSheet.create({
   header: {
     alignItems: 'center',
     backgroundColor: colors.surface,
-    borderBottomColor: '#E1E7F0',
+    borderBottomColor: colors.border,
     borderBottomWidth: 1,
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -196,7 +198,7 @@ const styles = StyleSheet.create({
   },
   sheet: {
     backgroundColor: colors.surface,
-    borderTopColor: '#E1E7F0',
+    borderTopColor: colors.border,
     borderTopWidth: 1,
     padding: spacing.md,
   },

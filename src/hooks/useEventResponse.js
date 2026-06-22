@@ -27,17 +27,35 @@ export function useEventResponse(eventId) {
     const registrationRef = doc(db, COLLECTIONS.events, eventId, SUBCOLLECTIONS.registrations, user.uid);
     const declineRef = doc(db, COLLECTIONS.events, eventId, SUBCOLLECTIONS.declines, user.uid);
 
-    const unsubParticipants = onSnapshot(participantRef, (docSnap) => {
-      setIsGoing(docSnap.exists());
-    });
+    const unsubParticipants = onSnapshot(
+      participantRef,
+      (docSnap) => {
+        setIsGoing(docSnap.exists());
+      },
+      (error) => {
+        console.warn('Error fetching event participant status:', error.message);
+      }
+    );
 
-    const unsubRegistrations = onSnapshot(registrationRef, (docSnap) => {
-      setIsInterested(docSnap.exists());
-    });
+    const unsubRegistrations = onSnapshot(
+      registrationRef,
+      (docSnap) => {
+        setIsInterested(docSnap.exists());
+      },
+      (error) => {
+        console.warn('Error fetching event registration status:', error.message);
+      }
+    );
 
-    const unsubDeclines = onSnapshot(declineRef, (docSnap) => {
-      setIsNotGoing(docSnap.exists());
-    });
+    const unsubDeclines = onSnapshot(
+      declineRef,
+      (docSnap) => {
+        setIsNotGoing(docSnap.exists());
+      },
+      (error) => {
+        console.warn('Error fetching event decline status:', error.message);
+      }
+    );
 
     return () => {
       unsubParticipants();

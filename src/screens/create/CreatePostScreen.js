@@ -1,19 +1,20 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
-import { useState, useCallback, useEffect, useRef } from 'react';
-import { ActivityIndicator, Alert, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View, } from 'react-native';
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
+import { ActivityIndicator, Alert, BackHandler, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View, } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useLocation } from '../../hooks/useLocation';
 import CreateEventScreen from './CreateEventScreen';
 import ScreenHeader from '../../components/common/ScreenHeader';
+import { POST_LOCATION_VISIBILITY } from '../../constants/firestore';
 import { cloudinaryService } from '../../services/cloudinaryService';
 import { firestoreService } from '../../services/firestoreService';
 import { imagePickerService } from '../../services/imagePickerService';
 import { useAuthStore } from '../../stores/authStore';
 import { useFeedStore } from '../../stores/feedstore';
 import { draftService } from '../../services/draftService';
-import { colors, radius, spacing } from '../../utils/theme';
+import { useColors, radius, spacing } from '../../utils/theme';
 
 const RADIUS_OPTIONS = [1, 5, 10, 25, 50];
 
@@ -23,6 +24,8 @@ export default function CreatePostScreen() {
   const route = useRoute();
   const user = useAuthStore((s) => s.user);
   const prependPost = useFeedStore((s) => s.prependPost);
+  const colors = useColors();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
 
   const [activeTab, setActiveTab] = useState('POST');
   const [content, setContent] = useState('');
@@ -37,6 +40,10 @@ export default function CreatePostScreen() {
   
   const [initialEventDraft, setInitialEventDraft] = useState(null);
   const [eventFormData, setEventFormData] = useState(null);
+
+  // Ref to always read latest state inside tabPress listener (prevents stale closure)
+  const stateRef = useRef({});
+  stateRef.current = { activeTab, content, asset, postRadius, eventFormData };
 
   // Load draft from params
   useEffect(() => {
@@ -91,7 +98,10 @@ export default function CreatePostScreen() {
         authorId: user.uid,
         caption: content,
         imageUrl,
-        location: location,
+        location: {
+          ...location,
+          visibility: POST_LOCATION_VISIBILITY.exact,
+        },
         radius: postRadius,
       });
 
@@ -101,7 +111,10 @@ export default function CreatePostScreen() {
         authorId: user.uid,
         caption: content.trim(),
         imageUrl,
-        location: location,
+        location: {
+          ...location,
+          visibility: POST_LOCATION_VISIBILITY.exact,
+        },
         radius: postRadius,
         likesCount: 0,
         commentsCount: 0,
@@ -132,61 +145,115 @@ export default function CreatePostScreen() {
   const hasContent = content.trim().length > 0 || !!asset;
   const hasEventContent = eventFormData?.title?.trim().length > 0 || !!eventFormData?.asset || eventFormData?.description?.trim().length > 0;
 
-  const handleClose = () => {
-    const isPostActive = activeTab === 'POST';
-    const isEventActive = activeTab === 'EVENT';
+  const showDraftAlert = useCallback((onConfirmLeave) => {
+    const { activeTab: tab, content: c, asset: a, postRadius: r, eventFormData: efd } = stateRef.current;
+    const isPostActive = tab === 'POST';
+    const isEventActive = tab === 'EVENT';
 
-    if ((isPostActive && !hasContent) || (isEventActive && !hasEventContent)) {
+    Alert.alert(
+      'Save Draft?',
+      'You have unsaved content. Would you like to save it as a draft?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Discard',
+          style: 'destructive',
+          onPress: () => {
+            setContent('');
+            setAsset(null);
+            setPostRadius(5);
+            setError(null);
+            clearLocation();
+            loadedDraftId.current = null;
+            setInitialEventDraft(null);
+            onConfirmLeave();
+          },
+        },
+        {
+          text: 'Save Draft',
+          onPress: async () => {
+            if (isPostActive) {
+              await draftService.saveDraft({
+                id: loadedDraftId.current,
+                type: 'POST',
+                content: c,
+                assetUri: a?.uri || null,
+                radius: r,
+              });
+            } else if (isEventActive) {
+              await draftService.saveDraft({
+                id: loadedDraftId.current,
+                type: 'EVENT',
+                eventData: efd,
+              });
+            }
+            setContent('');
+            setAsset(null);
+            setPostRadius(5);
+            setError(null);
+            clearLocation();
+            loadedDraftId.current = null;
+            setInitialEventDraft(null);
+            onConfirmLeave();
+          },
+        },
+      ]
+    );
+  }, [clearLocation]);
+
+  // Intercept tab-switch: fires when user taps another tab while Create is active
+  useFocusEffect(
+    useCallback(() => {
+      const unsubscribe = navigation.addListener('tabPress', (e) => {
+        const { activeTab: tab, content: c, asset: a, eventFormData: efd } = stateRef.current;
+        const isPostActive = tab === 'POST';
+        const isEventActive = tab === 'EVENT';
+        const postHasContent = c.trim().length > 0 || !!a;
+        const eventHasContent = efd?.title?.trim().length > 0 || !!efd?.asset || efd?.description?.trim().length > 0;
+        const shouldPrompt = (isPostActive && postHasContent) || (isEventActive && eventHasContent);
+
+        if (!shouldPrompt) return;
+
+        // Prevent default tab switch
+        e.preventDefault();
+        showDraftAlert(() => {
+          // After discard/save, manually navigate to the tab that was pressed
+          navigation.navigate(e.target.split('-')[0]);
+        });
+      });
+      return unsubscribe;
+    }, [navigation, showDraftAlert])
+  );
+
+  // Intercept Android hardware back button / edge-swipe gesture
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        const { activeTab: tab, content: c, asset: a, eventFormData: efd } = stateRef.current;
+        const isPostActive = tab === 'POST';
+        const isEventActive = tab === 'EVENT';
+        const postHasContent = c.trim().length > 0 || !!a;
+        const eventHasContent = efd?.title?.trim().length > 0 || !!efd?.asset || efd?.description?.trim().length > 0;
+        const shouldPrompt = (isPostActive && postHasContent) || (isEventActive && eventHasContent);
+
+        if (!shouldPrompt) return false; // let default back behavior happen
+
+        showDraftAlert(() => navigation.navigate('Home'));
+        return true; // prevent default
+      };
+
+      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+      return () => subscription.remove();
+    }, [navigation, showDraftAlert])
+  );
+
+  // X button handler
+  const handleClose = () => {
+    if (!hasContent && !hasEventContent) {
       navigation.goBack();
       return;
     }
-
-    Alert.alert('Save Draft?', 'You have unsaved content. Would you like to save it as a draft?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Discard',
-        style: 'destructive',
-        onPress: () => {
-          setContent('');
-          setAsset(null);
-          setPostRadius(5);
-          setError(null);
-          clearLocation();
-          loadedDraftId.current = null;
-          setInitialEventDraft(null);
-          navigation.goBack();
-        },
-      },
-      {
-        text: 'Save Draft',
-        onPress: async () => {
-          if (isPostActive) {
-            await draftService.saveDraft({
-              id: loadedDraftId.current,
-              type: 'POST',
-              content,
-              assetUri: asset?.uri || null,
-              radius: postRadius,
-            });
-          } else if (isEventActive) {
-            await draftService.saveDraft({
-              id: loadedDraftId.current,
-              type: 'EVENT',
-              eventData: eventFormData,
-            });
-          }
-
-          setContent('');
-          setAsset(null);
-          setPostRadius(5);
-          setError(null);
-          clearLocation();
-          loadedDraftId.current = null;
-          setInitialEventDraft(null);
-          navigation.goBack();
-        },
-      },
-    ]);
+    showDraftAlert(() => navigation.goBack());
   };
 
   return (
@@ -276,7 +343,7 @@ export default function CreatePostScreen() {
               onPress={handleToggleRadius}
               style={styles.actionRow}
             >
-              <View style={[styles.iconContainer, { backgroundColor: '#FCE7F3' }]}>
+              <View style={[styles.iconContainer, { backgroundColor: '#DB27771A' }]}>
                 <Ionicons
                   name="radio-outline"
                   size={20}
@@ -332,7 +399,7 @@ export default function CreatePostScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors) => StyleSheet.create({
   screen: {
     backgroundColor: colors.surface,
     flex: 1,
@@ -352,7 +419,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
     borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: colors.border,
     flexDirection: 'row',
     marginBottom: spacing.lg,
     padding: 4,
@@ -366,7 +433,7 @@ const styles = StyleSheet.create({
   activeTabButton: {
     backgroundColor: colors.surface,
     elevation: 2,
-    shadowColor: '#000',
+    shadowColor: colors.neutral,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
@@ -395,7 +462,7 @@ const styles = StyleSheet.create({
   },
   addImageButton: {
     alignItems: 'center',
-    borderColor: '#CBD5E1',
+    borderColor: colors.border,
     borderRadius: radius.sm,
     borderStyle: 'dashed',
     borderWidth: 1.5,
@@ -416,13 +483,13 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 4,
     top: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    backgroundColor: `${colors.surface}CC`,
     borderRadius: 10,
   },
   actionRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F8FAFC',
+    backgroundColor: colors.background,
     padding: spacing.md,
     borderRadius: radius.md,
     marginBottom: spacing.md,
@@ -430,7 +497,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   iconContainer: {
-    backgroundColor: '#DBEAFE',
+    backgroundColor: `${colors.primary}1A`,
     padding: 8,
     borderRadius: radius.full,
     marginRight: spacing.sm,
@@ -475,6 +542,6 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   submitButtonTextDisabled: {
-    color: '#94A3B8',
+    color: colors.mutedText,
   },
 });

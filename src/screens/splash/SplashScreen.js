@@ -1,10 +1,10 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useMemo } from 'react';
 import { setAudioModeAsync, useAudioPlayer } from 'expo-audio';
 import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import BrandMark from '../../components/common/BrandMark';
-import { spacing } from '../../utils/theme';
+import { useColors, spacing } from '../../utils/theme';
 
 const BRAND_TEXT = 'AroundU';
 const TAGLINE_TEXT = "Discover What's Happening Around You";
@@ -15,6 +15,8 @@ const SPLASH_AUDIO_DURATION_MS =
   (SPLASH_AUDIO_END_SECONDS - SPLASH_AUDIO_START_SECONDS) * 1000;
 
 export default function SplashScreen({ onFinish }) {
+  const colors = useColors();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const splashPlayer = useAudioPlayer(SPLASH_SOUND);
   const logoOpacity = useRef(new Animated.Value(0)).current;
   const logoScale = useRef(new Animated.Value(0.92)).current;
@@ -172,9 +174,9 @@ export default function SplashScreen({ onFinish }) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors) => StyleSheet.create({
   safeArea: {
-    backgroundColor: '#F8F9FF',
+    backgroundColor: colors.background,
     flex: 1,
   },
   content: {
@@ -188,7 +190,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   brand: {
-    color: '#0B1C30',
+    color: colors.text,
     fontFamily: 'Inter_700Bold',
     fontSize: 32,
     letterSpacing: -0.32,
@@ -196,7 +198,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   tagline: {
-    color: '#434655',
+    color: colors.mutedText,
     fontFamily: 'Inter_400Regular',
     fontSize: 16,
     lineHeight: 24,

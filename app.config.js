@@ -8,6 +8,7 @@ module.exports = () => {
     plugins: [
       ...(config.plugins || []),
       'expo-audio',
+      "@react-native-community/datetimepicker"
     ],
     android: {
       ...config.android,

@@ -66,6 +66,6 @@ const useLocationStore = create((set, get) => ({
   },
 }));
 
-export function useLocation() {
-  return useLocationStore();
+export function useLocation(selector) {
+  return useLocationStore(selector ? selector : (state) => state);
 }

@@ -193,7 +193,7 @@ export default function LocationSelectModal({ visible, onClose, onSelect, curren
     try {
       let data = [];
       if (searchQuery.trim()) {
-        data = await firestoreService.searchPlaces(searchQuery);
+        data = await firestoreService.searchPlaces(searchQuery, currentUserLocation);
       } else if (currentUserLocation) {
         // Fetch nearby places if user location is available
         const nearby = await firestoreService.getNearbyPlaces(

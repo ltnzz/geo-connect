@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { useMemo } from 'react';
+import { memo, useMemo } from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useAuthStore } from '../../stores/authStore';
@@ -11,14 +11,14 @@ import { useLocation } from '../../hooks/useLocation';
 import { calculateDistance } from '../../utils/locationUtils';
 
 
-export default function PostCard({ post }) {
+const PostCard = memo(function PostCard({ post }) {
   const navigation = useNavigation();
   const currentUserId = useAuthStore((s) => s.user?.uid);
   const toggleLike = useFeedStore((s) => s.toggleLike);
   const toggleBookmark = useFeedStore((s) => s.toggleBookmark);
   const colors = useColors();
   const styles = useMemo(() => makeStyles(colors), [colors]);
-  const { location: userLocation } = useLocation();
+  const userLocation = useLocation((s) => s.location);
 
   const distanceLabel = useMemo(() => {
     if (!post) return null;
@@ -159,7 +159,9 @@ export default function PostCard({ post }) {
       </View>
     </Pressable>
   );
-}
+});
+
+export default PostCard;
 
 const makeStyles = (colors) => StyleSheet.create({
   card: {

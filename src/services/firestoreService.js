@@ -31,6 +31,7 @@ import {
 } from '../constants/firestore';
 import { blurCoordinate, createGeoPointData } from '../utils/geo';
 import { getNearbyDocuments } from './geoFirestoreService';
+import { foursquareService } from './foursquareService';
 
 const createLocation = ({ latitude, longitude, ...metadata }) => ({
   ...createGeoPointData(latitude, longitude),
@@ -1128,13 +1129,57 @@ export const firestoreService = {
     });
   },
 
-  getNearbyPlaces(center, radiusMeters, maxResults = 50) {
+  async getNearbyPlaces(center, radiusMeters, maxResults = 50) {
+    await this._fetchAndSyncFoursquare(center, radiusMeters);
     return getNearbyDocuments({
       collectionName: COLLECTIONS.places,
       center,
       radiusMeters,
       maxResults,
     });
+  },
+
+  async _fetchAndSyncFoursquare(center, radiusMeters, query = '') {
+    try {
+      const places = await foursquareService.getNearbyPlaces(center, radiusMeters, query);
+      if (!places || places.length === 0) return;
+
+      const batch = writeBatch(db);
+      let count = 0;
+      
+      for (const p of places) {
+        if (count >= 400) break;
+        const placeId = p.fsq_id || p.id || p.foursquare_id;
+        if (!placeId) continue;
+
+        const name = p.name || 'Unknown Venue';
+        const category = p.categories?.[0]?.name || p.category || 'Venue';
+        const address = p.location?.address || p.location?.formatted_address || p.address || '';
+        const city = p.location?.locality || p.city || '';
+        const lat = p.geocodes?.main?.latitude ?? p.location?.latitude;
+        const lng = p.geocodes?.main?.longitude ?? p.location?.longitude;
+
+        if (lat === undefined || lng === undefined) continue;
+
+        const docRef = doc(db, COLLECTIONS.places, placeId.toString());
+        batch.set(docRef, {
+          name: name.trim(),
+          category,
+          address,
+          city,
+          location: createLocation({ latitude: lat, longitude: lng }),
+          source: 'foursquare',
+          status: 'active',
+        }, { merge: true });
+        count++;
+      }
+
+      if (count > 0) {
+        await batch.commit();
+      }
+    } catch (err) {
+      console.warn('Failed to sync Foursquare places:', err);
+    }
   },
 
   getNearbyEvents(center, radiusMeters, maxResults = 50) {
@@ -1292,12 +1337,16 @@ export const firestoreService = {
       );
   },
 
-  async searchPlaces(searchText, maxResults = 25) {
+  async searchPlaces(searchText, location = null, maxResults = 25) {
     assertFirebaseConfigured();
     const normalizedSearch = searchText.trim().toLowerCase();
 
     if (!normalizedSearch) {
       return [];
+    }
+
+    if (location) {
+      await this._fetchAndSyncFoursquare(location, 50000, searchText);
     }
 
     const snapshot = await getDocs(

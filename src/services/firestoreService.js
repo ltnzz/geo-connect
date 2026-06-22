@@ -11,6 +11,7 @@ import {
   setDoc,
   updateDoc,
   where,
+  writeBatch,
   limit,
   orderBy,
   startAfter,
@@ -19,6 +20,7 @@ import {
 import { assertFirebaseConfigured, db } from '../config/firebase';
 import {
   COLLECTIONS,
+  EVENT_RSVP,
   LOCATION_SHARING,
   POST_LOCATION_VISIBILITY,
   SUBCOLLECTIONS,
@@ -146,6 +148,87 @@ export const firestoreService = {
   async clearSharedLocation(userId) {
     assertFirebaseConfigured();
     await deleteDoc(doc(db, COLLECTIONS.sharedLocations, userId));
+  },
+
+  async getLocationHistory(userId) {
+    assertFirebaseConfigured();
+
+    const [privateSnapshot, sharedSnapshot, checkinsSnapshot] = await Promise.all([
+      getDoc(doc(db, COLLECTIONS.userLocations, userId)),
+      getDoc(doc(db, COLLECTIONS.sharedLocations, userId)),
+      getDocs(
+        query(
+          collection(db, COLLECTIONS.checkins),
+          where('userId', '==', userId),
+          orderBy('createdAt', 'desc'),
+          limit(20),
+        ),
+      ).catch(() =>
+        getDocs(
+          query(
+            collection(db, COLLECTIONS.checkins),
+            where('userId', '==', userId),
+            limit(20),
+          ),
+        ),
+      ),
+    ]);
+
+    const entries = [];
+
+    if (privateSnapshot.exists()) {
+      entries.push({
+        id: 'private-location',
+        type: 'private',
+        title: 'Private location',
+        subtitle: 'Saved precise location used only by your account',
+        ...privateSnapshot.data(),
+      });
+    }
+
+    if (sharedSnapshot.exists()) {
+      entries.push({
+        id: 'shared-location',
+        type: 'shared',
+        title: 'Shared nearby location',
+        subtitle: 'Visible only based on your privacy settings',
+        ...sharedSnapshot.data(),
+      });
+    }
+
+    checkinsSnapshot.docs.forEach((checkinDocument) => {
+      const checkin = checkinDocument.data();
+      entries.push({
+        id: checkinDocument.id,
+        type: 'checkin',
+        title: 'Venue check-in',
+        subtitle: checkin.placeName || checkin.placeId || 'Saved check-in',
+        ...checkin,
+      });
+    });
+
+    return entries;
+  },
+
+  async clearLocationHistory(userId) {
+    assertFirebaseConfigured();
+
+    const checkinsSnapshot = await getDocs(
+      query(
+        collection(db, COLLECTIONS.checkins),
+        where('userId', '==', userId),
+        limit(50),
+      ),
+    );
+    const batch = writeBatch(db);
+
+    batch.delete(doc(db, COLLECTIONS.userLocations, userId));
+    batch.delete(doc(db, COLLECTIONS.sharedLocations, userId));
+    checkinsSnapshot.docs.forEach((checkinDocument) => {
+      batch.delete(checkinDocument.ref);
+    });
+
+    await batch.commit();
   },
 
   async createPost({
@@ -358,13 +441,49 @@ export const firestoreService = {
         const postId = bookmarkDocument.data().postId || bookmarkDocument.id;
         const postSnapshot = await getDoc(doc(db, COLLECTIONS.posts, postId));
 
-        return postSnapshot.exists()
-          ? { id: postSnapshot.id, ...postSnapshot.data() }
+        if (!postSnapshot.exists()) {
+          return null;
+        }
+
+        const postData = postSnapshot.data();
+        const authorProfile = postData.authorId
+          ? await this.getUser(postData.authorId).catch(() => null)
           : null;
+
+        return {
+          id: postSnapshot.id,
+          ...postData,
+          authorName: authorProfile?.username || 'Anonymous',
+          authorAvatar: authorProfile?.avatarUrl || null,
+        };
       }),
     );
 
     return bookmarkedPosts.filter(Boolean);
+  },
+
+  async getBookmarkedPostIds(userId) {
+    assertFirebaseConfigured();
+    if (!userId) return new Set();
+
+    const bookmarksSnapshot = await getDocs(
+      collection(
+        db,
+        COLLECTIONS.users,
+        userId,
+        SUBCOLLECTIONS.bookmarks,
+      ),
+    ).catch(() => null);
+
+    const bookmarked = new Set();
+    if (bookmarksSnapshot) {
+      bookmarksSnapshot.docs.forEach((doc) => {
+        const data = doc.data();
+        const postId = data.postId || doc.id;
+        bookmarked.add(postId);
+      });
+    }
+    return bookmarked;
   },
 
   async getUserPosts(userId) {
@@ -377,8 +496,17 @@ export const firestoreService = {
       ),
     );
 
+    const userProfile = await this.getUser(userId).catch(() => null);
+    const authorName = userProfile?.username || 'Anonymous';
+    const authorAvatar = userProfile?.avatarUrl || null;
+
     return postsSnapshot.docs
-      .map((postDocument) => ({ id: postDocument.id, ...postDocument.data() }))
+      .map((postDocument) => ({
+        id: postDocument.id,
+        ...postDocument.data(),
+        authorName,
+        authorAvatar,
+      }))
       .sort((a, b) => getMillis(b.createdAt) - getMillis(a.createdAt));
   },
 
@@ -498,37 +626,42 @@ export const firestoreService = {
       .filter((connectedUserId) => followerIds.has(connectedUserId));
     const connections = await Promise.all(
       mutualIds.map(async (connectedUserId) => {
-        const [userSnapshot, locationSnapshot] = await Promise.all([
-          getDoc(doc(db, COLLECTIONS.users, connectedUserId)),
-          getDoc(doc(db, COLLECTIONS.sharedLocations, connectedUserId)),
-        ]);
+        try {
+          const [userSnapshot, locationSnapshot] = await Promise.all([
+            getDoc(doc(db, COLLECTIONS.users, connectedUserId)),
+            getDoc(doc(db, COLLECTIONS.sharedLocations, connectedUserId)),
+          ]);
 
-        if (!userSnapshot.exists() || !locationSnapshot.exists()) {
+          if (!userSnapshot.exists() || !locationSnapshot.exists()) {
+            return null;
+          }
+
+          const profile = userSnapshot.data();
+          const location = locationSnapshot.data();
+
+          if (
+            profile.invisibleMode ||
+            ![
+              LOCATION_SHARING.exact,
+              LOCATION_SHARING.neighborhood,
+            ].includes(profile.locationSharing) ||
+            !Number.isFinite(location.latitude) ||
+            !Number.isFinite(location.longitude)
+          ) {
+            return null;
+          }
+
+          return {
+            id: connectedUserId,
+            username: profile.username || 'aroundu',
+            city: profile.city || '',
+            avatarUrl: profile.avatarUrl || '',
+            location,
+          };
+        } catch (error) {
+          console.warn(`Skipping connection location for ${connectedUserId}:`, error.message);
           return null;
         }
-
-        const profile = userSnapshot.data();
-        const location = locationSnapshot.data();
-
-        if (
-          profile.invisibleMode ||
-          ![
-            LOCATION_SHARING.exact,
-            LOCATION_SHARING.neighborhood,
-          ].includes(profile.locationSharing) ||
-          !Number.isFinite(location.latitude) ||
-          !Number.isFinite(location.longitude)
-        ) {
-          return null;
-        }
-
-        return {
-          id: connectedUserId,
-          username: profile.username || 'aroundu',
-          city: profile.city || '',
-          avatarUrl: profile.avatarUrl || '',
-          location,
-        };
       }),
     );
 
@@ -538,27 +671,33 @@ export const firestoreService = {
   async createPlace(data) {
     return createDocument(COLLECTIONS.places, {
       name: data.name.trim(),
-      category: data.category,
-      address: data.address,
-      city: data.city,
+      category: data.category || 'Community place',
+      address: data.address || '',
+      city: data.city || '',
+      createdBy: data.createdBy || null,
       photoUrl: data.photoUrl || '',
       location: createLocation(data.location),
       checkinsCount: 0,
       postsCount: 0,
       eventsCount: 0,
       rating: data.rating || 0,
+      source: data.source || 'community',
+      status: 'active',
     });
   },
 
   async checkIn({ userId, placeId, postId = null, location }) {
     const checkinRef = doc(collection(db, COLLECTIONS.checkins));
     const placeRef = doc(db, COLLECTIONS.places, placeId);
+    const placeSnapshot = await getDoc(placeRef);
+    const place = placeSnapshot.exists() ? placeSnapshot.data() : null;
 
     await runTransaction(db, async (transaction) => {
       transaction.set(checkinRef, {
         userId,
         placeId,
         postId,
+        placeName: place?.name || '',
         location: createLocation(location),
         createdAt: serverTimestamp(),
       });
@@ -569,6 +708,116 @@ export const firestoreService = {
     });
 
     return checkinRef.id;
+  },
+
+  async getPlace(placeId) {
+    assertFirebaseConfigured();
+    const placeSnapshot = await getDoc(doc(db, COLLECTIONS.places, placeId));
+    return placeSnapshot.exists()
+      ? { id: placeSnapshot.id, ...placeSnapshot.data() }
+      : null;
+  },
+
+  async getPlacePosts(placeId, maxResults = 30) {
+    assertFirebaseConfigured();
+    const postsSnapshot = await getDocs(
+      query(
+        collection(db, COLLECTIONS.posts),
+        where('placeId', '==', placeId),
+        limit(maxResults),
+      ),
+    );
+
+    const posts = await Promise.all(
+      postsSnapshot.docs.map(async (postDocument) => {
+        const post = postDocument.data();
+        const authorProfile = post.authorId
+          ? await this.getUser(post.authorId).catch(() => null)
+          : null;
+
+        return {
+          id: postDocument.id,
+          ...post,
+          authorName: authorProfile?.username || 'Anonymous',
+          authorAvatar: authorProfile?.avatarUrl || null,
+        };
+      })
+    );
+
+    return posts.sort((a, b) => getMillis(b.createdAt) - getMillis(a.createdAt));
+  },
+
+  async getPlaceLeaderboard(placeId, maxResults = 5) {
+    assertFirebaseConfigured();
+    const checkinsSnapshot = await getDocs(
+      query(
+        collection(db, COLLECTIONS.checkins),
+        where('placeId', '==', placeId),
+        limit(100),
+      ),
+    );
+    const counts = new Map();
+
+    checkinsSnapshot.docs.forEach((checkinDocument) => {
+      const checkin = checkinDocument.data();
+      counts.set(checkin.userId, (counts.get(checkin.userId) || 0) + 1);
+    });
+
+    const ranked = [...counts.entries()]
+      .sort((left, right) => right[1] - left[1])
+      .slice(0, maxResults);
+    const users = await Promise.all(
+      ranked.map(([userId]) => this.getUser(userId).catch(() => null)),
+    );
+
+    return ranked.map(([userId, count], index) => ({
+      count,
+      id: userId,
+      username: users[index]?.username || 'aroundu',
+    }));
+  },
+
+  async getTrendingPlacesToday(maxResults = 10) {
+    assertFirebaseConfigured();
+    const since = new Date();
+    since.setHours(0, 0, 0, 0);
+    const checkinsSnapshot = await getDocs(
+      query(
+        collection(db, COLLECTIONS.checkins),
+        where('createdAt', '>=', since),
+        limit(100),
+      ),
+    ).catch(() =>
+      getDocs(query(collection(db, COLLECTIONS.checkins), limit(100))),
+    );
+    const counts = new Map();
+
+    checkinsSnapshot.docs.forEach((checkinDocument) => {
+      const checkin = checkinDocument.data();
+      if (!checkin.placeId) {
+        return;
+      }
+      counts.set(checkin.placeId, (counts.get(checkin.placeId) || 0) + 1);
+    });
+
+    const ranked = [...counts.entries()]
+      .sort((left, right) => right[1] - left[1])
+      .slice(0, maxResults);
+    const places = await Promise.all(
+      ranked.map(([placeId]) => this.getPlace(placeId).catch(() => null)),
+    );
+
+    return ranked
+      .map(([placeId, checkinsToday], index) =>
+        places[index]
+          ? {
+            ...places[index],
+            id: placeId,
+            checkinsToday,
+          }
+          : null,
+      )
+      .filter(Boolean);
   },
 
   async createEvent(data) {
@@ -599,7 +848,7 @@ export const firestoreService = {
   async updateEvent(eventId, data) {
     assertFirebaseConfigured();
     const eventRef = doc(db, COLLECTIONS.events, eventId);
-    
+
     const updates = {};
     if (data.title !== undefined) updates.title = data.title.trim();
     if (data.description !== undefined) updates.description = data.description.trim();
@@ -612,7 +861,7 @@ export const firestoreService = {
     if (data.startTime !== undefined) updates.startTime = data.startTime;
     if (data.endTime !== undefined) updates.endTime = data.endTime;
     if (data.status !== undefined) updates.status = data.status;
-    
+
     updates.updatedAt = serverTimestamp();
 
     await updateDoc(eventRef, updates);
@@ -649,6 +898,87 @@ export const firestoreService = {
         });
       }
     });
+  },
+
+  async setEventRegistered(eventId, userId, shouldRegister) {
+    return this.setEventRsvp(
+      eventId,
+      userId,
+      shouldRegister ? EVENT_RSVP.going : EVENT_RSVP.notGoing,
+    );
+  },
+
+  async getEventRsvp(eventId, userId) {
+    if (!eventId || !userId) {
+      return EVENT_RSVP.notGoing;
+    }
+
+    const registrationSnapshot = await getDoc(
+      doc(db, COLLECTIONS.events, eventId, SUBCOLLECTIONS.registrations, userId),
+    );
+
+    return registrationSnapshot.exists()
+      ? registrationSnapshot.data().status || EVENT_RSVP.going
+      : EVENT_RSVP.notGoing;
+  },
+
+  async setEventRsvp(eventId, userId, status) {
+    const eventRef = doc(db, COLLECTIONS.events, eventId);
+    const registrationRef = doc(
+      db,
+      COLLECTIONS.events,
+      eventId,
+      SUBCOLLECTIONS.registrations,
+      userId,
+    );
+    const nextStatus =
+      status === EVENT_RSVP.going || status === EVENT_RSVP.interested
+        ? status
+        : EVENT_RSVP.notGoing;
+
+    await runTransaction(db, async (transaction) => {
+      const snapshot = await transaction.get(registrationRef);
+      const currentStatus = snapshot.exists()
+        ? snapshot.data().status || EVENT_RSVP.going
+        : EVENT_RSVP.notGoing;
+      const wasGoing = currentStatus === EVENT_RSVP.going;
+      const wasInterested = currentStatus === EVENT_RSVP.interested;
+      const willGoing = nextStatus === EVENT_RSVP.going;
+      const willInterested = nextStatus === EVENT_RSVP.interested;
+
+      if (nextStatus === EVENT_RSVP.notGoing) {
+        if (snapshot.exists()) {
+          transaction.delete(registrationRef);
+        }
+      } else if (!snapshot.exists()) {
+        transaction.set(registrationRef, {
+          userId,
+          eventId,
+          status: nextStatus,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        });
+      } else {
+        transaction.update(registrationRef, {
+          status: nextStatus,
+          updatedAt: serverTimestamp(),
+        });
+      }
+
+      const participantDelta = Number(willGoing) - Number(wasGoing);
+      const registrationDelta =
+        Number(willGoing || willInterested) - Number(wasGoing || wasInterested);
+
+      if (participantDelta || registrationDelta) {
+        transaction.update(eventRef, {
+          participantCount: increment(participantDelta),
+          registrationCount: increment(registrationDelta),
+          updatedAt: serverTimestamp(),
+        });
+      }
+    });
+
+    return nextStatus;
   },
 
   async setEventParticipation(eventId, userId, shouldJoin, joinMethod = 'manual') {
@@ -795,6 +1125,47 @@ export const firestoreService = {
       maxResults,
     });
   },
+
+  async createStory(data) {
+    assertFirebaseConfigured();
+    const storyRef = doc(collection(db, COLLECTIONS.stories));
+    await setDoc(storyRef, {
+      userId: data.userId,
+      username: data.username || 'aroundu',
+      userAvatar: data.userAvatar || '',
+      mediaUrl: data.mediaUrl,
+      eventId: data.eventId,
+      eventTitle: data.eventTitle || '',
+      createdAt: serverTimestamp(),
+    });
+    return storyRef.id;
+  },
+
+  async getEventStories(eventId) {
+    assertFirebaseConfigured();
+    const snapshot = await getDocs(
+      query(
+        collection(db, COLLECTIONS.stories),
+        where('eventId', '==', eventId),
+      )
+    );
+
+    const since = Date.now() - 24 * 60 * 60 * 1000;
+    return snapshot.docs
+      .map((d) => ({ id: d.id, ...d.data() }))
+      .filter((story) => getMillis(story.createdAt) >= since)
+      .sort((a, b) => getMillis(a.createdAt) - getMillis(b.createdAt));
+  },
+
+  async getAllActiveStories() {
+    assertFirebaseConfigured();
+    const snapshot = await getDocs(collection(db, COLLECTIONS.stories));
+    const since = Date.now() - 24 * 60 * 60 * 1000;
+    return snapshot.docs
+      .map((d) => ({ id: d.id, ...d.data() }))
+      .filter((story) => getMillis(story.createdAt) >= since)
+      .sort((a, b) => getMillis(a.createdAt) - getMillis(b.createdAt));
+  },
   async getFeedPosts({ pageSize = 10, cursor = null } = {}) {
     assertFirebaseConfigured();
     const constraints = [orderBy('createdAt', 'desc'), limit(pageSize)];
@@ -827,7 +1198,7 @@ export const firestoreService = {
       ),
     );
 
-    return snapshot.docs
+    const filteredPosts = snapshot.docs
       .map((documentSnapshot) => ({ id: documentSnapshot.id, ...documentSnapshot.data() }))
       .filter((post) =>
         [
@@ -836,6 +1207,20 @@ export const firestoreService = {
           post.location?.city,
         ].some((value) => value?.toLowerCase().includes(normalizedSearch)),
       );
+
+    return await Promise.all(
+      filteredPosts.map(async (post) => {
+        const authorProfile = post.authorId
+          ? await this.getUser(post.authorId).catch(() => null)
+          : null;
+
+        return {
+          ...post,
+          authorName: authorProfile?.username || 'Anonymous',
+          authorAvatar: authorProfile?.avatarUrl || null,
+        };
+      })
+    );
   },
 
   async searchEvents(searchText, maxResults = 25) {

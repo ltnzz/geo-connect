@@ -19,14 +19,24 @@ export function useEventStories(eventId) {
     const q = query(storiesRef, orderBy('createdAt', 'desc'));
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
+      const twentyFourHoursAgo = Date.now() - 24 * 60 * 60 * 1000;
+      const data = snapshot.docs
+        .map(doc => {
+          const docData = doc.data();
+          const createdAtMillis = docData.createdAt 
+            ? (docData.createdAt.toMillis ? docData.createdAt.toMillis() : new Date(docData.createdAt).getTime()) 
+            : Date.now();
+          return {
+            id: doc.id,
+            ...docData,
+            createdAtMillis
+          };
+        })
+        .filter(story => story.createdAtMillis >= twentyFourHoursAgo);
       setStories(data);
       setIsLoading(false);
     }, (error) => {
-      console.error('Error fetching event stories:', error);
+      console.warn('Error fetching event stories:', error.message);
       setIsLoading(false);
     });
 

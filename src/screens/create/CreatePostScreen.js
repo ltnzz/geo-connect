@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useLocation } from '../../hooks/useLocation';
 import CreateEventScreen from './CreateEventScreen';
+import LocationSelectModal from '../../components/create/LocationSelectModal';
 import ScreenHeader from '../../components/common/ScreenHeader';
 import { POST_LOCATION_VISIBILITY } from '../../constants/firestore';
 import { cloudinaryService } from '../../services/cloudinaryService';
@@ -15,8 +16,6 @@ import { useAuthStore } from '../../stores/authStore';
 import { useFeedStore } from '../../stores/feedstore';
 import { draftService } from '../../services/draftService';
 import { useColors, radius, spacing } from '../../utils/theme';
-
-const RADIUS_OPTIONS = [1, 5, 10, 25, 50];
 
 export default function CreatePostScreen() {
   const insets = useSafeAreaInsets();
@@ -31,8 +30,10 @@ export default function CreatePostScreen() {
   const [content, setContent] = useState('');
   const [asset, setAsset] = useState(null);
 
-  const { location, isFetchingLocation, locationError, handleGetLocation, clearLocation } = useLocation();
-  const [postRadius, setPostRadius] = useState(5);
+  const { location: userLocation, handleGetLocation } = useLocation();
+  const [postLocation, setPostLocation] = useState(null);
+  const [selectedVenue, setSelectedVenue] = useState(null);
+  const [isLocationModalVisible, setIsLocationModalVisible] = useState(false);
 
   const [isPosting, setIsPosting] = useState(false);
   const [error, setError] = useState(null);
@@ -43,7 +44,19 @@ export default function CreatePostScreen() {
 
   // Ref to always read latest state inside tabPress listener (prevents stale closure)
   const stateRef = useRef({});
-  stateRef.current = { activeTab, content, asset, postRadius, eventFormData };
+  stateRef.current = { activeTab, content, asset, eventFormData };
+
+  // Fetch location on mount
+  useEffect(() => {
+    handleGetLocation();
+  }, [handleGetLocation]);
+
+  // Sync user's current location once fetched
+  useEffect(() => {
+    if (userLocation && !postLocation) {
+      setPostLocation(userLocation);
+    }
+  }, [userLocation]);
 
   // Load draft from params
   useEffect(() => {
@@ -57,7 +70,6 @@ export default function CreatePostScreen() {
         setActiveTab('POST');
         setContent(draft.content || '');
         if (draft.assetUri) setAsset({ uri: draft.assetUri });
-        if (draft.radius) setPostRadius(draft.radius);
       }
       // Clear params so it doesn't reload on focus
       navigation.setParams({ draft: undefined });
@@ -76,12 +88,6 @@ export default function CreatePostScreen() {
 
   const handleRemoveImage = () => setAsset(null);
 
-  const handleToggleRadius = () => {
-    const currentIndex = RADIUS_OPTIONS.indexOf(postRadius);
-    const nextIndex = (currentIndex + 1) % RADIUS_OPTIONS.length;
-    setPostRadius(RADIUS_OPTIONS[nextIndex]);
-  };
-
   const handleSubmitPost = async () => {
     setError(null);
     setIsPosting(true);
@@ -98,24 +104,26 @@ export default function CreatePostScreen() {
         authorId: user.uid,
         caption: content,
         imageUrl,
+        placeId: selectedVenue?.id || null,
         location: {
-          ...location,
+          ...postLocation,
           visibility: POST_LOCATION_VISIBILITY.exact,
         },
-        radius: postRadius,
       });
 
 
       prependPost({
         id: postId,
         authorId: user.uid,
+        authorName: user.username || 'Anonymous',
+        authorAvatar: user.avatarUrl || '',
         caption: content.trim(),
         imageUrl,
+        placeId: selectedVenue?.id || null,
         location: {
-          ...location,
+          ...postLocation,
           visibility: POST_LOCATION_VISIBILITY.exact,
         },
-        radius: postRadius,
         likesCount: 0,
         commentsCount: 0,
         createdAt: new Date(),
@@ -123,8 +131,8 @@ export default function CreatePostScreen() {
 
       setContent('');
       setAsset(null);
-      clearLocation();
-      setPostRadius(5);
+      setPostLocation(null);
+      setSelectedVenue(null);
 
       // Auto-delete draft if it was loaded
       if (loadedDraftId.current) {
@@ -140,13 +148,13 @@ export default function CreatePostScreen() {
     }
   };
 
-  const canSubmit = content.trim().length > 0 && !!asset && !!location && !isPosting;
+  const canSubmit = content.trim().length > 0 && !!asset && !!postLocation && !isPosting;
 
   const hasContent = content.trim().length > 0 || !!asset;
   const hasEventContent = eventFormData?.title?.trim().length > 0 || !!eventFormData?.asset || eventFormData?.description?.trim().length > 0;
 
   const showDraftAlert = useCallback((onConfirmLeave) => {
-    const { activeTab: tab, content: c, asset: a, postRadius: r, eventFormData: efd } = stateRef.current;
+    const { activeTab: tab, content: c, asset: a, eventFormData: efd } = stateRef.current;
     const isPostActive = tab === 'POST';
     const isEventActive = tab === 'EVENT';
 
@@ -161,9 +169,9 @@ export default function CreatePostScreen() {
           onPress: () => {
             setContent('');
             setAsset(null);
-            setPostRadius(5);
             setError(null);
-            clearLocation();
+            setPostLocation(null);
+            setSelectedVenue(null);
             loadedDraftId.current = null;
             setInitialEventDraft(null);
             onConfirmLeave();
@@ -178,7 +186,6 @@ export default function CreatePostScreen() {
                 type: 'POST',
                 content: c,
                 assetUri: a?.uri || null,
-                radius: r,
               });
             } else if (isEventActive) {
               await draftService.saveDraft({
@@ -189,9 +196,9 @@ export default function CreatePostScreen() {
             }
             setContent('');
             setAsset(null);
-            setPostRadius(5);
             setError(null);
-            clearLocation();
+            setPostLocation(null);
+            setSelectedVenue(null);
             loadedDraftId.current = null;
             setInitialEventDraft(null);
             onConfirmLeave();
@@ -199,7 +206,7 @@ export default function CreatePostScreen() {
         },
       ]
     );
-  }, [clearLocation]);
+  }, []);
 
   // Intercept tab-switch: fires when user taps another tab while Create is active
   useFocusEffect(
@@ -314,55 +321,28 @@ export default function CreatePostScreen() {
           </View>
 
           <Pressable
-            onPress={handleGetLocation}
+            onPress={() => setIsLocationModalVisible(true)}
             style={styles.actionRow}
-            disabled={isFetchingLocation}
           >
             <View style={styles.iconContainer}>
               <Ionicons name="location" size={20} color={colors.primary} />
             </View>
             <View style={styles.textContainer}>
-              {isFetchingLocation ? (
-                <Text style={styles.mainText}>Locating...</Text>
-              ) : location ? (
+              {postLocation ? (
                 <>
-                  <Text style={styles.mainText}>{location.address}</Text>
-                  <Text style={styles.subText}>{location.city}</Text>
+                  <Text style={styles.mainText}>{postLocation.address}</Text>
+                  <Text style={styles.subText}>{postLocation.city}</Text>
                 </>
               ) : (
                 <Text style={styles.mainText}>Add Location</Text>
               )}
             </View>
-            {location && (
+            {postLocation && (
               <Ionicons name="checkmark-circle" size={20} color={colors.primary} style={{ marginLeft: 'auto' }} />
             )}
           </Pressable>
 
-          {location && (
-            <Pressable
-              onPress={handleToggleRadius}
-              style={styles.actionRow}
-            >
-              <View style={[styles.iconContainer, { backgroundColor: '#DB27771A' }]}>
-                <Ionicons
-                  name="radio-outline"
-                  size={20}
-                  color="#DB2777"
-                />
-              </View>
-              <View style={styles.textContainer}>
-                <Text style={styles.mainText}>
-                  Radius: {postRadius} km
-                </Text>
-                <Text style={styles.subText}>
-                  Visible to people within {postRadius} km
-                </Text>
-              </View>
-              <Ionicons name="sync" size={18} color={colors.neutral} style={{ marginLeft: 'auto' }} />
-            </Pressable>
-          )}
-
-          {error || locationError ? <Text style={styles.errorText}>{error || locationError}</Text> : null}
+          {error ? <Text style={styles.errorText}>{error}</Text> : null}
         </View>
 
         <View style={{ display: activeTab === 'EVENT' ? 'flex' : 'none' }}>
@@ -395,6 +375,20 @@ export default function CreatePostScreen() {
           </Pressable>
         </View>
       ) : null}
+
+      <LocationSelectModal
+        visible={isLocationModalVisible}
+        onClose={() => setIsLocationModalVisible(false)}
+        onSelect={(loc) => {
+          setPostLocation(loc);
+          if (loc.placeId) {
+            setSelectedVenue({ id: loc.placeId, name: loc.address });
+          } else {
+            setSelectedVenue(null);
+          }
+        }}
+        currentUserLocation={userLocation}
+      />
     </View>
   );
 }

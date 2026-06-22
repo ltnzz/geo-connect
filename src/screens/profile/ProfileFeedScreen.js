@@ -1,10 +1,11 @@
-import React, { useRef, useMemo } from 'react';
+import React, { useRef, useMemo, useState, useEffect } from 'react';
 import { FlatList, StyleSheet, Text, View } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 
 import ScreenHeader from '../../components/common/ScreenHeader';
 import PostCard from '../../components/post/PostCard';
 import { useColors, spacing } from '../../utils/theme';
+import { useFeedStore } from '../../stores/feedstore';
 
 export default function ProfileFeedScreen() {
   const navigation = useNavigation();
@@ -17,9 +18,30 @@ export default function ProfileFeedScreen() {
   const initialPostId = route.params?.initialPostId;
   const title = route.params?.title || 'Posts';
 
-  const initialIndex = posts.findIndex((p) => p.id === initialPostId);
+  const [localPosts, setLocalPosts] = useState(posts);
+  const prevPostsRef = useRef(posts);
+  const deletedPostIds = useFeedStore((s) => s.deletedPostIds);
+
+  useEffect(() => {
+    const newPosts = route.params?.posts || [];
+    const oldPosts = prevPostsRef.current || [];
+    
+    const newIds = newPosts.map((p) => p.id).join(',');
+    const oldIds = oldPosts.map((p) => p.id).join(',');
+    
+    if (newIds !== oldIds) {
+      setLocalPosts(newPosts);
+      prevPostsRef.current = newPosts;
+    }
+  }, [route.params?.posts]);
+
+  const displayedPosts = useMemo(() => {
+    return localPosts.filter((p) => !deletedPostIds.includes(p.id));
+  }, [localPosts, deletedPostIds]);
+
+  const initialIndex = displayedPosts.findIndex((p) => p.id === initialPostId);
   const scrollIndex = initialIndex !== -1 ? initialIndex : 0;
-  const hasPosts = posts.length > 0;
+  const hasPosts = displayedPosts.length > 0;
 
   const handleScrollToIndexFailed = (info) => {
     const offset = info.averageItemLength * info.index;
@@ -35,7 +57,7 @@ export default function ProfileFeedScreen() {
       <FlatList
         ref={flatListRef}
         contentContainerStyle={styles.listContent}
-        data={posts}
+        data={displayedPosts}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => <PostCard post={item} />}
         ListEmptyComponent={<Text style={styles.emptyText}>No posts to show.</Text>}

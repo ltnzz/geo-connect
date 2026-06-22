@@ -43,7 +43,7 @@ const getPostLocationLabel = (post) => {
     return post.location;
   }
 
-  return post.location?.name || post.placeName || post.city || 'AroundU';
+  return post.location?.address || post.location?.city || post.placeName || 'AroundU';
 };
 
 export default function ProfileScreen() {

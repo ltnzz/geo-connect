@@ -55,7 +55,11 @@ export default function EventForm({
     if (initialValues) {
       if (initialValues.title) setTitle(initialValues.title);
       if (initialValues.description) setDescription(initialValues.description);
-      if (initialValues.bannerUrl) setAsset({ uri: initialValues.bannerUrl });
+      if (initialValues.bannerUrl) {
+        setAsset({ uri: initialValues.bannerUrl });
+      } else if (initialValues.asset?.uri) {
+        setAsset({ uri: initialValues.asset.uri });
+      }
       if (initialValues.category) setCategory(initialValues.category);
       
       if (initialValues.startTime) {

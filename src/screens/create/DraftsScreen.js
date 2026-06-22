@@ -76,8 +76,8 @@ export default function DraftsScreen() {
     const metaText = isEvent 
       ? `Event Draft · ${formatDate(item.updatedAt)}`
       : hasCustomRadius
-        ? `${formatDate(item.updatedAt)} · Radius ${item.radius} km`
-        : formatDate(item.updatedAt);
+        ? `Post Draft · ${formatDate(item.updatedAt)} · Radius ${item.radius} km`
+        : `Post Draft · ${formatDate(item.updatedAt)}`;
     const placeholderIcon = isEvent ? 'calendar' : 'document-text-outline';
 
     return (

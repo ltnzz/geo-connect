@@ -20,9 +20,12 @@ export default function DateTimePickerBox({
   const colors = useColors();
   const styles = useMemo(() => makeStyles(colors), [colors]);
 
+  const ensureDate = (val) => (val instanceof Date ? val : new Date(val));
+
   const formatVal = (val) => {
-    if (mode === 'date') return val.toLocaleDateString();
-    return val.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const d = ensureDate(val);
+    if (mode === 'date') return d.toLocaleDateString();
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
   return (
@@ -32,7 +35,7 @@ export default function DateTimePickerBox({
         <Text style={styles.dateTimeText}>{formatVal(val1)}</Text>
       </Pressable>
       {showPicker1 && (
-        <DateTimePicker value={val1} mode={mode} display="default" onChange={onChange1} />
+        <DateTimePicker value={ensureDate(val1)} mode={mode} display="default" onChange={onChange1} />
       )}
 
       <Text style={styles.separator}>-</Text>
@@ -42,7 +45,7 @@ export default function DateTimePickerBox({
         <Text style={styles.dateTimeText}>{formatVal(val2)}</Text>
       </Pressable>
       {showPicker2 && (
-        <DateTimePicker value={val2} mode={mode} display="default" onChange={onChange2} />
+        <DateTimePicker value={ensureDate(val2)} mode={mode} display="default" onChange={onChange2} />
       )}
     </View>
   );

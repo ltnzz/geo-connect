@@ -12,10 +12,7 @@ import {
   Text,
   TextInput,
   View,
-  useWindowDimensions,
 } from 'react-native';
-import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
-import Animated, { useSharedValue, useAnimatedStyle, withSpring, runOnJS } from 'react-native-reanimated';
 
 import ScreenHeader from '../../components/common/ScreenHeader';
 import NewEventCard from '../../components/event/NewEventCard';
@@ -58,66 +55,7 @@ export default function ProfileScreen() {
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const [activeSegment, setActiveSegment] = useState('posts');
   const [profilePosts, setProfilePosts] = useState([]);
-  const { width: screenWidth } = useWindowDimensions();
-  const [isTransitioning, setIsTransitioning] = useState(false);
   const segments = ['posts', 'events', 'saved'];
-  const activeIndex = segments.indexOf(activeSegment);
-
-  const translateX = useSharedValue(0);
-
-  useEffect(() => {
-    setIsTransitioning(true);
-    translateX.value = withSpring(-activeIndex * screenWidth, { damping: 20, stiffness: 90 }, (finished) => {
-      if (finished) {
-        runOnJS(setIsTransitioning)(false);
-      }
-    });
-  }, [activeIndex, screenWidth]);
-
-  const panGesture = useMemo(() => {
-    return Gesture.Pan()
-      .activeOffsetX([-10, 10])
-      .failOffsetY([-5, 5])
-      .onStart(() => {
-        runOnJS(setIsTransitioning)(true);
-      })
-      .onUpdate((event) => {
-        translateX.value = -activeIndex * screenWidth + event.translationX;
-      })
-      .onEnd((event) => {
-        const dragLimit = screenWidth * 0.2;
-        const velocity = event.velocityX;
-        let nextIndex = activeIndex;
-
-        if (event.translationX > dragLimit || velocity > 500) {
-          nextIndex = Math.max(0, activeIndex - 1);
-        } else if (event.translationX < -dragLimit || velocity < -500) {
-          nextIndex = Math.min(segments.length - 1, activeIndex + 1);
-        }
-
-        if (nextIndex !== activeIndex) {
-          runOnJS(setActiveSegment)(segments[nextIndex]);
-        } else {
-          translateX.value = withSpring(-activeIndex * screenWidth, { damping: 20, stiffness: 90 }, (finished) => {
-            if (finished) {
-              runOnJS(setIsTransitioning)(false);
-            }
-          });
-        }
-      });
-  }, [activeIndex, screenWidth]);
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: translateX.value }],
-  }));
-
-  const getPageStyle = (tabName) => {
-    const isActive = activeSegment === tabName;
-    if (isActive || isTransitioning) {
-      return { width: screenWidth };
-    }
-    return { width: screenWidth, height: 0, overflow: 'hidden' };
-  };
 
   const [isPostsLoading, setIsPostsLoading] = useState(false);
   const [postsError, setPostsError] = useState('');
@@ -291,8 +229,7 @@ export default function ProfileScreen() {
   };
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <View style={styles.screen}>
+    <View style={styles.screen}>
         <ScreenHeader
         onRightPress={() => navigation.navigate('Settings')}
         rightIcon="settings-outline"
@@ -446,175 +383,174 @@ export default function ProfileScreen() {
           </Pressable>
         </View>
 
-        <GestureDetector gesture={panGesture}>
-          <Animated.View style={[styles.tabContainer, animatedStyle, { width: screenWidth * 3 }]}>
-            {/* Posts Page */}
-            <View style={getPageStyle('posts')}>
-              {isPostsLoading ? (
-                <View style={styles.feedState}>
-                  <ActivityIndicator color={colors.primary} />
-                  <Text style={styles.feedStateText}>Loading your posts...</Text>
-                </View>
-              ) : postsError ? (
-                <View style={styles.feedState}>
-                  <Ionicons color={colors.danger} name="alert-circle-outline" size={25} />
-                  <Text style={styles.feedStateText}>{postsError}</Text>
-                </View>
-              ) : profilePosts.length === 0 ? (
-                <View style={styles.feedState}>
-                  <Ionicons color={colors.neutral} name="grid-outline" size={28} />
-                  <Text style={styles.feedStateTitle}>No posts yet</Text>
-                  <Text style={styles.feedStateText}>
-                    Posts you create will appear here.
-                  </Text>
-                </View>
-              ) : (
-                <View style={styles.feedGrid}>
-                  {profilePosts.map((post, index) => (
-                    <Pressable
-                      accessibilityLabel={`Post at ${getPostLocationLabel(post)}`}
-                      accessibilityRole="button"
-                      key={post.id}
-                      onPress={() =>
-                        navigation.navigate('ProfileFeed', {
-                          initialPostId: post.id,
-                          posts: profilePosts,
-                          title: 'Posts',
-                        })
-                      }
-                      style={({ pressed }) => [
-                        styles.feedItem,
-                        {
-                          backgroundColor:
-                            post.color ||
-                            POST_COLORS[index % POST_COLORS.length],
-                        },
-                        pressed && styles.pressed,
-                      ]}
-                    >
-                      {post.imageUrl ? (
-                        <Image source={{ uri: post.imageUrl }} style={styles.feedImage} />
-                      ) : null}
-                      <View style={styles.feedOverlay}>
-                        <Ionicons color="#FFFFFF" name="location" size={13} />
-                        <Text numberOfLines={1} style={styles.feedLocation}>
-                          {getPostLocationLabel(post)}
-                        </Text>
-                      </View>
-                    </Pressable>
-                  ))}
-                </View>
-              )}
-            </View>
+        {activeSegment === 'posts' && (
+          <View style={{ width: '100%' }}>
+            {isPostsLoading ? (
+              <View style={styles.feedState}>
+                <ActivityIndicator color={colors.primary} />
+                <Text style={styles.feedStateText}>Loading your posts...</Text>
+              </View>
+            ) : postsError ? (
+              <View style={styles.feedState}>
+                <Ionicons color={colors.danger} name="alert-circle-outline" size={25} />
+                <Text style={styles.feedStateText}>{postsError}</Text>
+              </View>
+            ) : profilePosts.length === 0 ? (
+              <View style={styles.feedState}>
+                <Ionicons color={colors.neutral} name="grid-outline" size={28} />
+                <Text style={styles.feedStateTitle}>No posts yet</Text>
+                <Text style={styles.feedStateText}>
+                  Posts you create will appear here.
+                </Text>
+              </View>
+            ) : (
+              <View style={styles.feedGrid}>
+                {profilePosts.map((post, index) => (
+                  <Pressable
+                    accessibilityLabel={`Post at ${getPostLocationLabel(post)}`}
+                    accessibilityRole="button"
+                    key={post.id}
+                    onPress={() =>
+                      navigation.navigate('ProfileFeed', {
+                        initialPostId: post.id,
+                        posts: profilePosts,
+                        title: 'Posts',
+                      })
+                    }
+                    style={({ pressed }) => [
+                      styles.feedItem,
+                      {
+                        backgroundColor:
+                          post.color ||
+                          POST_COLORS[index % POST_COLORS.length],
+                      },
+                      pressed && styles.pressed,
+                    ]}
+                  >
+                    {post.imageUrl ? (
+                      <Image source={{ uri: post.imageUrl }} style={styles.feedImage} />
+                    ) : null}
+                    <View style={styles.feedOverlay}>
+                      <Ionicons color="#FFFFFF" name="location" size={13} />
+                      <Text numberOfLines={1} style={styles.feedLocation}>
+                        {getPostLocationLabel(post)}
+                      </Text>
+                    </View>
+                  </Pressable>
+                ))}
+              </View>
+            )}
+          </View>
+        )}
 
-            {/* Events Page */}
-            <View style={getPageStyle('events')}>
-              {isEventsLoading ? (
-                <View style={styles.feedState}>
-                  <ActivityIndicator color={colors.primary} />
-                  <Text style={styles.feedStateText}>Loading events...</Text>
-                </View>
-              ) : userEvents.length === 0 ? (
-                <View style={styles.feedState}>
-                  <Ionicons color={colors.neutral} name="calendar-outline" size={28} />
-                  <Text style={styles.feedStateTitle}>No events created yet</Text>
-                  <Text style={styles.feedStateText}>
-                    Events you create will appear here.
-                  </Text>
-                </View>
-              ) : (
-                <View style={styles.feedGrid}>
-                  {userEvents.map((event) => (
-                    <Pressable
-                      accessibilityLabel={`Event at ${event.location?.address}`}
-                      accessibilityRole="button"
-                      key={event.id}
-                      onPress={() => navigation.navigate('EventDetail', { eventId: event.id })}
-                      style={({ pressed }) => [
-                        styles.feedItem,
-                        { backgroundColor: colors.background },
-                        pressed && styles.pressed,
-                      ]}
-                    >
-                      {event.bannerUrl ? (
-                        <Image source={{ uri: event.bannerUrl }} style={styles.feedImage} />
-                      ) : (
-                        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-                          <Ionicons color={colors.primary} name="calendar" size={28} />
-                        </View>
-                      )}
-                      <View style={styles.feedOverlay}>
-                        <Ionicons color="#FFFFFF" name="location" size={13} />
-                        <Text numberOfLines={1} style={styles.feedLocation}>
-                          {event.location?.city || event.location?.address || 'Nearby'}
-                        </Text>
+        {activeSegment === 'events' && (
+          <View style={{ width: '100%' }}>
+            {isEventsLoading ? (
+              <View style={styles.feedState}>
+                <ActivityIndicator color={colors.primary} />
+                <Text style={styles.feedStateText}>Loading events...</Text>
+              </View>
+            ) : userEvents.length === 0 ? (
+              <View style={styles.feedState}>
+                <Ionicons color={colors.neutral} name="calendar-outline" size={28} />
+                <Text style={styles.feedStateTitle}>No events created yet</Text>
+                <Text style={styles.feedStateText}>
+                  Events you create will appear here.
+                </Text>
+              </View>
+            ) : (
+              <View style={styles.feedGrid}>
+                {userEvents.map((event) => (
+                  <Pressable
+                    accessibilityLabel={`Event at ${event.location?.address}`}
+                    accessibilityRole="button"
+                    key={event.id}
+                    onPress={() => navigation.navigate('EventDetail', { eventId: event.id })}
+                    style={({ pressed }) => [
+                      styles.feedItem,
+                      { backgroundColor: colors.background },
+                      pressed && styles.pressed,
+                    ]}
+                  >
+                    {event.bannerUrl ? (
+                      <Image source={{ uri: event.bannerUrl }} style={styles.feedImage} />
+                    ) : (
+                      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                        <Ionicons color={colors.primary} name="calendar" size={28} />
                       </View>
-                    </Pressable>
-                  ))}
-                </View>
-              )}
-            </View>
+                    )}
+                    <View style={styles.feedOverlay}>
+                      <Ionicons color="#FFFFFF" name="location" size={13} />
+                      <Text numberOfLines={1} style={styles.feedLocation}>
+                        {event.location?.city || event.location?.address || 'Nearby'}
+                      </Text>
+                    </View>
+                  </Pressable>
+                ))}
+              </View>
+            )}
+          </View>
+        )}
 
-            {/* Saved Page */}
-            <View style={getPageStyle('saved')}>
-              {isSavedLoading ? (
-                <View style={styles.feedState}>
-                  <ActivityIndicator color={colors.primary} />
-                  <Text style={styles.feedStateText}>Loading saved posts...</Text>
-                </View>
-              ) : savedError ? (
-                <View style={styles.feedState}>
-                  <Ionicons color={colors.danger} name="alert-circle-outline" size={25} />
-                  <Text style={styles.feedStateText}>{savedError}</Text>
-                </View>
-              ) : savedPosts.length === 0 ? (
-                <View style={styles.feedState}>
-                  <Ionicons color={colors.neutral} name="bookmark-outline" size={28} />
-                  <Text style={styles.feedStateTitle}>No saved posts yet</Text>
-                  <Text style={styles.feedStateText}>
-                    Posts you bookmark will appear here.
-                  </Text>
-                </View>
-              ) : (
-                <View style={styles.feedGrid}>
-                  {savedPosts.map((post, index) => (
-                    <Pressable
-                      accessibilityLabel={`Post at ${getPostLocationLabel(post)}`}
-                      accessibilityRole="button"
-                      key={post.id}
-                      onPress={() =>
-                        navigation.navigate('ProfileFeed', {
-                          initialPostId: post.id,
-                          posts: savedPosts,
-                          title: 'Saved',
-                        })
-                      }
-                      style={({ pressed }) => [
-                        styles.feedItem,
-                        {
-                          backgroundColor:
-                            post.color ||
-                            POST_COLORS[index % POST_COLORS.length],
-                        },
-                        pressed && styles.pressed,
-                      ]}
-                    >
-                      {post.imageUrl ? (
-                        <Image source={{ uri: post.imageUrl }} style={styles.feedImage} />
-                      ) : null}
-                      <View style={styles.feedOverlay}>
-                        <Ionicons color="#FFFFFF" name="location" size={13} />
-                        <Text numberOfLines={1} style={styles.feedLocation}>
-                          {getPostLocationLabel(post)}
-                        </Text>
-                      </View>
-                    </Pressable>
-                  ))}
-                </View>
-              )}
-            </View>
-          </Animated.View>
-        </GestureDetector>
+        {activeSegment === 'saved' && (
+          <View style={{ width: '100%' }}>
+            {isSavedLoading ? (
+              <View style={styles.feedState}>
+                <ActivityIndicator color={colors.primary} />
+                <Text style={styles.feedStateText}>Loading saved posts...</Text>
+              </View>
+            ) : savedError ? (
+              <View style={styles.feedState}>
+                <Ionicons color={colors.danger} name="alert-circle-outline" size={25} />
+                <Text style={styles.feedStateText}>{savedError}</Text>
+              </View>
+            ) : savedPosts.length === 0 ? (
+              <View style={styles.feedState}>
+                <Ionicons color={colors.neutral} name="bookmark-outline" size={28} />
+                <Text style={styles.feedStateTitle}>No saved posts yet</Text>
+                <Text style={styles.feedStateText}>
+                  Posts you bookmark will appear here.
+                </Text>
+              </View>
+            ) : (
+              <View style={styles.feedGrid}>
+                {savedPosts.map((post, index) => (
+                  <Pressable
+                    accessibilityLabel={`Post at ${getPostLocationLabel(post)}`}
+                    accessibilityRole="button"
+                    key={post.id}
+                    onPress={() =>
+                      navigation.navigate('ProfileFeed', {
+                        initialPostId: post.id,
+                        posts: savedPosts,
+                        title: 'Saved',
+                      })
+                    }
+                    style={({ pressed }) => [
+                      styles.feedItem,
+                      {
+                        backgroundColor:
+                          post.color ||
+                          POST_COLORS[index % POST_COLORS.length],
+                      },
+                      pressed && styles.pressed,
+                    ]}
+                  >
+                    {post.imageUrl ? (
+                      <Image source={{ uri: post.imageUrl }} style={styles.feedImage} />
+                    ) : null}
+                    <View style={styles.feedOverlay}>
+                      <Ionicons color="#FFFFFF" name="location" size={13} />
+                      <Text numberOfLines={1} style={styles.feedLocation}>
+                        {getPostLocationLabel(post)}
+                      </Text>
+                    </View>
+                  </Pressable>
+                ))}
+              </View>
+            )}
+          </View>
+        )}
       </ScrollView>
 
       <Modal
@@ -706,7 +642,6 @@ export default function ProfileScreen() {
         visible={isLocationPickerVisible}
       />
       </View>
-    </GestureHandlerRootView>
   );
 }
 

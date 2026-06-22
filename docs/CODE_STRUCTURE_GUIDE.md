@@ -14,7 +14,7 @@ Screen / Component
 Store atau Service
         |
         v
-Firebase / Cloudinary / Foursquare / Perangkat
+Firebase / Cloudinary / Perangkat
 ```
 
 Struktur utama:
@@ -232,7 +232,6 @@ services/
 |-- authService.js
 |-- cloudinaryService.js
 |-- firestoreService.js
-|-- foursquareService.js
 |-- geoFirestoreService.js
 |-- imagePickerService.js
 |-- locationService.js
@@ -249,7 +248,6 @@ Tanggung jawab masing-masing:
 | `cloudinaryService.js` | Upload gambar |
 | `imagePickerService.js` | Memilih foto dari galeri atau kamera |
 | `locationService.js` | Permission dan lokasi perangkat |
-| `foursquareService.js` | Mencari tempat melalui Worker |
 | `notificationService.js` | Token dan konfigurasi notifikasi |
 
 Screen cukup meminta service melakukan pekerjaan:
@@ -342,22 +340,6 @@ Dokumen notification dibuat
         v
 FCM dikirim ke perangkat
 ```
-
-### `workers/foursquare-proxy`
-
-Berjalan di Cloudflare Worker.
-
-```text
-Aplikasi
-   |
-   v
-Cloudflare Worker
-   |
-   v
-Foursquare API
-```
-
-Worker digunakan agar Foursquare API key tidak disimpan dalam aplikasi.
 
 ## 11. Cara Membaca Satu File
 

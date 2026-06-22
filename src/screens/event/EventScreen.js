@@ -48,7 +48,7 @@ export default function EventScreen() {
     try {
       await Promise.all([
         fetchEvents(),
-        handleGetLocation(),
+        handleGetLocation(false),
         firestoreService
           .getTrendingPlacesToday()
           .then(setTrendingPlaces)
@@ -66,7 +66,7 @@ export default function EventScreen() {
   }, [events.length, fetchEvents, isLoading]);
 
   useEffect(() => {
-    handleGetLocation();
+    handleGetLocation(false);
     firestoreService
       .getTrendingPlacesToday()
       .then(setTrendingPlaces)

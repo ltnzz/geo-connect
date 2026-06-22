@@ -48,6 +48,12 @@ export default function SearchScreen() {
   const styles = useMemo(() => makeStyles(colors), [colors]);
 
   const normalizedSearch = searchQuery.trim().toLowerCase();
+  const { handleGetLocation } = useLocation();
+
+  useEffect(() => {
+    handleGetLocation(false);
+  }, [handleGetLocation]);
+
 
   useEffect(() => {
     if (!normalizedSearch) {

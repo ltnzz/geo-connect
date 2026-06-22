@@ -15,8 +15,10 @@ import ScreenHeader from '../../components/common/ScreenHeader';
 import { firestoreService } from '../../services/firestoreService';
 import { useAuthStore } from '../../stores/authStore';
 import { useLocation } from '../../hooks/useLocation';
+import { locationService } from '../../services/locationService';
 import { calculateDistance } from '../../utils/locationUtils';
 import { useColors, radius, spacing } from '../../utils/theme';
+
 
 export default function VenueDetailScreen({ navigation, route }) {
   const placeId = route.params?.placeId;
@@ -81,40 +83,36 @@ export default function VenueDetailScreen({ navigation, route }) {
       return;
     }
 
-    if (!location) {
-      Alert.alert(
-        'Location Required',
-        'Please wait until your current location is available.'
-      );
-      handleGetLocation();
-      return;
-    }
-
-    const distanceKm = calculateDistance(
-      location.latitude,
-      location.longitude,
-      place.location.latitude,
-      place.location.longitude
-    );
-
-    if (distanceKm === null || distanceKm > 0.5) {
-      Alert.alert(
-        'Too Far',
-        `You must be within 500 meters of the venue to check in.\nYou are currently ${
-          distanceKm ? `${distanceKm.toFixed(1)} km` : 'unknown distance'
-        } away.`
-      );
-      return;
-    }
-
     setIsCheckingIn(true);
     try {
+      const position = await locationService.getCurrentPosition();
+      const currentLat = position.coords.latitude;
+      const currentLong = position.coords.longitude;
+
+      const distanceKm = calculateDistance(
+        currentLat,
+        currentLong,
+        place.location.latitude,
+        place.location.longitude
+      );
+
+      if (distanceKm === null || distanceKm > 0.5) {
+        Alert.alert(
+          'Too Far',
+          `You must be within 500 meters of the venue to check in.\nYou are currently ${
+            distanceKm ? `${distanceKm.toFixed(1)} km` : 'unknown distance'
+          } away.`
+        );
+        setIsCheckingIn(false);
+        return;
+      }
+
       await firestoreService.checkIn({
         userId: user.uid,
         placeId,
         location: {
-          latitude: location.latitude,
-          longitude: location.longitude,
+          latitude: currentLat,
+          longitude: currentLong,
         },
       });
       await loadVenue();
@@ -122,7 +120,7 @@ export default function VenueDetailScreen({ navigation, route }) {
     } catch (error) {
       Alert.alert(
         'Unable to check in',
-        error.message || 'Please check your connection and try again.'
+        'Failed to retrieve your current location. Please verify your GPS settings.'
       );
     } finally {
       setIsCheckingIn(false);

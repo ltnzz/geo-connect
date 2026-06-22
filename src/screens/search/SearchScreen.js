@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { collection, getDocs, query, where } from 'firebase/firestore';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -21,7 +21,9 @@ import { firestoreService } from '../../services/firestoreService';
 import { useAuthStore } from '../../stores/authStore';
 import { useEventStore } from '../../stores/eventStore';
 import { useFeedStore } from '../../stores/feedstore';
-import { colors, radius, spacing } from '../../utils/theme';
+import { useColors, radius, spacing } from '../../utils/theme';
+import { useLocation } from '../../hooks/useLocation';
+
 
 const uniqueById = (items) =>
   items.filter(
@@ -44,8 +46,16 @@ export default function SearchScreen() {
   const [searchedEvents, setSearchedEvents] = useState([]);
   const [isSearchingUsers, setIsSearchingUsers] = useState(false);
   const [isSearchingContent, setIsSearchingContent] = useState(false);
+  const colors = useColors();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
 
   const normalizedSearch = searchQuery.trim().toLowerCase();
+  const { handleGetLocation } = useLocation();
+
+  useEffect(() => {
+    handleGetLocation();
+  }, [handleGetLocation]);
+
 
   useEffect(() => {
     if (!normalizedSearch) {
@@ -98,8 +108,23 @@ export default function SearchScreen() {
           firestoreService.searchPosts(normalizedSearch),
           firestoreService.searchEvents(normalizedSearch),
         ]);
+
+        const likedIds = posts.length && currentUserId
+          ? await firestoreService.getLikedPostIds(posts.map((p) => p.id), currentUserId)
+          : new Set();
+
+        const bookmarkedIds = posts.length && currentUserId
+          ? await firestoreService.getBookmarkedPostIds(currentUserId)
+          : new Set();
+
+        const enrichedPosts = posts.map((p) => ({
+          ...p,
+          isLiked: likedIds.has(p.id),
+          isBookmarked: bookmarkedIds.has(p.id),
+        }));
+
         if (isActive) {
-          setSearchedPosts(posts);
+          setSearchedPosts(enrichedPosts);
           setSearchedEvents(events);
         }
       } catch {
@@ -130,24 +155,24 @@ export default function SearchScreen() {
 
   const visiblePosts = normalizedSearch
     ? uniqueById([...searchedPosts, ...feedPosts]).filter((post) =>
-        [
-          post.authorName,
-          post.caption,
-          post.location?.address,
-          post.location?.city,
-        ].some((value) => value?.toLowerCase().includes(normalizedSearch)),
-      )
+      [
+        post.authorName,
+        post.caption,
+        post.location?.address,
+        post.location?.city,
+      ].some((value) => value?.toLowerCase().includes(normalizedSearch)),
+    )
     : [];
 
   const visibleEvents = normalizedSearch
     ? uniqueById([...searchedEvents, ...eventsData]).filter((event) =>
-        [
-          event.title,
-          event.location?.address,
-          event.location?.city,
-          event.description,
-        ].some((value) => value?.toLowerCase().includes(normalizedSearch)),
-      )
+      [
+        event.title,
+        event.location?.address,
+        event.location?.city,
+        event.description,
+      ].some((value) => value?.toLowerCase().includes(normalizedSearch)),
+    )
     : [];
 
   const renderPerson = ({ item }) => {
@@ -161,7 +186,7 @@ export default function SearchScreen() {
           {item.avatarUrl ? (
             <Image source={{ uri: item.avatarUrl }} style={styles.avatarImage} />
           ) : (
-            <Ionicons color="#A9B4C5" name="person-outline" size={25} />
+            <Ionicons color={colors.neutral} name="person-outline" size={25} />
           )}
         </View>
         <View style={styles.personInfo}>
@@ -284,7 +309,7 @@ export default function SearchScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors) => StyleSheet.create({
   screen: {
     backgroundColor: colors.background,
     flex: 1,
@@ -322,7 +347,7 @@ const styles = StyleSheet.create({
   searchTabActive: {
     backgroundColor: colors.surface,
     elevation: 2,
-    shadowColor: '#000',
+    shadowColor: colors.neutral,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
@@ -338,7 +363,7 @@ const styles = StyleSheet.create({
   personRow: {
     alignItems: 'center',
     backgroundColor: colors.surface,
-    borderColor: '#E1E7F0',
+    borderColor: colors.border,
     borderRadius: radius.md,
     borderWidth: 1,
     flexDirection: 'row',
@@ -347,7 +372,7 @@ const styles = StyleSheet.create({
   },
   avatar: {
     alignItems: 'center',
-    backgroundColor: '#F4F7FB',
+    backgroundColor: colors.background,
     borderRadius: radius.md,
     height: 48,
     justifyContent: 'center',
@@ -380,7 +405,7 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
   },
   followingButton: {
-    backgroundColor: '#EEF4FF',
+    backgroundColor: `${colors.primary}1A`,
   },
   followText: {
     color: '#FFFFFF',
@@ -392,7 +417,7 @@ const styles = StyleSheet.create({
   },
   eventRow: {
     backgroundColor: colors.surface,
-    borderColor: '#E1E7F0',
+    borderColor: colors.border,
     borderRadius: radius.md,
     borderWidth: 1,
     marginBottom: spacing.sm,

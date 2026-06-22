@@ -1,30 +1,76 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { useMemo } from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useAuthStore } from '../../stores/authStore';
 import { useFeedStore } from '../../stores/feedstore';
-import { colors, radius, spacing } from '../../utils/theme';
+import { useColors, radius, spacing } from '../../utils/theme';
 import { formatCount, formatRelativeTime } from '../../utils/format';
+import { useLocation } from '../../hooks/useLocation';
+import { calculateDistance } from '../../utils/locationUtils';
+
 
 export default function PostCard({ post }) {
   const navigation = useNavigation();
   const currentUserId = useAuthStore((s) => s.user?.uid);
   const toggleLike = useFeedStore((s) => s.toggleLike);
+  const toggleBookmark = useFeedStore((s) => s.toggleBookmark);
+  const colors = useColors();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+  const { location: userLocation } = useLocation();
+
+  const distanceLabel = useMemo(() => {
+    if (!post) return null;
+
+    if (post.distance && typeof post.distance === 'string' && post.distance !== '0 km') {
+      return post.distance;
+    }
+
+    if (!userLocation || !post.location?.latitude || !post.location?.longitude) {
+      return null;
+    }
+
+    const dist = calculateDistance(
+      userLocation.latitude,
+      userLocation.longitude,
+      post.location.latitude,
+      post.location.longitude
+    );
+
+    if (dist === null) return null;
+
+    if (dist < 1) {
+      const meters = Math.round(dist * 1000);
+      return `${meters}m away`;
+    }
+    return `${dist.toFixed(1)} km away`;
+  }, [userLocation, post]);
 
   const locationLabel =
     post?.location?.address || post?.location?.city || 'Around you';
 
   if (!post) return null;
 
+
   const handleLike = () => {
     if (!currentUserId) return;
-    toggleLike(post.id, currentUserId);
+    toggleLike(post.id, currentUserId, post);
   };
 
   const handleLikePress = (event) => {
     event.stopPropagation?.();
     handleLike();
+  };
+
+  const handleBookmark = () => {
+    if (!currentUserId) return;
+    toggleBookmark(post.id, currentUserId, post);
+  };
+
+  const handleBookmarkPress = (event) => {
+    event.stopPropagation?.();
+    handleBookmark();
   };
 
   const handleOpenDetail = () => {
@@ -39,7 +85,7 @@ export default function PostCard({ post }) {
     <Pressable onPress={handleOpenDetail} style={styles.card}>
       <View style={styles.header}>
         <View style={styles.userInfo}>
-          
+
           {post.authorAvatar ? (
             <Image source={{ uri: post.authorAvatar }} style={styles.avatar} />
           ) : (
@@ -50,7 +96,7 @@ export default function PostCard({ post }) {
 
           <View>
             <Text style={styles.userName}>{post.authorName}</Text>
-            
+
             <View style={styles.locationRow}>
               <Ionicons color={colors.primary} name="location-outline" size={12} />
               <Text style={styles.locationText}>{locationLabel}</Text>
@@ -58,9 +104,11 @@ export default function PostCard({ post }) {
           </View>
         </View>
 
-        <View style={styles.distanceBadge}>
-          <Text style={styles.distanceText}>{post.distance ?? '0 km'}</Text>
-        </View>
+        {distanceLabel ? (
+          <View style={styles.distanceBadge}>
+            <Text style={styles.distanceText}>{distanceLabel}</Text>
+          </View>
+        ) : null}
       </View>
 
       {post.imageUrl ? (
@@ -71,25 +119,35 @@ export default function PostCard({ post }) {
 
       <View style={styles.footer}>
         <View style={styles.actionsRow}>
-          <Pressable hitSlop={8} onPress={handleLikePress} style={styles.actionItem}>
+          <View style={{ flexDirection: 'row', gap: spacing.md }}>
+            <Pressable hitSlop={8} onPress={handleLikePress} style={styles.actionItem}>
+              <Ionicons
+                color={post.isLiked ? colors.danger : colors.text}
+                name={post.isLiked ? 'heart' : 'heart-outline'}
+                size={20}
+              />
+              <Text style={styles.actionText}>{formatCount(post.likesCount || 0)}</Text>
+            </Pressable>
+
+            <Pressable
+              hitSlop={8}
+              onPress={(event) => {
+                event.stopPropagation?.();
+                handleOpenDetail();
+              }}
+              style={styles.actionItem}
+            >
+              <Ionicons color={colors.text} name="chatbubble-outline" size={20} />
+              <Text style={styles.actionText}>{formatCount(post.commentsCount || 0)}</Text>
+            </Pressable>
+          </View>
+
+          <Pressable hitSlop={8} onPress={handleBookmarkPress} style={styles.actionItem}>
             <Ionicons
-              color={post.isLiked ? colors.danger : colors.text}
-              name={post.isLiked ? 'heart' : 'heart-outline'}
+              color={post.isBookmarked ? colors.primary : colors.text}
+              name={post.isBookmarked ? 'bookmark' : 'bookmark-outline'}
               size={20}
             />
-            <Text style={styles.actionText}>{formatCount(post.likesCount || 0)}</Text>
-          </Pressable>
-
-          <Pressable
-            hitSlop={8}
-            onPress={(event) => {
-              event.stopPropagation?.();
-              handleOpenDetail();
-            }}
-            style={styles.actionItem}
-          >
-            <Ionicons color={colors.text} name="chatbubble-outline" size={20} />
-            <Text style={styles.actionText}>{formatCount(post.commentsCount || 0)}</Text>
           </Pressable>
         </View>
 
@@ -103,7 +161,7 @@ export default function PostCard({ post }) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors) => StyleSheet.create({
   card: {
     backgroundColor: colors.surface,
     borderColor: colors.border,
@@ -131,7 +189,7 @@ const styles = StyleSheet.create({
     width: 40,
   },
   avatarPlaceholder: {
-    backgroundColor: '#F1F5F9',
+    backgroundColor: colors.background,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -152,7 +210,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   distanceBadge: {
-    backgroundColor: '#DBEAFE',
+    backgroundColor: colors.primary + '1a',
     borderRadius: 12,
     paddingHorizontal: 8,
     paddingVertical: 4,
@@ -164,12 +222,11 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   imagePlaceholder: {
-    backgroundColor: '#E2E8F0',
     height: 240,
     width: '100%',
   },
   image: {
-    backgroundColor: '#E2E8F0',
+    backgroundColor: colors.border,
     height: 240,
     width: '100%',
   },
@@ -179,7 +236,7 @@ const styles = StyleSheet.create({
   actionsRow: {
     alignItems: 'center',
     flexDirection: 'row',
-    gap: spacing.md,
+    justifyContent: 'space-between',
     marginBottom: spacing.sm,
   },
   actionItem: {
@@ -201,7 +258,7 @@ const styles = StyleSheet.create({
   },
   timeBadge: {
     alignSelf: 'flex-start',
-    backgroundColor: '#F1F5F9',
+    backgroundColor: colors.background,
     borderRadius: 12,
     paddingHorizontal: 8,
     paddingVertical: 4,

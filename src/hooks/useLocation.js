@@ -1,48 +1,63 @@
 import * as Location from 'expo-location';
-import { useState, useCallback } from 'react';
+import { create } from 'zustand';
+import { locationService } from '../services/locationService';
 
-export function useLocation() {
-  const [location, setLocation] = useState(null);
-  const [isFetchingLocation, setIsFetchingLocation] = useState(false);
-  const [locationError, setLocationError] = useState(null);
+const useLocationStore = create((set, get) => ({
+  location: null,
+  isFetchingLocation: false,
+  locationError: null,
 
-  const handleGetLocation = useCallback(async () => {
-    setIsFetchingLocation(true);
-    setLocationError(null);
+  handleGetLocation: async () => {
+    if (get().isFetchingLocation) return;
+    set({ isFetchingLocation: true, locationError: null });
     try {
-      let { status } = await Location.requestForegroundPermissionsAsync();
+      let { status } = await locationService.requestForegroundPermission();
       if (status !== 'granted') {
-        setLocationError('Location permission denied.');
-        setIsFetchingLocation(false);
+        set({ locationError: 'Location permission denied.', isFetchingLocation: false });
         return;
       }
 
-      let currentPos = await Location.getCurrentPositionAsync({});
-      let geocode = await Location.reverseGeocodeAsync({
-        latitude: currentPos.coords.latitude,
-        longitude: currentPos.coords.longitude,
-      });
+      let currentPos = await locationService.getCurrentPosition();
+      let city = 'Nearby';
+      let address = 'Current Location';
 
-      if (geocode.length > 0) {
-        const place = geocode[0];
-        setLocation({
+      try {
+        let geocode = await Location.reverseGeocodeAsync({
           latitude: currentPos.coords.latitude,
           longitude: currentPos.coords.longitude,
-          city: place.city || place.subregion,
-          address: place.street || place.name || 'Current Location',
         });
+
+        if (geocode && geocode.length > 0) {
+          const place = geocode[0];
+          city = place.city || place.subregion || 'Nearby';
+          address = place.street || place.name || 'Current Location';
+        }
+      } catch (err) {
+        console.warn('Reverse geocoding failed, using coordinates only:', err);
       }
+
+      set({
+        location: {
+          latitude: currentPos.coords.latitude,
+          longitude: currentPos.coords.longitude,
+          city,
+          address,
+        },
+        isFetchingLocation: false,
+      });
     } catch (err) {
-      setLocationError('Failed to get location. Make sure GPS is enabled.');
-    } finally {
-      setIsFetchingLocation(false);
+      set({
+        locationError: 'Failed to get location. Make sure GPS is enabled.',
+        isFetchingLocation: false,
+      });
     }
-  }, []);
+  },
 
-  const clearLocation = useCallback(() => {
-    setLocation(null);
-    setLocationError(null);
-  }, []);
+  clearLocation: () => {
+    set({ location: null, locationError: null });
+  },
+}));
 
-  return { location, isFetchingLocation, locationError, handleGetLocation, clearLocation };
+export function useLocation() {
+  return useLocationStore();
 }

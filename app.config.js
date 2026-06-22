@@ -5,6 +5,7 @@ module.exports = () => {
 
   return {
     ...config,
+    owner: "boneeeeeeeeeeeee",
     plugins: [
       ...(config.plugins || []),
       'expo-audio',

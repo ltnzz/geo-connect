@@ -1,10 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { colors, radius, spacing } from '../../utils/theme';
+import { useColors, radius, spacing } from '../../utils/theme';
 
 export default function ScreenHeader({
   title,
@@ -24,6 +24,8 @@ export default function ScreenHeader({
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const colors = useColors();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
 
   const closeSearch = () => {
     setIsSearchOpen(false);
@@ -115,7 +117,7 @@ export default function ScreenHeader({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors) => StyleSheet.create({
   header: {
     backgroundColor: colors.surface,
     borderBottomColor: colors.border,

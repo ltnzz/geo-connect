@@ -1,15 +1,18 @@
 import { useNavigation } from '@react-navigation/native';
 import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
+import { useMemo } from 'react';
 
 import ScreenHeader from '../../components/common/ScreenHeader';
 import NewEventCard from '../../components/event/NewEventCard';
 import { useEventStore } from '../../stores/eventStore';
 import { filterRecentEvents } from '../../utils/dateUtils';
-import { colors, spacing } from '../../utils/theme';
+import { useColors, spacing } from '../../utils/theme';
 
 export default function AllNewEventsScreen() {
   const navigation = useNavigation();
   const { events, fetchMoreEvents, isLoadingMore, hasMore } = useEventStore();
+  const colors = useColors();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   
   const newEvents = filterRecentEvents(events);
 
@@ -50,15 +53,15 @@ export default function AllNewEventsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors) => StyleSheet.create({
   screen: {
-    backgroundColor: '#F8F9FF',
+    backgroundColor: colors.background,
     flex: 1,
   },
   listContent: {
     gap: spacing.md,
     padding: spacing.md,
-    paddingBottom: spacing.xxl,
+    paddingBottom: 48,
   },
   emptyContainer: {
     alignItems: 'center',

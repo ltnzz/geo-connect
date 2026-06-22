@@ -1,8 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { colors, radius, spacing } from '../../utils/theme';
+import { useColors, radius, spacing } from '../../utils/theme';
 
 export default function DateTimePickerBox({ 
   val1, 
@@ -16,6 +17,9 @@ export default function DateTimePickerBox({
   mode = 'date',
   icon = 'calendar-outline'
 }) {
+  const colors = useColors();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+
   const formatVal = (val) => {
     if (mode === 'date') return val.toLocaleDateString();
     return val.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -44,7 +48,7 @@ export default function DateTimePickerBox({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors) => StyleSheet.create({
   dateTimeRow: {
     alignItems: 'center',
     flexDirection: 'row',
@@ -67,9 +71,10 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   dateTimeText: {
-    color: colors.neutral,
+    color: colors.text,
     fontFamily: 'Poppins_600SemiBold',
     fontSize: 12,
     letterSpacing: 1,
   },
 });
+

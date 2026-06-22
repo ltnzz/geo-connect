@@ -1,5 +1,5 @@
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
-import { useCallback, useState } from 'react';
+import { useCallback, useState, useMemo } from 'react';
 import { View, StyleSheet, Text } from 'react-native';
 
 import EventForm from '../../components/event/EventForm';
@@ -8,12 +8,14 @@ import { firestoreService } from '../../services/firestoreService';
 import { useAuthStore } from '../../stores/authStore';
 import { useEventStore } from '../../stores/eventStore';
 import { combineDateTime } from '../../utils/dateUtils';
-import { colors, spacing } from '../../utils/theme';
+import { useColors, spacing } from '../../utils/theme';
 
 export default function CreateEventScreen({ initialDraft, onEventDataChange, onSuccess }) {
   const navigation = useNavigation();
   const user = useAuthStore((s) => s.user);
   const prependEvent = useEventStore((s) => s.prependEvent);
+  const colors = useColors();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   
   const [isPosting, setIsPosting] = useState(false);
   const [error, setError] = useState(null);
@@ -91,7 +93,7 @@ export default function CreateEventScreen({ initialDraft, onEventDataChange, onS
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors) => StyleSheet.create({
   container: {
     flex: 1,
   },

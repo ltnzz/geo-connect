@@ -1,10 +1,14 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import ScreenHeader from './ScreenHeader';
-import { colors, spacing } from '../../utils/theme';
+import { useColors, spacing } from '../../utils/theme';
 
 export default function TabPlaceholder({ icon, title, subtitle, showBack = false }) {
+  const colors = useColors();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+
   return (
     <View style={styles.screen}>
       <ScreenHeader title={title} showBack={showBack} />
@@ -18,7 +22,7 @@ export default function TabPlaceholder({ icon, title, subtitle, showBack = false
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors) => StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: colors.background,
@@ -43,3 +47,4 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 });
+

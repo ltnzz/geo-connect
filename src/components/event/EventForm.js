@@ -1,11 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import DateTimePickerBox from './DateTimePickerBox';
 import { useLocation } from '../../hooks/useLocation';
-import { colors, radius, spacing } from '../../utils/theme';
+import { useColors, radius, spacing } from '../../utils/theme';
 import { imagePickerService } from '../../services/imagePickerService';
 
 const EVENT_CATEGORIES = [
@@ -19,6 +19,8 @@ export default function EventForm({
   isPosting,
   submitButtonText,
 }) {
+  const colors = useColors();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const insets = useSafeAreaInsets();
   
   const [title, setTitle] = useState('');
@@ -144,7 +146,7 @@ export default function EventForm({
     <View style={styles.container}>
       <TextInput
         placeholder="Event Name..."
-        placeholderTextColor="#CBD5E1"
+        placeholderTextColor={colors.neutral}
         style={styles.eventNameInput}
         value={title}
         onChangeText={setTitle}
@@ -215,7 +217,7 @@ export default function EventForm({
       <TextInput
         multiline
         placeholder="What's this event about?"
-        placeholderTextColor="#CBD5E1"
+        placeholderTextColor={colors.neutral}
         style={styles.eventDescriptionInput}
         value={description}
         onChangeText={setDescription}
@@ -246,7 +248,7 @@ export default function EventForm({
           style={[styles.submitButton, !canSubmit && styles.submitButtonDisabled]}
         >
           {isPosting ? (
-            <ActivityIndicator color={colors.surface} />
+            <ActivityIndicator color="#FFFFFF" />
           ) : (
             <Text style={[styles.submitButtonText, !canSubmit && styles.submitButtonTextDisabled]}>{submitButtonText}</Text>
           )}
@@ -256,7 +258,7 @@ export default function EventForm({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors) => StyleSheet.create({
   container: {
     flex: 1,
   },
@@ -282,8 +284,8 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   categoryChip: {
-    backgroundColor: '#F1F5F9',
-    borderColor: '#E2E8F0',
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
     borderRadius: radius.full,
     borderWidth: 1,
     paddingHorizontal: spacing.md,
@@ -294,7 +296,7 @@ const styles = StyleSheet.create({
     borderColor: colors.primary,
   },
   categoryChipText: {
-    color: '#64748B',
+    color: colors.mutedText,
     fontFamily: 'Poppins_500Medium',
     fontSize: 13,
   },
@@ -303,7 +305,7 @@ const styles = StyleSheet.create({
   },
   eventLocationButton: {
     alignItems: 'center',
-    backgroundColor: '#F8FAFC',
+    backgroundColor: colors.surface,
     borderColor: colors.border,
     borderRadius: radius.sm,
     borderWidth: 1,
@@ -339,7 +341,7 @@ const styles = StyleSheet.create({
   },
   eventCoverButton: {
     alignItems: 'center',
-    borderColor: '#CBD5E1',
+    borderColor: colors.border,
     borderRadius: radius.sm,
     borderStyle: 'dashed',
     borderWidth: 1.5,
@@ -350,7 +352,7 @@ const styles = StyleSheet.create({
   },
   eventCoverIconContainer: {
     alignItems: 'center',
-    backgroundColor: '#DBEAFE',
+    backgroundColor: colors.primary + '1A',
     borderRadius: radius.sm,
     height: 40,
     justifyContent: 'center',
@@ -377,7 +379,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 8,
     right: 8,
-    backgroundColor: 'rgba(255,255,255,0.8)',
+    backgroundColor: colors.surface + 'CC',
     borderRadius: 12,
     padding: 2,
   },
@@ -403,12 +405,13 @@ const styles = StyleSheet.create({
     backgroundColor: colors.border,
   },
   submitButtonText: {
-    color: colors.surface,
+    color: '#FFFFFF',
     fontFamily: 'Poppins_600SemiBold',
     fontSize: 14,
     letterSpacing: 1,
   },
   submitButtonTextDisabled: {
-    color: '#94A3B8',
+    color: colors.mutedText,
   },
 });
+

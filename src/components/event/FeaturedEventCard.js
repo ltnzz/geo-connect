@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useMemo } from 'react';
 
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
@@ -7,9 +8,11 @@ import { useEventResponse } from '../../hooks/useEventResponse';
 import { useLocation } from '../../hooks/useLocation';
 import { formatEventSchedule } from '../../utils/dateUtils';
 import { formatDistanceString } from '../../utils/locationUtils';
-import { colors, radius, spacing } from '../../utils/theme';
+import { useColors, radius, spacing } from '../../utils/theme';
 
 export default function FeaturedEventCard({ event, onOpen }) {
+  const colors = useColors();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const { response, toggleGoing, toggleInterested } = useEventResponse(event?.id);
   const { location, isFetchingLocation } = useLocation();
 
@@ -87,7 +90,7 @@ export default function FeaturedEventCard({ event, onOpen }) {
             ]}
           >
             <Ionicons
-              color={response === 'interested' ? colors.tertiary : colors.mutedText}
+              color={response === 'interested' ? colors.tertiary : colors.neutral}
               name={response === 'interested' ? 'bookmark' : 'bookmark-outline'}
               size={15}
             />
@@ -106,16 +109,16 @@ export default function FeaturedEventCard({ event, onOpen }) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors) => StyleSheet.create({
   featuredCard: {
     backgroundColor: colors.surface,
-    borderColor: '#E0E6EF',
+    borderColor: colors.border,
     borderRadius: radius.lg,
     borderWidth: 1,
     marginHorizontal: spacing.md,
     marginTop: spacing.lg,
     overflow: 'hidden',
-    shadowColor: '#64748B',
+    shadowColor: colors.neutral,
     shadowOffset: { height: 4, width: 0 },
     shadowOpacity: 0.08,
     shadowRadius: 10,
@@ -139,7 +142,7 @@ const styles = StyleSheet.create({
     width: 7,
   },
   statusText: {
-    color: '#526173',
+    color: colors.mutedText,
     fontFamily: 'Inter_600SemiBold',
     fontSize: 10,
   },
@@ -159,7 +162,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   featuredTitle: {
-    color: '#263244',
+    color: colors.text,
     fontFamily: 'Inter_700Bold',
     fontSize: 18,
   },
@@ -177,7 +180,7 @@ const styles = StyleSheet.create({
   },
   calendarButton: {
     alignItems: 'center',
-    borderColor: '#C9D7F2',
+    borderColor: colors.border,
     borderRadius: radius.full,
     borderWidth: 1,
     height: 36,
@@ -193,7 +196,7 @@ const styles = StyleSheet.create({
   responseAction: {
     alignItems: 'center',
     backgroundColor: colors.surface,
-    borderColor: '#C7D2E3',
+    borderColor: colors.border,
     borderRadius: radius.sm,
     borderWidth: 1,
     flex: 1,
@@ -215,7 +218,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   secondaryActionSelected: {
-    backgroundColor: '#EAF8F2',
+    backgroundColor: colors.tertiary + '1A',
     borderColor: colors.tertiary,
   },
   secondaryActionTextSelected: {
@@ -225,3 +228,4 @@ const styles = StyleSheet.create({
     opacity: 0.72,
   },
 });
+

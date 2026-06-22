@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   ActivityIndicator,
   Modal,
@@ -10,11 +10,13 @@ import {
   View,
 } from 'react-native';
 
-import { colors, radius, spacing } from '../../utils/theme';
+import { useColors, radius, spacing } from '../../utils/theme';
 
 export default function ProfileLocationPicker({ onClose, onSelect, visible }) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const colors = useColors();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
 
   const useCurrentLocation = async () => {
     setIsLoading(true);
@@ -79,7 +81,7 @@ export default function ProfileLocationPicker({ onClose, onSelect, visible }) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors) => StyleSheet.create({
   backdrop: {
     alignItems: 'center',
     backgroundColor: 'rgba(15,23,42,0.46)',
@@ -96,7 +98,7 @@ const styles = StyleSheet.create({
   },
   icon: {
     alignItems: 'center',
-    backgroundColor: '#EAF1FF',
+    backgroundColor: `${colors.primary}1A`,
     borderRadius: radius.full,
     height: 50,
     justifyContent: 'center',
@@ -135,6 +137,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontFamily: 'Poppins_600SemiBold',
     fontSize: 12,
+    alignItems: 'center',
   },
   cancelButton: {
     marginTop: spacing.sm,

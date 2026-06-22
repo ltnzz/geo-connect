@@ -1,18 +1,20 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { useCallback, useState } from 'react';
+import { useCallback, useState, useMemo } from 'react';
 import { Alert, FlatList, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import ScreenHeader from '../../components/common/ScreenHeader';
 import { draftService } from '../../services/draftService';
-import { colors, radius, spacing } from '../../utils/theme';
+import { useColors, radius, spacing } from '../../utils/theme';
 
 export default function DraftsScreen() {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const [drafts, setDrafts] = useState([]);
+  const colors = useColors();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
 
   useFocusEffect(
     useCallback(() => {
@@ -70,9 +72,12 @@ export default function DraftsScreen() {
     const isEvent = item.type === 'EVENT';
     const thumbnailUrl = isEvent ? (item.eventData?.asset?.uri || item.eventData?.bannerUrl) : item.assetUri;
     const titleText = isEvent ? (item.eventData?.title || 'Untitled Event') : (item.content || 'No caption');
+    const hasCustomRadius = !isEvent && item.radius && item.radius !== 5;
     const metaText = isEvent 
       ? `Event Draft · ${formatDate(item.updatedAt)}`
-      : `${formatDate(item.updatedAt)} · Radius ${item.radius} km`;
+      : hasCustomRadius
+        ? `${formatDate(item.updatedAt)} · Radius ${item.radius} km`
+        : formatDate(item.updatedAt);
     const placeholderIcon = isEvent ? 'calendar' : 'document-text-outline';
 
     return (
@@ -149,7 +154,7 @@ export default function DraftsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors) => StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: colors.surface,
@@ -172,7 +177,7 @@ const styles = StyleSheet.create({
   draftCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F8FAFC',
+    backgroundColor: colors.background,
     borderColor: colors.border,
     borderRadius: radius.md,
     borderWidth: 1,
@@ -194,7 +199,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.sm,
   },
   draftThumbnailPlaceholder: {
-    backgroundColor: '#E2E8F0',
+    backgroundColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -223,7 +228,7 @@ const styles = StyleSheet.create({
   },
   emptyIconWrap: {
     alignItems: 'center',
-    backgroundColor: '#F1F5F9',
+    backgroundColor: colors.background,
     borderRadius: radius.full,
     height: 72,
     justifyContent: 'center',

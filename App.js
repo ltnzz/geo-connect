@@ -20,6 +20,7 @@ import SplashScreen from './src/screens/splash/SplashScreen';
 import { useAuthStore } from './src/stores/authStore';
 import { useThemeStore } from './src/stores/themeStore';
 import { notificationService } from './src/services/notificationService';
+import { useColors } from './src/utils/theme';
 
 notificationService.configureForegroundNotifications();
 
@@ -30,6 +31,7 @@ export default function App() {
   const isInitialized = useAuthStore((state) => state.isInitialized);
   const themeMode = useThemeStore((state) => state.mode);
   const user = useAuthStore((state) => state.user);
+  const colors = useColors();
   const [fontsLoaded] = useFonts({
     Poppins_400Regular,
     Poppins_500Medium,
@@ -70,13 +72,13 @@ export default function App() {
   const content = user ? <AppNavigator /> : <AuthScreen />;
 
   return (
-    <SafeAreaProvider>
+    <SafeAreaProvider style={{ backgroundColor: colors.background, flex: 1 }}>
       {isSplashVisible || !isInitialized ? (
         <SplashScreen onFinish={handleSplashFinish} />
       ) : (
         content
       )}
-      <StatusBar style={isSplashVisible || themeMode === 'light' ? 'dark' : 'light'} />
+      <StatusBar style={themeMode === 'light' ? 'dark' : 'light'} />
     </SafeAreaProvider>
   );
 }

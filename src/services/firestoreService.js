@@ -1154,8 +1154,10 @@ export const firestoreService = {
       username: data.username || 'aroundu',
       userAvatar: data.userAvatar || '',
       mediaUrl: data.mediaUrl,
-      eventId: data.eventId,
+      eventId: data.eventId || null,
       eventTitle: data.eventTitle || '',
+      placeId: data.placeId || null,
+      placeName: data.placeName || '',
       createdAt: serverTimestamp(),
     });
     return storyRef.id;
@@ -1186,6 +1188,21 @@ export const firestoreService = {
         where('createdAt', '>=', since),
         orderBy('createdAt', 'asc'),
         limit(100),
+      ),
+    );
+    return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+  },
+
+  async getVenueStories(placeId) {
+    assertFirebaseConfigured();
+    const since = Timestamp.fromMillis(Date.now() - 24 * 60 * 60 * 1000);
+    const snapshot = await getDocs(
+      query(
+        collection(db, COLLECTIONS.stories),
+        where('placeId', '==', placeId),
+        where('createdAt', '>=', since),
+        orderBy('createdAt', 'asc'),
+        limit(50),
       ),
     );
     return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));

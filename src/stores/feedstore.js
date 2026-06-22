@@ -9,11 +9,14 @@ import { useAuthStore } from './authStore';
 const PAGE_SIZE = 10;
 const FEED_CACHE_KEY = '@aroundu:feed-cache';
 
-const createLoopedPosts = (posts, loopPage) =>
-  posts.slice(0, PAGE_SIZE).map((post, index) => ({
-    ...post,
-    _listKey: `${post.id}-loop-${loopPage}-${index}`,
-  }));
+const createLoopedPosts = (posts, deletedIds, loopPage) =>
+  posts
+    .filter((post) => !deletedIds.includes(post.id))
+    .slice(0, PAGE_SIZE)
+    .map((post, index) => ({
+      ...post,
+      _listKey: `${post.id}-loop-${loopPage}-${index}`,
+    }));
 
 const enrichPostsWithUserData = async (posts) => {
   return await Promise.all(
@@ -145,7 +148,7 @@ export const useFeedStore = create((set, get) => ({
   },
 
   fetchMorePosts: async (currentUserId) => {
-    const { lastDoc, hasMore, isLoadingMore, posts, loopPage } = get();
+    const { lastDoc, hasMore, isLoadingMore, posts, loopPage, deletedPostIds } = get();
     if (isLoadingMore || posts.length === 0) return;
 
     set({ isLoadingMore: true });
@@ -153,7 +156,7 @@ export const useFeedStore = create((set, get) => ({
     if (!hasMore || !lastDoc) {
       const nextLoopPage = loopPage + 1;
       set((s) => ({
-        posts: [...s.posts, ...createLoopedPosts(s.posts, nextLoopPage)],
+        posts: [...s.posts, ...createLoopedPosts(s.posts, s.deletedPostIds, nextLoopPage)],
         loopPage: nextLoopPage,
         isLoadingMore: false,
       }));
@@ -169,7 +172,7 @@ export const useFeedStore = create((set, get) => ({
       if (newPosts.length === 0) {
         const nextLoopPage = loopPage + 1;
         set((s) => ({
-          posts: [...s.posts, ...createLoopedPosts(s.posts, nextLoopPage)],
+          posts: [...s.posts, ...createLoopedPosts(s.posts, s.deletedPostIds, nextLoopPage)],
           hasMore: false,
           loopPage: nextLoopPage,
           isLoadingMore: false,

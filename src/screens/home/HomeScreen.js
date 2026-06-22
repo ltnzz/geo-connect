@@ -80,7 +80,7 @@ export default function HomeScreen() {
     if (events.length === 0) {
       fetchEvents();
     }
-  }, [currentUserId, fetchFeed, loadStories, events.length, fetchEvents, handleGetLocation]);
+  }, [currentUserId]);
 
   const handleAddStory = async () => {
     if (!currentUserId) {
@@ -125,14 +125,14 @@ export default function HomeScreen() {
     }
   };
 
-  const uniqueEvents = [];
-  const seenIds = new Set();
-  for (const evt of events) {
-    if (!seenIds.has(evt.id)) {
-      seenIds.add(evt.id);
-      uniqueEvents.push(evt);
-    }
-  }
+  const uniqueEvents = useMemo(() => {
+    const seen = new Set();
+    return events.filter((evt) => {
+      if (seen.has(evt.id)) return false;
+      seen.add(evt.id);
+      return true;
+    });
+  }, [events]);
 
   const currentUserStoriesGroup = groupedStories.find((g) => g.userId === currentUserId);
   const otherUsersStoriesGroups = groupedStories.filter((g) => g.userId !== currentUserId);

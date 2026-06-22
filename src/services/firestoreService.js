@@ -16,6 +16,7 @@ import {
   limit,
   orderBy,
   startAfter,
+  Timestamp,
 } from 'firebase/firestore';
 
 import { assertFirebaseConfigured, db } from '../config/firebase';
@@ -1178,12 +1179,16 @@ export const firestoreService = {
 
   async getAllActiveStories() {
     assertFirebaseConfigured();
-    const snapshot = await getDocs(collection(db, COLLECTIONS.stories));
-    const since = Date.now() - 24 * 60 * 60 * 1000;
-    return snapshot.docs
-      .map((d) => ({ id: d.id, ...d.data() }))
-      .filter((story) => getMillis(story.createdAt) >= since)
-      .sort((a, b) => getMillis(a.createdAt) - getMillis(b.createdAt));
+    const since = Timestamp.fromMillis(Date.now() - 24 * 60 * 60 * 1000);
+    const snapshot = await getDocs(
+      query(
+        collection(db, COLLECTIONS.stories),
+        where('createdAt', '>=', since),
+        orderBy('createdAt', 'asc'),
+        limit(100),
+      ),
+    );
+    return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
   },
   async getFeedPosts({ pageSize = 10, cursor = null } = {}) {
     assertFirebaseConfigured();
@@ -1326,7 +1331,12 @@ export const firestoreService = {
 
   async getUpcomingEvents({ pageSize = 10, cursor = null } = {}) {
     assertFirebaseConfigured();
-    const constraints = [orderBy('startTime', 'asc'), limit(pageSize)];
+    const now = Timestamp.now();
+    const constraints = [
+      where('startTime', '>=', now),
+      orderBy('startTime', 'asc'),
+      limit(pageSize),
+    ];
     if (cursor) constraints.push(startAfter(cursor));
     const snapshot = await getDocs(query(collection(db, COLLECTIONS.events), ...constraints));
     const events = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));

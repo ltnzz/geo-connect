@@ -17,8 +17,6 @@ import { useFeedStore } from '../../stores/feedstore';
 import { draftService } from '../../services/draftService';
 import { useColors, radius, spacing } from '../../utils/theme';
 
-const RADIUS_OPTIONS = [1, 5, 10, 25, 50];
-
 export default function CreatePostScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
@@ -36,7 +34,6 @@ export default function CreatePostScreen() {
   const [postLocation, setPostLocation] = useState(null);
   const [selectedVenue, setSelectedVenue] = useState(null);
   const [isLocationModalVisible, setIsLocationModalVisible] = useState(false);
-  const [postRadius, setPostRadius] = useState(5);
 
   const [isPosting, setIsPosting] = useState(false);
   const [error, setError] = useState(null);
@@ -47,7 +44,7 @@ export default function CreatePostScreen() {
 
   // Ref to always read latest state inside tabPress listener (prevents stale closure)
   const stateRef = useRef({});
-  stateRef.current = { activeTab, content, asset, postRadius, eventFormData };
+  stateRef.current = { activeTab, content, asset, eventFormData };
 
   // Fetch location on mount
   useEffect(() => {
@@ -73,7 +70,6 @@ export default function CreatePostScreen() {
         setActiveTab('POST');
         setContent(draft.content || '');
         if (draft.assetUri) setAsset({ uri: draft.assetUri });
-        if (draft.radius) setPostRadius(draft.radius);
       }
       // Clear params so it doesn't reload on focus
       navigation.setParams({ draft: undefined });
@@ -91,12 +87,6 @@ export default function CreatePostScreen() {
   };
 
   const handleRemoveImage = () => setAsset(null);
-
-  const handleToggleRadius = () => {
-    const currentIndex = RADIUS_OPTIONS.indexOf(postRadius);
-    const nextIndex = (currentIndex + 1) % RADIUS_OPTIONS.length;
-    setPostRadius(RADIUS_OPTIONS[nextIndex]);
-  };
 
   const handleSubmitPost = async () => {
     setError(null);
@@ -119,7 +109,6 @@ export default function CreatePostScreen() {
           ...postLocation,
           visibility: POST_LOCATION_VISIBILITY.exact,
         },
-        radius: postRadius,
       });
 
 
@@ -135,7 +124,6 @@ export default function CreatePostScreen() {
           ...postLocation,
           visibility: POST_LOCATION_VISIBILITY.exact,
         },
-        radius: postRadius,
         likesCount: 0,
         commentsCount: 0,
         createdAt: new Date(),
@@ -145,7 +133,6 @@ export default function CreatePostScreen() {
       setAsset(null);
       setPostLocation(null);
       setSelectedVenue(null);
-      setPostRadius(5);
 
       // Auto-delete draft if it was loaded
       if (loadedDraftId.current) {
@@ -167,7 +154,7 @@ export default function CreatePostScreen() {
   const hasEventContent = eventFormData?.title?.trim().length > 0 || !!eventFormData?.asset || eventFormData?.description?.trim().length > 0;
 
   const showDraftAlert = useCallback((onConfirmLeave) => {
-    const { activeTab: tab, content: c, asset: a, postRadius: r, eventFormData: efd } = stateRef.current;
+    const { activeTab: tab, content: c, asset: a, eventFormData: efd } = stateRef.current;
     const isPostActive = tab === 'POST';
     const isEventActive = tab === 'EVENT';
 
@@ -182,7 +169,6 @@ export default function CreatePostScreen() {
           onPress: () => {
             setContent('');
             setAsset(null);
-            setPostRadius(5);
             setError(null);
             setPostLocation(null);
             setSelectedVenue(null);
@@ -200,7 +186,6 @@ export default function CreatePostScreen() {
                 type: 'POST',
                 content: c,
                 assetUri: a?.uri || null,
-                radius: r,
               });
             } else if (isEventActive) {
               await draftService.saveDraft({
@@ -211,7 +196,6 @@ export default function CreatePostScreen() {
             }
             setContent('');
             setAsset(null);
-            setPostRadius(5);
             setError(null);
             setPostLocation(null);
             setSelectedVenue(null);
@@ -357,30 +341,6 @@ export default function CreatePostScreen() {
               <Ionicons name="checkmark-circle" size={20} color={colors.primary} style={{ marginLeft: 'auto' }} />
             )}
           </Pressable>
-
-          {postLocation && (
-            <Pressable
-              onPress={handleToggleRadius}
-              style={styles.actionRow}
-            >
-              <View style={[styles.iconContainer, { backgroundColor: '#DB27771A' }]}>
-                <Ionicons
-                  name="radio-outline"
-                  size={20}
-                  color="#DB2777"
-                />
-              </View>
-              <View style={styles.textContainer}>
-                <Text style={styles.mainText}>
-                  Radius: {postRadius} km
-                </Text>
-                <Text style={styles.subText}>
-                  Visible to people within {postRadius} km
-                </Text>
-              </View>
-              <Ionicons name="sync" size={18} color={colors.neutral} style={{ marginLeft: 'auto' }} />
-            </Pressable>
-          )}
 
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
         </View>

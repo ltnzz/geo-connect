@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Alert, ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { useLocation } from '../../hooks/useLocation';
@@ -10,10 +10,14 @@ import { imagePickerService } from '../../services/imagePickerService';
 import { cloudinaryService } from '../../services/cloudinaryService';
 import { firestoreService } from '../../services/firestoreService';
 import { calculateDistance } from '../../utils/locationUtils';
-import { colors, radius, spacing } from '../../utils/theme';
+import { useColors, radius, spacing } from '../../utils/theme';
 
 export default function EventStorySection({ eventId, eventLocation }) {
-  const { location, isFetchingLocation } = useLocation();
+  const colors = useColors();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+  const locationResult = useLocation();
+  const location = locationResult.location;
+  const isFetchingLocation = locationResult.isFetchingLocation;
   const { hasCheckedIn, isLoading: checkingInStatus } = useEventCheckin(eventId);
   const { stories, isLoading: loadingStories } = useEventStories(eventId);
   const user = useAuthStore((s) => s.user);
@@ -109,7 +113,7 @@ export default function EventStorySection({ eventId, eventLocation }) {
           <ActivityIndicator size="small" color={colors.primary} style={styles.galleryLoader} />
         ) : stories.length === 0 ? (
           <View style={styles.emptyGallery}>
-            <Ionicons name="images-outline" size={24} color="#CBD5E1" />
+            <Ionicons name="images-outline" size={24} color={colors.neutral} />
             <Text style={styles.emptyText}>No photos yet. Check in to add one!</Text>
           </View>
         ) : (
@@ -122,7 +126,7 @@ export default function EventStorySection({ eventId, eventLocation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors) => StyleSheet.create({
   storyCard: {
     backgroundColor: colors.surface,
     borderColor: colors.border,
@@ -152,7 +156,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   checkInButton: {
-    backgroundColor: '#EEF2FF',
+    backgroundColor: colors.primary + '1A',
   },
   checkInText: {
     color: colors.primary,
@@ -181,7 +185,7 @@ const styles = StyleSheet.create({
   },
   emptyGallery: {
     alignItems: 'center',
-    backgroundColor: '#F8FAFC',
+    backgroundColor: colors.background,
     borderRadius: radius.md,
     flex: 1,
     gap: spacing.xs,
@@ -199,3 +203,4 @@ const styles = StyleSheet.create({
     marginVertical: spacing.xl,
   },
 });
+

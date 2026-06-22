@@ -47,3 +47,29 @@ export function combineDateTime(date, time) {
     time.getMinutes()
   );
 }
+
+export function formatRelativeTime(dateValue) {
+  if (!dateValue) return '';
+
+  const date = dateValue?.toDate ? dateValue.toDate() : new Date(dateValue);
+  const now = new Date();
+  const diffMs = now - date;
+
+  const diffSecs = Math.floor(diffMs / 1000);
+  const diffMins = Math.floor(diffSecs / 60);
+  const diffHours = Math.floor(diffMins / 60);
+
+  if (diffSecs < 60) {
+    return 'just now';
+  }
+  if (diffMins < 60) {
+    return `${diffMins} ${diffMins === 1 ? 'minute' : 'minutes'} ago`;
+  }
+  if (diffHours < 24) {
+    return `${diffHours} ${diffHours === 1 ? 'hour' : 'hours'} ago`;
+  }
+  
+  const diffDays = Math.floor(diffHours / 24);
+  return `${diffDays} ${diffDays === 1 ? 'day' : 'days'} ago`;
+}
+

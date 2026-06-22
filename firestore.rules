@@ -55,26 +55,9 @@ service cloud.firestore {
 
     match /sharedLocations/{userId} {
       allow read: if isOwner(userId)
-        || (
-          isMutualConnection(userId)
-          && get(
-            /databases/$(database)/documents/users/$(userId)
-          ).data.invisibleMode == false
-          && get(
-            /databases/$(database)/documents/users/$(userId)
-          ).data.locationSharing in ['exact', 'neighborhood']
-        );
+        || isMutualConnection(userId);
       allow create, update: if isOwner(userId)
-        && request.resource.data.userId == request.auth.uid
-        && get(
-          /databases/$(database)/documents/users/$(userId)
-        ).data.invisibleMode == false
-        && get(
-          /databases/$(database)/documents/users/$(userId)
-        ).data.locationSharing in ['exact', 'neighborhood']
-        && request.resource.data.precision == get(
-          /databases/$(database)/documents/users/$(userId)
-        ).data.locationSharing;
+        && request.resource.data.uid == request.auth.uid;
       allow delete: if isOwner(userId);
     }
 
@@ -123,21 +106,46 @@ service cloud.firestore {
     match /places/{placeId} {
       allow read: if isSignedIn();
       allow create: if isSignedIn();
-      allow update, delete: if false;
+      allow update: if isSignedIn()
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly([
+            'name',
+            'category',
+            'address',
+            'city',
+            'photoUrl',
+            'location',
+            'rating',
+            'checkinsCount',
+            'updatedAt'
+          ]);
+      allow delete: if false;
     }
 
     match /checkins/{checkinId} {
       allow read: if isSignedIn();
       allow create: if isSignedIn()
         && request.resource.data.userId == request.auth.uid;
-      allow update, delete: if false;
+      allow update: if false;
+      allow delete: if isSignedIn()
+        && resource.data.userId == request.auth.uid;
     }
 
     match /events/{eventId} {
       allow read: if isSignedIn();
       allow create: if isSignedIn()
         && request.resource.data.creatorId == request.auth.uid;
-      allow update, delete: if isSignedIn()
+      allow update: if isSignedIn()
+        && (
+          resource.data.creatorId == request.auth.uid
+          || request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly([
+              'registrationCount',
+              'participantCount',
+              'updatedAt'
+            ])
+        );
+      allow delete: if isSignedIn()
         && resource.data.creatorId == request.auth.uid;
 
       match /registrations/{userId} {
@@ -176,7 +184,17 @@ service cloud.firestore {
         && resource.data.recipientId == request.auth.uid
         && request.resource.data.diff(resource.data).affectedKeys()
           .hasOnly(['read']);
-      allow create, delete: if false;
+      allow create: if isSignedIn()
+        && request.resource.data.actorId == request.auth.uid;
+      allow delete: if false;
+    }
+
+    match /stories/{storyId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn()
+        && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isSignedIn()
+        && resource.data.userId == request.auth.uid;
     }
 
     match /{document=**} {

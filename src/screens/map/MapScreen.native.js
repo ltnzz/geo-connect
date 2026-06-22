@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import {
+  memo,
   useCallback,
   useEffect,
   useMemo,
@@ -28,7 +29,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { useEventStore } from '../../stores/eventStore';
 import { getDistanceMeters } from '../../utils/geo';
 import { clusterMapItems } from '../../utils/mapCluster';
-import { colors, radius, spacing } from '../../utils/theme';
+import { useColors, radius, spacing } from '../../utils/theme';
 
 import MapView, { Callout, Marker } from 'react-native-maps';
 
@@ -50,17 +51,22 @@ const RADIUS_OPTIONS = [
 const TYPE_OPTIONS = [
   { label: 'All', value: 'all' },
   { label: 'People', value: 'user' },
+  { label: 'Posts', value: 'post' },
   { label: 'Events', value: 'event' },
+  { label: 'Venues', value: 'place' },
 ];
 
-const TYPE_META = {
-  user: { color: colors.tertiary, icon: 'person' },
-  event: { color: '#7C3AED', icon: 'calendar' },
+const formatDistance = (meters) => {
+  if (meters < 1000) {
+    return `${Math.round(meters)}m`;
+  }
+  return `${(meters / 1000).toFixed(1)}km`;
 };
 
 const normalizeConnection = (connection) => ({
   id: `user-${connection.id}`,
   type: 'user',
+  sourceId: connection.id,
   title: `@${connection.username}`,
   subtitle: connection.city || 'Nearby',
   coordinate: {
@@ -92,39 +98,113 @@ const getEventItems = (center, radiusMeters, eventsList) =>
     };
   });
 
-function DiscoveryMarker({ cluster, onPress }) {
-  const isCluster = cluster.items.length > 1;
-  const item = cluster.items[0];
-  const meta = TYPE_META[item.type];
+const normalizePost = (post) => ({
+  id: `post-${post.id}`,
+  type: 'post',
+  sourceId: post.id,
+  title: post.caption ? post.caption.substring(0, 30).trim() + (post.caption.length > 30 ? '...' : '') : 'Post',
+  subtitle: post.location?.address || 'Nearby post',
+  coordinate: {
+    latitude: post.location.latitude,
+    longitude: post.location.longitude,
+  },
+  post,
+});
 
-  return (
-    <Marker coordinate={cluster.coordinate} onPress={() => onPress(cluster)}>
-      <View
-        style={[
-          styles.marker,
-          { backgroundColor: isCluster ? '#172033' : meta.color },
-          isCluster && styles.clusterMarker,
-        ]}
+const normalizeEvent = (event) => ({
+  id: `event-${event.id}`,
+  type: 'event',
+  sourceId: event.id,
+  title: event.title,
+  subtitle: event.location?.address || 'Nearby event',
+  coordinate: {
+    latitude: event.location.latitude,
+    longitude: event.location.longitude,
+  },
+});
+
+const normalizePlace = (place) => ({
+  id: `place-${place.id}`,
+  type: 'place',
+  sourceId: place.id,
+  title: place.name,
+  subtitle: place.category || 'Nearby venue',
+  coordinate: {
+    latitude: place.location.latitude,
+    longitude: place.location.longitude,
+  },
+});
+
+const DiscoveryMarker = memo(
+  function DiscoveryMarker({ cluster, onPress, styles }) {
+    const [tracksViewChanges, setTracksViewChanges] = useState(true);
+    const colors = useColors();
+
+    const TYPE_META = useMemo(() => ({
+      user: { color: colors.tertiary, icon: 'person' },
+      event: { color: '#7C3AED', icon: 'calendar' },
+      post: { color: colors.primary, icon: 'image' },
+      place: { color: colors.secondary, icon: 'business' },
+    }), [colors]);
+
+    useEffect(() => {
+      setTracksViewChanges(true);
+      const timer = setTimeout(() => {
+        setTracksViewChanges(false);
+      }, 500);
+      return () => clearTimeout(timer);
+    }, [cluster.id, cluster.items.length]);
+
+    const isCluster = cluster.items.length > 1;
+    const item = cluster.items[0];
+    const meta = TYPE_META[item.type];
+
+    return (
+      <Marker
+        coordinate={cluster.coordinate}
+        onPress={() => onPress(cluster)}
+        tracksViewChanges={tracksViewChanges}
       >
-        {isCluster ? (
-          <Text style={styles.clusterCount}>{cluster.items.length}</Text>
-        ) : (
-          <Ionicons color="#FFFFFF" name={meta.icon} size={17} />
-        )}
-      </View>
-      {!isCluster ? (
-        <Callout>
-          <View style={styles.callout}>
-            <Text style={styles.calloutTitle}>{item.title}</Text>
-            <Text style={styles.calloutSubtitle}>{item.subtitle}</Text>
-          </View>
-        </Callout>
-      ) : null}
-    </Marker>
-  );
-}
+        <View
+          style={[
+            styles.marker,
+            { backgroundColor: isCluster ? colors.text : meta.color },
+            isCluster && styles.clusterMarker,
+          ]}
+        >
+          {isCluster ? (
+            <Text style={[styles.clusterCount, { color: colors.surface }]}>{cluster.items.length}</Text>
+          ) : (
+            <Ionicons color="#FFFFFF" name={meta.icon} size={17} />
+          )}
+        </View>
+        {!isCluster ? (
+          <Callout>
+            <View style={styles.callout}>
+              <Text style={styles.calloutTitle}>{item.title}</Text>
+              <Text style={styles.calloutSubtitle}>{item.subtitle}</Text>
+            </View>
+          </Callout>
+        ) : null}
+      </Marker>
+    );
+  },
+  (prevProps, nextProps) => {
+    const prevCluster = prevProps.cluster;
+    const nextCluster = nextProps.cluster;
 
-function PermissionIntro({ visible, onCancel, onContinue }) {
+    return (
+      prevCluster.id === nextCluster.id &&
+      prevCluster.items.length === nextCluster.items.length &&
+      prevCluster.coordinate.latitude === nextCluster.coordinate.latitude &&
+      prevCluster.coordinate.longitude === nextCluster.coordinate.longitude &&
+      prevCluster.items[0]?.title === nextCluster.items[0]?.title &&
+      prevCluster.items[0]?.type === nextCluster.items[0]?.type
+    );
+  }
+);
+
+function PermissionIntro({ visible, onCancel, onContinue, styles, colors }) {
   return (
     <Modal
       animationType="fade"
@@ -171,6 +251,7 @@ function PermissionIntro({ visible, onCancel, onContinue }) {
 export default function MapScreen() {
   const navigation = useNavigation();
   const mapRef = useRef(null);
+  const dataCache = useRef({});
   const isLocationRefreshInFlight = useRef(false);
   const viewport = useWindowDimensions();
   const user = useAuthStore((state) => state.user);
@@ -189,6 +270,15 @@ export default function MapScreen() {
   const [items, setItems] = useState([]);
   const [refreshVersion, setRefreshVersion] = useState(0);
   const [selectedCluster, setSelectedCluster] = useState(null);
+  const colors = useColors();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+
+  const TYPE_META = useMemo(() => ({
+    user: { color: colors.tertiary, icon: 'person' },
+    event: { color: '#7C3AED', icon: 'calendar' },
+    post: { color: colors.primary, icon: 'image' },
+    place: { color: colors.secondary, icon: 'business' },
+  }), [colors]);
 
   const loadCurrentLocation = useCallback(
     async ({ animate = true, showLoading = true } = {}) => {
@@ -331,37 +421,80 @@ export default function MapScreen() {
   ]);
 
   useEffect(() => {
+    // Reset cache on manual refresh/location changes
+    dataCache.current = {};
+  }, [refreshVersion]);
+
+  useEffect(() => {
     if (!isEnabled) {
       setItems([]);
+      return;
+    }
+
+    const cacheKey = `${center.latitude.toFixed(3)}:${center.longitude.toFixed(3)}:${radiusMeters}`;
+    if (dataCache.current[cacheKey]) {
+      setItems(dataCache.current[cacheKey]);
       return;
     }
 
     let isActive = true;
     setIsLoadingData(true);
 
-    firestoreService
-      .getMutualConnectionLocations(user?.uid)
-      .then((connections) => {
+    Promise.all([
+      firestoreService.getMutualConnectionLocations(user?.uid).catch((err) => {
+        console.warn('Error fetching connections:', err);
+        return [];
+      }),
+      firestoreService.getNearbyPosts(center, radiusMeters, 40).catch((err) => {
+        console.warn('Error fetching posts:', err);
+        return [];
+      }),
+      firestoreService.getNearbyEvents(center, radiusMeters, 40).catch((err) => {
+        console.warn('Error fetching events:', err);
+        return [];
+      }),
+      firestoreService.getNearbyPlaces(center, radiusMeters, 30).catch((err) => {
+        console.warn('Error fetching places:', err);
+        return [];
+      }),
+    ])
+      .then(([connections, posts, events, places]) => {
         if (!isActive) {
           return;
         }
 
-        const nearbyConnections = connections
+        const normalizedConnections = (connections || [])
           .filter(
             (connection) =>
+              connection.location &&
               getDistanceMeters(center, connection.location) <= radiusMeters,
           )
           .map(normalizeConnection);
 
-        setItems([
-          ...nearbyConnections,
-          ...getEventItems(center, radiusMeters, eventsList),
-        ]);
+        const normalizedPosts = (posts || [])
+          .filter((post) => post.location)
+          .map(normalizePost);
+
+        const normalizedEvents = (events || [])
+          .filter((event) => event.location)
+          .map(normalizeEvent);
+
+        const normalizedPlaces = (places || [])
+          .filter((place) => place.location)
+          .map(normalizePlace);
+
+        const loadedItems = [
+          ...normalizedConnections,
+          ...normalizedPosts,
+          ...normalizedEvents,
+          ...normalizedPlaces,
+        ];
+
+        dataCache.current[cacheKey] = loadedItems;
+        setItems(loadedItems);
       })
-      .catch(() => {
-        if (isActive) {
-          setItems(getEventItems(center, radiusMeters, eventsList));
-        }
+      .catch((error) => {
+        console.error('Error fetching map items:', error);
       })
       .finally(() => {
         if (isActive) {
@@ -422,18 +555,21 @@ export default function MapScreen() {
     setSelectedCluster(null);
   };
 
-  const handleClusterPress = (cluster) => {
-    setSelectedCluster(cluster);
+  const handleClusterPress = useCallback(
+    (cluster) => {
+      setSelectedCluster(cluster);
 
-    if (cluster.items.length > 1) {
-      const nextRegion = {
-        ...cluster.coordinate,
-        latitudeDelta: Math.max(region.latitudeDelta / 2.4, 0.008),
-        longitudeDelta: Math.max(region.longitudeDelta / 2.4, 0.008),
-      };
-      mapRef.current?.animateToRegion?.(nextRegion, 350);
-    }
-  };
+      if (cluster.items.length > 1) {
+        const nextRegion = {
+          ...cluster.coordinate,
+          latitudeDelta: Math.max(region.latitudeDelta / 2.4, 0.008),
+          longitudeDelta: Math.max(region.longitudeDelta / 2.4, 0.008),
+        };
+        mapRef.current?.animateToRegion?.(nextRegion, 350);
+      }
+    },
+    [region.latitudeDelta, region.longitudeDelta],
+  );
 
   const recenter = () => {
     loadCurrentLocation();
@@ -459,11 +595,12 @@ export default function MapScreen() {
               cluster={cluster}
               key={cluster.id}
               onPress={handleClusterPress}
+              styles={styles}
             />
           ))}
         </MapView>
 
-        {!isEnabled ? (
+        {!isEnabled && !isLoadingLocation ? (
           <View style={styles.locationGate}>
             <View style={styles.gateIcon}>
               <Ionicons color={colors.primary} name="location" size={25} />
@@ -590,7 +727,7 @@ export default function MapScreen() {
               <View style={styles.loadingBadge}>
                 <ActivityIndicator color={colors.primary} size="small" />
                 <Text style={styles.loadingText}>
-                  Finding connections and events
+                  Finding nearby connections, posts, events, and venues
                 </Text>
               </View>
             ) : null}
@@ -603,7 +740,7 @@ export default function MapScreen() {
                   size={17}
                 />
                 <Text style={styles.loadingText}>
-                  No shared connections or events in this radius
+                  No shared items in this radius
                 </Text>
               </View>
             ) : null}
@@ -621,14 +758,25 @@ export default function MapScreen() {
 
                   return (
                     <Pressable
-                      accessibilityRole={item.type === 'event' ? 'button' : 'text'}
-                      disabled={item.type !== 'event'}
+                      accessibilityRole={['event', 'place', 'post'].includes(item.type) ? 'button' : 'text'}
+                      disabled={!['event', 'place', 'post'].includes(item.type)}
                       key={item.id}
-                      onPress={() =>
-                        navigation.navigate('EventDetail', {
-                          eventId: item.sourceId,
-                        })
-                      }
+                      onPress={() => {
+                        if (item.type === 'event') {
+                          navigation.navigate('EventDetail', {
+                            eventId: item.sourceId,
+                          });
+                        } else if (item.type === 'place') {
+                          navigation.navigate('VenueDetail', {
+                            placeId: item.sourceId,
+                          });
+                        } else if (item.type === 'post') {
+                          navigation.navigate('PostDetail', {
+                            initialPostId: item.sourceId,
+                            posts: item.post ? [item.post] : [],
+                          });
+                        }
+                      }}
                       style={styles.clusterItem}
                     >
                       <View
@@ -663,12 +811,14 @@ export default function MapScreen() {
         onCancel={() => setShowPermissionIntro(false)}
         onContinue={enableNearby}
         visible={showPermissionIntro}
+        styles={styles}
+        colors={colors}
       />
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors) => StyleSheet.create({
   screen: {
     backgroundColor: colors.background,
     flex: 1,
@@ -690,8 +840,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
   },
   filterChip: {
-    backgroundColor: 'rgba(255,255,255,0.95)',
-    borderColor: '#D8E0EB',
+    backgroundColor: colors.surface + 'F2',
+    borderColor: colors.border,
     borderRadius: radius.full,
     borderWidth: 1,
     paddingHorizontal: 14,
@@ -702,7 +852,7 @@ const styles = StyleSheet.create({
     borderColor: colors.primary,
   },
   filterText: {
-    color: '#536174',
+    color: colors.text,
     fontFamily: 'Inter_600SemiBold',
     fontSize: 11,
   },
@@ -710,21 +860,21 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   typeChip: {
-    backgroundColor: 'rgba(255,255,255,0.94)',
+    backgroundColor: colors.surface + 'EF',
     borderRadius: radius.full,
     paddingHorizontal: 13,
     paddingVertical: 7,
   },
   typeChipActive: {
-    backgroundColor: '#172033',
+    backgroundColor: colors.text,
   },
   typeText: {
-    color: '#64748B',
+    color: colors.mutedText,
     fontFamily: 'Inter_600SemiBold',
     fontSize: 10,
   },
   typeTextActive: {
-    color: '#FFFFFF',
+    color: colors.surface,
   },
   marker: {
     alignItems: 'center',
@@ -745,7 +895,6 @@ const styles = StyleSheet.create({
     width: 46,
   },
   clusterCount: {
-    color: '#FFFFFF',
     fontFamily: 'Inter_700Bold',
     fontSize: 13,
   },
@@ -772,12 +921,12 @@ const styles = StyleSheet.create({
   },
   mapActionButton: {
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.96)',
+    backgroundColor: colors.surface + 'F5',
     borderRadius: radius.full,
     elevation: 4,
     height: 44,
     justifyContent: 'center',
-    shadowColor: '#64748B',
+    shadowColor: colors.neutral,
     shadowOffset: { height: 2, width: 0 },
     shadowOpacity: 0.13,
     shadowRadius: 5,
@@ -787,21 +936,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     alignSelf: 'center',
     backgroundColor: colors.surface,
-    borderColor: '#E0E6EF',
+    borderColor: colors.border,
     borderRadius: radius.lg,
     borderWidth: 1,
     marginHorizontal: spacing.lg,
     marginTop: 90,
     padding: spacing.lg,
     position: 'absolute',
-    shadowColor: '#64748B',
+    shadowColor: colors.neutral,
     shadowOffset: { height: 4, width: 0 },
     shadowOpacity: 0.1,
     shadowRadius: 12,
   },
   gateIcon: {
     alignItems: 'center',
-    backgroundColor: '#EAF1FF',
+    backgroundColor: `${colors.primary}1A`,
     borderRadius: radius.full,
     height: 52,
     justifyContent: 'center',
@@ -845,7 +994,7 @@ const styles = StyleSheet.create({
   loadingBadge: {
     alignItems: 'center',
     alignSelf: 'center',
-    backgroundColor: 'rgba(255,255,255,0.96)',
+    backgroundColor: colors.surface + 'F5',
     borderRadius: radius.full,
     bottom: 24,
     flexDirection: 'row',
@@ -855,14 +1004,14 @@ const styles = StyleSheet.create({
     position: 'absolute',
   },
   loadingText: {
-    color: '#526173',
+    color: colors.text,
     fontFamily: 'Inter_600SemiBold',
     fontSize: 10,
   },
   emptyBadge: {
     alignItems: 'center',
     alignSelf: 'center',
-    backgroundColor: 'rgba(255,255,255,0.96)',
+    backgroundColor: colors.surface + 'F5',
     borderRadius: radius.full,
     bottom: 24,
     flexDirection: 'row',
@@ -882,14 +1031,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     position: 'absolute',
     right: 0,
-    shadowColor: '#0F172A',
+    shadowColor: colors.text,
     shadowOffset: { height: -4, width: 0 },
     shadowOpacity: 0.12,
     shadowRadius: 12,
   },
   sheetHandle: {
     alignSelf: 'center',
-    backgroundColor: '#CBD5E1',
+    backgroundColor: colors.border,
     borderRadius: radius.full,
     height: 4,
     marginBottom: spacing.md,
@@ -904,7 +1053,7 @@ const styles = StyleSheet.create({
   },
   clusterItem: {
     alignItems: 'center',
-    borderTopColor: '#EDF1F6',
+    borderTopColor: colors.border,
     borderTopWidth: StyleSheet.hairlineWidth,
     flexDirection: 'row',
     paddingVertical: 10,
@@ -921,7 +1070,7 @@ const styles = StyleSheet.create({
     marginLeft: spacing.sm,
   },
   clusterItemTitle: {
-    color: '#344054',
+    color: colors.text,
     fontFamily: 'Inter_600SemiBold',
     fontSize: 12,
   },
@@ -947,7 +1096,7 @@ const styles = StyleSheet.create({
   permissionIcon: {
     alignItems: 'center',
     alignSelf: 'center',
-    backgroundColor: '#EAF1FF',
+    backgroundColor: `${colors.primary}1A`,
     borderRadius: radius.full,
     height: 58,
     justifyContent: 'center',
@@ -969,14 +1118,14 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   permissionFacts: {
-    backgroundColor: '#F4F7FB',
+    backgroundColor: colors.background,
     borderRadius: radius.md,
     gap: 6,
     marginTop: spacing.md,
     padding: spacing.md,
   },
   permissionFact: {
-    color: '#526173',
+    color: colors.text,
     fontFamily: 'Inter_600SemiBold',
     fontSize: 11,
   },

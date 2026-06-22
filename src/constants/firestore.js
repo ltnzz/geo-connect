@@ -12,6 +12,7 @@ export const COLLECTIONS = Object.freeze({
   notifications: 'notifications',
   reports: 'reports',
   blocks: 'blocks',
+  stories: 'stories',
 });
 
 export const SUBCOLLECTIONS = Object.freeze({
@@ -24,6 +25,12 @@ export const SUBCOLLECTIONS = Object.freeze({
   checkins: 'checkins',
   stories: 'stories',
   declines: 'declines',
+});
+
+export const EVENT_RSVP = Object.freeze({
+  going: 'going',
+  interested: 'interested',
+  notGoing: 'not_going',
 });
 
 export const NOTIFICATION_TYPES = Object.freeze({

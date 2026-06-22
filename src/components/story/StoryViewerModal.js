@@ -136,7 +136,11 @@ export default function StoryViewerModal({ visible, stories = [], initialIndex =
                 )}
               </View>
               <Text numberOfLines={1} style={styles.eventTitle}>
-                in {currentStory.eventTitle || 'Event'}
+                {currentStory.placeName
+                  ? `at ${currentStory.placeName}`
+                  : currentStory.eventTitle
+                    ? `in ${currentStory.eventTitle}`
+                    : 'AroundU'}
               </Text>
             </View>
             <Pressable hitSlop={12} onPress={onClose} style={styles.closeButton}>

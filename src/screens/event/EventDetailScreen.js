@@ -1,12 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { Alert, Image, Share, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image, Share, Pressable, ScrollView, StyleSheet, Text, View, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useEffect } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 
 import ScreenHeader from '../../components/common/ScreenHeader';
-import EventDetailFooter from '../../components/event/EventDetailFooter';
-import EventArtwork from '../../components/event/EventArtwork';
+import { EVENT_RSVP } from '../../constants/firestore';
 import { useEventStore } from '../../stores/eventStore';
 import { useAuthStore } from '../../stores/authStore';
 import { useLocation } from '../../hooks/useLocation';
@@ -15,8 +14,12 @@ import { useHostName } from '../../hooks/useHostName';
 import { formatEventSchedule } from '../../utils/dateUtils';
 import { formatDistanceString } from '../../utils/locationUtils';
 import { firestoreService } from '../../services/firestoreService';
-import { colors, radius, spacing } from '../../utils/theme';
-import EventStorySection from '../../components/event/EventStorySection';
+import { imagePickerService } from '../../services/imagePickerService';
+import { cloudinaryService } from '../../services/cloudinaryService';
+import StoryViewerModal from '../../components/story/StoryViewerModal';
+import { useColors, radius, spacing } from '../../utils/theme';
+import EventDetailFooter from '../../components/event/EventDetailFooter';
+import EventArtwork from '../../components/event/EventArtwork';
 
 export default function EventDetailScreen({ route }) {
   const navigation = useNavigation();
@@ -26,6 +29,59 @@ export default function EventDetailScreen({ route }) {
   const events = useEventStore((s) => s.events);
   const removeEvent = useEventStore((s) => s.removeEvent);
   const event = events.find((item) => item.id === route.params?.eventId);
+  const colors = useColors();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+  const isReal = true;
+
+  const [stories, setStories] = useState([]);
+  const [isStoryViewerVisible, setIsStoryViewerVisible] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+
+  const loadStories = async () => {
+    if (!event?.id) return;
+    try {
+      const activeStories = await firestoreService.getEventStories(event.id);
+      setStories(activeStories);
+    } catch (err) {
+      console.warn('Failed to load event stories:', err);
+    }
+  };
+
+  useEffect(() => {
+    loadStories();
+  }, [event?.id]);
+
+  const handleAddStory = async () => {
+    if (!user?.uid) {
+      Alert.alert('Login Required', 'Please log in to add a story.');
+      return;
+    }
+
+    try {
+      const picked = await imagePickerService.fromLibrary();
+      if (!picked) return;
+
+      setIsUploading(true);
+      Alert.alert('Uploading Story', 'Please wait...', [], { cancelable: false });
+
+      const uploadResult = await cloudinaryService.uploadImage(picked, { folder: 'stories' });
+      await firestoreService.createStory({
+        userId: user.uid,
+        username: user.username || 'aroundu',
+        userAvatar: user.avatarUrl || '',
+        mediaUrl: uploadResult.url,
+        eventId: event.id,
+        eventTitle: event.title,
+      });
+
+      loadStories();
+      Alert.alert('Success', 'Story uploaded successfully!');
+    } catch (err) {
+      Alert.alert('Upload Failed', err.message || 'Something went wrong.');
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   const { response, toggleGoing, toggleInterested, toggleNotGoing } = useEventResponse(event?.id);
   const hostName = useHostName(event?.creatorId);
@@ -37,7 +93,7 @@ export default function EventDetailScreen({ route }) {
   if (!event) {
     return (
       <View style={[styles.screen, { justifyContent: 'center', alignItems: 'center' }]}>
-        <Text>Event not found.</Text>
+        <Text style={{ color: colors.text }}>Event not found.</Text>
       </View>
     );
   }
@@ -46,10 +102,16 @@ export default function EventDetailScreen({ route }) {
   const title = event.title;
   const category = event.category || 'Event';
   const description = event.description;
-  const venue = event.location?.city || event.location?.address || 'Nearby';
+  const venue = isReal ? (event.location?.city || event.location?.address || 'Nearby') : event.venue;
+  const host = isReal ? hostName : event.host || 'User';
   const attendees = event.participantCount || 0;
-  const scheduleStr = formatEventSchedule(event.startTime, event.endTime) || event.schedule || '';
   const distanceStr = formatDistanceString(location, event.location, isFetchingLocation);
+
+  let scheduleStr = event.schedule || '';
+  if (isReal && event.startTime) {
+    const d = event.startTime?.toDate ? event.startTime.toDate() : new Date(event.startTime);
+    scheduleStr = d.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
+  }
 
   const shareEvent = () =>
     Share.share({
@@ -127,8 +189,50 @@ export default function EventDetailScreen({ route }) {
 
         <Text style={styles.description}>{description}</Text>
 
-        <EventStorySection eventId={event.id} eventLocation={event.location} />
+        <View style={styles.storyCard}>
+          <Text style={styles.storyTitle}>Attendees & Event Story</Text>
+          <View style={styles.attendeeRow}>
+            <View style={styles.avatars}>
+              {[0, 1, 2].map((index) => (
+                <View key={index} style={[styles.avatar, { left: index * 20 }]}>
+                  <Ionicons color={colors.neutral} name="person" size={14} />
+                </View>
+              ))}
+            </View>
+            <Text style={styles.attendeeCount}>
+              +{event.participantCount || attendees} going - {event.registrationCount || 0} RSVP
+            </Text>
+          </View>
+
+          {/* Active Stories List */}
+          <Text style={styles.subSectionTitle}>Active Stories</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.storiesRow}>
+            <Pressable onPress={handleAddStory} style={styles.addStoryThumbnail}>
+              <Ionicons name="camera-outline" size={20} color={colors.primary} />
+              <Text style={styles.addStoryText}>Add Story</Text>
+            </Pressable>
+
+            {stories.map((story, index) => (
+              <Pressable
+                key={story.id}
+                onPress={() => {
+                  setIsStoryViewerVisible(true);
+                }}
+                style={styles.storyThumbnailWrapper}
+              >
+                <Image source={{ uri: story.mediaUrl }} style={styles.storyThumbnail} />
+              </Pressable>
+            ))}
+          </ScrollView>
+        </View>
       </ScrollView>
+
+      <StoryViewerModal
+        visible={isStoryViewerVisible}
+        stories={stories}
+        initialIndex={0}
+        onClose={() => setIsStoryViewerVisible(false)}
+      />
 
       <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, spacing.md) }]}>
         <EventDetailFooter
@@ -145,9 +249,9 @@ export default function EventDetailScreen({ route }) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors) => StyleSheet.create({
   screen: {
-    backgroundColor: '#F8F9FF',
+    backgroundColor: colors.background,
     flex: 1,
   },
   content: {
@@ -170,7 +274,7 @@ const styles = StyleSheet.create({
   },
   hostAvatar: {
     alignItems: 'center',
-    backgroundColor: '#E9F0FF',
+    backgroundColor: `${colors.primary}1A`,
     borderRadius: radius.full,
     height: 26,
     justifyContent: 'center',
@@ -191,7 +295,7 @@ const styles = StyleSheet.create({
   chip: {
     alignItems: 'center',
     backgroundColor: colors.surface,
-    borderColor: '#DFE5EE',
+    borderColor: colors.border,
     borderRadius: radius.full,
     borderWidth: 1,
     flexDirection: 'row',
@@ -200,7 +304,7 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
   },
   chipText: {
-    color: '#526173',
+    color: colors.mutedText,
     fontFamily: 'Inter_600SemiBold',
     fontSize: 10,
   },
@@ -216,7 +320,7 @@ const styles = StyleSheet.create({
     marginLeft: 6,
   },
   description: {
-    color: '#566275',
+    color: colors.text,
     fontFamily: 'Inter_400Regular',
     fontSize: 13,
     lineHeight: 20,
@@ -224,18 +328,18 @@ const styles = StyleSheet.create({
   },
   storyCard: {
     backgroundColor: colors.surface,
-    borderColor: '#E0E6EF',
+    borderColor: colors.border,
     borderRadius: radius.md,
     borderWidth: 1,
     marginTop: spacing.lg,
     padding: spacing.md,
-    shadowColor: '#64748B',
+    shadowColor: colors.neutral,
     shadowOffset: { height: 3, width: 0 },
     shadowOpacity: 0.07,
     shadowRadius: 8,
   },
   storyTitle: {
-    color: '#344054',
+    color: colors.text,
     fontFamily: 'Inter_700Bold',
     fontSize: 15,
   },
@@ -250,8 +354,8 @@ const styles = StyleSheet.create({
   },
   avatar: {
     alignItems: 'center',
-    backgroundColor: '#F1F4F9',
-    borderColor: '#FFFFFF',
+    backgroundColor: colors.background,
+    borderColor: colors.surface,
     borderRadius: radius.full,
     borderWidth: 2,
     height: 30,
@@ -266,10 +370,95 @@ const styles = StyleSheet.create({
   },
   footer: {
     backgroundColor: colors.surface,
-    borderTopColor: '#E0E6EF',
+    borderTopColor: colors.border,
     borderTopWidth: 1,
     flexDirection: 'row',
     gap: spacing.sm,
     padding: spacing.md,
+  },
+  responseButton: {
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    flex: 1,
+    flexDirection: 'row',
+    gap: 6,
+    height: 44,
+    justifyContent: 'center',
+  },
+  interestedSelected: {
+    backgroundColor: `${colors.tertiary}1A`,
+    borderColor: colors.tertiary,
+  },
+  interestedText: {
+    color: colors.neutral,
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 12,
+  },
+  interestedTextSelected: {
+    color: colors.tertiary,
+  },
+  goingSelected: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  goingButton: {
+    flex: 1,
+  },
+  goingText: {
+    color: colors.primary,
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 12,
+  },
+  goingTextSelected: {
+    color: '#FFFFFF',
+  },
+  notGoingSelected: {
+    backgroundColor: `${colors.danger}1A`,
+    borderColor: colors.danger,
+  },
+  notGoingTextSelected: {
+    color: colors.danger,
+  },
+  subSectionTitle: {
+    color: colors.text,
+    fontFamily: 'Inter_700Bold',
+    fontSize: 13,
+    marginTop: spacing.md,
+  },
+  storiesRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginTop: spacing.sm,
+    paddingBottom: spacing.xs,
+  },
+  addStoryThumbnail: {
+    alignItems: 'center',
+    backgroundColor: colors.background,
+    borderColor: colors.border,
+    borderRadius: radius.sm,
+    borderStyle: 'dashed',
+    borderWidth: 1.5,
+    height: 70,
+    justifyContent: 'center',
+    width: 70,
+  },
+  addStoryText: {
+    color: colors.primary,
+    fontFamily: 'Inter_500Medium',
+    fontSize: 9,
+    marginTop: 4,
+  },
+  storyThumbnailWrapper: {
+    borderRadius: radius.sm,
+    height: 70,
+    overflow: 'hidden',
+    width: 70,
+  },
+  storyThumbnail: {
+    height: '100%',
+    width: '100%',
   },
 });

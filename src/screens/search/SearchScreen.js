@@ -1,11 +1,9 @@
-import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { useEffect, useState, useMemo } from 'react';
 import {
   ActivityIndicator,
   FlatList,
-  Image,
   Pressable,
   StyleSheet,
   Text,
@@ -15,6 +13,7 @@ import {
 import ScreenHeader from '../../components/common/ScreenHeader';
 import PostCard from '../../components/post/PostCard';
 import SearchBar from '../../components/search/SearchBar';
+import UserRow from '../../components/profile/UserRow';
 import { db } from '../../config/firebase';
 import { COLLECTIONS } from '../../constants/firestore';
 import { firestoreService } from '../../services/firestoreService';
@@ -22,7 +21,6 @@ import { useAuthStore } from '../../stores/authStore';
 import { useEventStore } from '../../stores/eventStore';
 import { useFeedStore } from '../../stores/feedstore';
 import { useColors, radius, spacing } from '../../utils/theme';
-import { useLocation } from '../../hooks/useLocation';
 
 
 const uniqueById = (items) =>
@@ -50,12 +48,6 @@ export default function SearchScreen() {
   const styles = useMemo(() => makeStyles(colors), [colors]);
 
   const normalizedSearch = searchQuery.trim().toLowerCase();
-  const { handleGetLocation } = useLocation();
-
-  useEffect(() => {
-    handleGetLocation();
-  }, [handleGetLocation]);
-
 
   useEffect(() => {
     if (!normalizedSearch) {
@@ -175,42 +167,15 @@ export default function SearchScreen() {
     )
     : [];
 
-  const renderPerson = ({ item }) => {
-    const targetUserId = item.id || item.uid;
-    const isOwnUser = currentUserId === targetUserId;
-    const isFollowing = !!followingByUser[targetUserId];
-
-    return (
-      <View style={styles.personRow}>
-        <View style={styles.avatar}>
-          {item.avatarUrl ? (
-            <Image source={{ uri: item.avatarUrl }} style={styles.avatarImage} />
-          ) : (
-            <Ionicons color={colors.neutral} name="person-outline" size={25} />
-          )}
-        </View>
-        <View style={styles.personInfo}>
-          <Text numberOfLines={1} style={styles.personName}>
-            @{item.username || 'aroundu'}
-          </Text>
-          <Text numberOfLines={1} style={styles.personUsername}>
-            {item.city || 'AroundU'}
-          </Text>
-        </View>
-        {!isOwnUser && targetUserId ? (
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => toggleFollow(currentUserId, targetUserId)}
-            style={[styles.followButton, isFollowing && styles.followingButton]}
-          >
-            <Text style={[styles.followText, isFollowing && styles.followingText]}>
-              {isFollowing ? 'Following' : 'Follow'}
-            </Text>
-          </Pressable>
-        ) : null}
-      </View>
-    );
-  };
+  const renderPerson = ({ item }) => (
+    <UserRow
+      user={item}
+      currentUserId={currentUserId}
+      isFollowing={!!followingByUser[item.id || item.uid]}
+      onFollowPress={toggleFollow}
+      showFollowButton
+    />
+  );
 
   return (
     <View style={styles.screen}>
@@ -298,8 +263,8 @@ export default function SearchScreen() {
               onPress={() => navigation.navigate('EventDetail', { eventId: item.id })}
               style={styles.eventRow}
             >
-              <Text style={styles.personName}>{item.title}</Text>
-              <Text style={styles.personUsername}>{item.location?.address || 'TBD'}</Text>
+              <Text style={styles.eventTitle}>{item.title}</Text>
+              <Text style={styles.eventSubtitle}>{item.location?.address || 'TBD'}</Text>
             </Pressable>
           )}
           showsVerticalScrollIndicator={false}
@@ -360,61 +325,6 @@ const makeStyles = (colors) => StyleSheet.create({
   searchTabTextActive: {
     color: colors.primary,
   },
-  personRow: {
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    flexDirection: 'row',
-    marginBottom: spacing.sm,
-    padding: 12,
-  },
-  avatar: {
-    alignItems: 'center',
-    backgroundColor: colors.background,
-    borderRadius: radius.md,
-    height: 48,
-    justifyContent: 'center',
-    overflow: 'hidden',
-    width: 48,
-  },
-  avatarImage: {
-    height: '100%',
-    width: '100%',
-  },
-  personInfo: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  personName: {
-    color: colors.text,
-    fontFamily: 'Poppins_600SemiBold',
-    fontSize: 14,
-  },
-  personUsername: {
-    color: colors.neutral,
-    fontFamily: 'Poppins_400Regular',
-    fontSize: 12,
-    marginTop: 2,
-  },
-  followButton: {
-    backgroundColor: colors.primary,
-    borderRadius: radius.full,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-  },
-  followingButton: {
-    backgroundColor: `${colors.primary}1A`,
-  },
-  followText: {
-    color: '#FFFFFF',
-    fontFamily: 'Poppins_600SemiBold',
-    fontSize: 11,
-  },
-  followingText: {
-    color: colors.primary,
-  },
   eventRow: {
     backgroundColor: colors.surface,
     borderColor: colors.border,
@@ -422,5 +332,16 @@ const makeStyles = (colors) => StyleSheet.create({
     borderWidth: 1,
     marginBottom: spacing.sm,
     padding: 12,
+  },
+  eventTitle: {
+    color: colors.text,
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 14,
+  },
+  eventSubtitle: {
+    color: colors.neutral,
+    fontFamily: 'Poppins_400Regular',
+    fontSize: 12,
+    marginTop: 2,
   },
 });

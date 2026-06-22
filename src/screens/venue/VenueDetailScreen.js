@@ -199,30 +199,29 @@ export default function VenueDetailScreen({ navigation, route }) {
 
           <Text style={styles.sectionTitle}>Posts from this venue</Text>
           {posts.length ? (
-            posts.map((post) => (
-              <Pressable
-                accessibilityRole="button"
-                key={post.id}
-                onPress={() =>
-                  navigation.navigate('PostDetail', {
-                    initialPostId: post.id,
-                    posts,
-                  })
-                }
-                style={styles.postRow}
-              >
-                {post.imageUrl ? (
-                  <Image source={{ uri: post.imageUrl }} style={styles.postThumb} />
-                ) : (
-                  <View style={styles.postThumb}>
-                    <Ionicons color={colors.primary} name="image" size={20} />
-                  </View>
-                )}
-                <Text numberOfLines={2} style={styles.postText}>
-                  {post.caption || 'Venue post'}
-                </Text>
-              </Pressable>
-            ))
+            <View style={styles.gridContainer}>
+              {posts.map((post) => (
+                <Pressable
+                  accessibilityRole="button"
+                  key={post.id}
+                  onPress={() =>
+                    navigation.navigate('PostDetail', {
+                      initialPostId: post.id,
+                      posts,
+                    })
+                  }
+                  style={styles.gridItem}
+                >
+                  {post.imageUrl ? (
+                    <Image source={{ uri: post.imageUrl }} style={styles.gridImage} />
+                  ) : (
+                    <View style={styles.gridPlaceholder}>
+                      <Ionicons color={colors.neutral} name="image-outline" size={16} />
+                    </View>
+                  )}
+                </Pressable>
+              ))}
+            </View>
           ) : (
             <Text style={styles.emptyText}>No posts tagged here yet.</Text>
           )}
@@ -344,29 +343,28 @@ const makeStyles = (colors) => StyleSheet.create({
     color: colors.neutral,
     fontFamily: 'Inter_600SemiBold',
   },
-  postRow: {
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderRadius: radius.sm,
+  gridContainer: {
     flexDirection: 'row',
-    gap: spacing.md,
+    flexWrap: 'wrap',
+    gap: 3,
     marginTop: spacing.sm,
-    padding: spacing.sm,
   },
-  postThumb: {
-    alignItems: 'center',
-    backgroundColor: `${colors.primary}1A`,
+  gridItem: {
+    aspectRatio: 1,
     borderRadius: radius.sm,
-    height: 54,
-    justifyContent: 'center',
-    width: 54,
+    overflow: 'hidden',
+    width: '19.3%',
   },
-  postText: {
-    color: colors.text,
-    flex: 1,
-    fontFamily: 'Inter_400Regular',
-    fontSize: 12,
-    lineHeight: 18,
+  gridImage: {
+    height: '100%',
+    width: '100%',
+  },
+  gridPlaceholder: {
+    alignItems: 'center',
+    backgroundColor: colors.border,
+    height: '100%',
+    justifyContent: 'center',
+    width: '100%',
   },
   emptyText: {
     color: colors.neutral,

@@ -2,7 +2,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useState, useMemo } from 'react';
 import {
   ActivityIndicator,
-  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -11,8 +10,10 @@ import {
 } from 'react-native';
 
 import ScreenHeader from '../../components/common/ScreenHeader';
+import UserRow from '../../components/profile/UserRow';
 import { firestoreService } from '../../services/firestoreService';
 import { useAuthStore } from '../../stores/authStore';
+import { useFeedStore } from '../../stores/feedstore';
 import { useColors, radius, spacing } from '../../utils/theme';
 
 const CONNECTION_TYPES = ['followers', 'following'];
@@ -20,6 +21,10 @@ const CONNECTION_TYPES = ['followers', 'following'];
 export default function ConnectionsScreen({ route }) {
   const currentUser = useAuthStore((state) => state.user);
   const userId = route.params?.userId || currentUser?.uid;
+  const checkFollowing = useFeedStore((s) => s.checkFollowing);
+  const followingByUser = useFeedStore((s) => s.followingByUser);
+  const toggleFollow = useFeedStore((s) => s.toggleFollow);
+
   const [activeType, setActiveType] = useState(
     CONNECTION_TYPES.includes(route.params?.initialType)
       ? route.params.initialType
@@ -30,6 +35,15 @@ export default function ConnectionsScreen({ route }) {
   const [error, setError] = useState('');
   const colors = useColors();
   const styles = useMemo(() => makeStyles(colors), [colors]);
+
+  useEffect(() => {
+    connections.forEach((profile) => {
+      const targetUserId = profile.id || profile.uid;
+      if (targetUserId && currentUser?.uid) {
+        checkFollowing(currentUser.uid, targetUserId);
+      }
+    });
+  }, [checkFollowing, currentUser?.uid, connections]);
 
   useEffect(() => {
     if (!userId) {
@@ -120,24 +134,14 @@ export default function ConnectionsScreen({ route }) {
           showsVerticalScrollIndicator={false}
         >
           {connections.map((profile) => (
-            <View key={profile.id} style={styles.personRow}>
-              <View style={styles.avatar}>
-                {profile.avatarUrl ? (
-                  <Image source={{ uri: profile.avatarUrl }} style={styles.image} />
-                ) : (
-                  <Ionicons color={colors.neutral} name="person-outline" size={25} />
-                )}
-              </View>
-
-              <View style={styles.personInfo}>
-                <Text numberOfLines={1} style={styles.name}>
-                  @{profile.username || 'aroundu'}
-                </Text>
-                <Text numberOfLines={1} style={styles.username}>
-                  {profile.city || 'AroundU'}
-                </Text>
-              </View>
-            </View>
+            <UserRow
+              key={profile.id}
+              user={profile}
+              currentUserId={currentUser?.uid}
+              isFollowing={!!followingByUser[profile.id || profile.uid]}
+              onFollowPress={toggleFollow}
+              showFollowButton
+            />
           ))}
         </ScrollView>
       ) : null}
@@ -176,44 +180,6 @@ const makeStyles = (colors) => StyleSheet.create({
   },
   list: {
     padding: spacing.md,
-  },
-  personRow: {
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    flexDirection: 'row',
-    marginBottom: spacing.sm,
-    padding: 12,
-  },
-  avatar: {
-    alignItems: 'center',
-    backgroundColor: colors.background,
-    borderRadius: radius.md,
-    height: 48,
-    justifyContent: 'center',
-    overflow: 'hidden',
-    width: 48,
-  },
-  image: {
-    height: '100%',
-    width: '100%',
-  },
-  personInfo: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  name: {
-    color: colors.text,
-    fontFamily: 'Poppins_600SemiBold',
-    fontSize: 14,
-  },
-  username: {
-    color: colors.neutral,
-    fontFamily: 'Poppins_400Regular',
-    fontSize: 12,
-    marginTop: 2,
   },
   state: {
     alignItems: 'center',

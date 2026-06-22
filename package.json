@@ -41,6 +41,7 @@
     "zustand": "^5.0.14"
   },
   "scripts": {
+    "eas-build-pre-install": "if [ -n \"$GOOGLE_SERVICES_BASE64\" ]; then echo \"$GOOGLE_SERVICES_BASE64\" | base64 -d > ./google-services.json; fi",
     "start": "expo start",
     "android": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/run-android.ps1",
     "android:rebuild": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/run-android.ps1 -Rebuild",

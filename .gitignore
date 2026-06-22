@@ -48,3 +48,6 @@ functions/lib/
 # generated native folders
 /ios
 /android
+
+# secret files
+google-services.json

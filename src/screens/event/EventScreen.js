@@ -31,7 +31,6 @@ export default function EventScreen() {
   const navigation = useNavigation();
   const [searchQuery, setSearchQuery] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [radiusFilter, setRadiusFilter] = useState(5); // 1, 5, 10, 'all'
   const [trendingPlaces, setTrendingPlaces] = useState([]);
   const colors = useColors();
   const styles = useMemo(() => makeStyles(colors), [colors]);
@@ -91,19 +90,21 @@ export default function EventScreen() {
   const newEvents = filterRecentEvents(matchingReal);
 
   const nearbyEvents = location
-    ? matchingReal.filter((event) => {
-        if (event.creatorId === user?.uid) return false;
-        if (radiusFilter === 'all') return true; // include all events when 'Anywhere' is selected
-        if (!event.location || !event.location.latitude || !event.location.longitude) return false;
-        const dist = calculateDistance(
-          location.latitude,
-          location.longitude,
-          event.location.latitude,
-          event.location.longitude
-        );
-        if (dist === null) return false;
-        return dist <= radiusFilter;
-      })
+    ? matchingReal
+        .map((event) => {
+          if (event.creatorId === user?.uid) return null;
+          if (!event.location || !event.location.latitude || !event.location.longitude) return null;
+          const dist = calculateDistance(
+            location.latitude,
+            location.longitude,
+            event.location.latitude,
+            event.location.longitude
+          );
+          if (dist === null || dist > 1) return null;
+          return { ...event, distance: dist };
+        })
+        .filter(Boolean)
+        .sort((a, b) => a.distance - b.distance)
     : [];
 
   const featuredEvent = nearbyEvents.length > 0 ? nearbyEvents[0] : null;
@@ -113,9 +114,7 @@ export default function EventScreen() {
     .sort((a, b) => (b.participantCount || 0) - (a.participantCount || 0))
     .slice(0, 5);
 
-  const nearbySubtitle = radiusFilter === 'all'
-    ? 'Showing all events regardless of distance.'
-    : `Events within ${radiusFilter} km of your location.`;
+  const nearbySubtitle = 'Events within 1 km of your location.';
 
   return (
     <View style={styles.screen}>
@@ -145,31 +144,6 @@ export default function EventScreen() {
         <Text style={styles.heading}>Nearby Events</Text>
         <Text style={styles.subtitle}>{nearbySubtitle}</Text>
 
-        {/* Radius Filter Chips */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.filterScroll}
-          style={styles.filterContainer}
-        >
-          {[
-            { label: '1 km', value: 1 },
-            { label: '5 km', value: 5 },
-            { label: '10 km', value: 10 },
-            { label: 'Anywhere', value: 'all' },
-          ].map((opt) => (
-            <Pressable
-              key={opt.label}
-              style={[styles.filterChip, radiusFilter === opt.value && styles.filterChipActive]}
-              onPress={() => setRadiusFilter(opt.value)}
-            >
-              <Text style={[styles.filterChipText, radiusFilter === opt.value && styles.filterChipTextActive]}>
-                {opt.label}
-              </Text>
-            </Pressable>
-          ))}
-        </ScrollView>
-
         {isLoading || isFetchingLocation ? (
           <ActivityIndicator style={{ marginTop: spacing.xl }} color={colors.primary} size="large" />
         ) : featuredEvent ? (
@@ -178,7 +152,7 @@ export default function EventScreen() {
             onOpen={() => navigation.navigate('EventDetail', { eventId: featuredEvent.id })}
           />
         ) : (
-          <EmptyNearbyEvent radius={radiusFilter} />
+          <EmptyNearbyEvent radius={1} />
         )}
 
         <EventSectionHeader
@@ -283,34 +257,6 @@ const makeStyles = (colors) => StyleSheet.create({
   content: {
     paddingBottom: spacing.xl,
     paddingTop: spacing.md,
-  },
-  filterContainer: {
-    marginTop: spacing.sm,
-    marginBottom: spacing.md,
-  },
-  filterScroll: {
-    paddingHorizontal: spacing.md,
-    gap: spacing.xs,
-  },
-  filterChip: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: radius.full,
-    borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  filterChipActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
-  filterChipText: {
-    color: colors.neutral,
-    fontFamily: 'Inter_500Medium',
-    fontSize: 12,
-  },
-  filterChipTextActive: {
-    color: '#FFFFFF',
   },
   heading: {
     color: colors.text,

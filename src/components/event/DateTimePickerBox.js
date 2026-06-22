@@ -5,14 +5,14 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useColors, radius, spacing } from '../../utils/theme';
 
-export default function DateTimePickerBox({ 
-  val1, 
-  val2, 
-  showPicker1, 
-  showPicker2, 
-  setShowPicker1, 
-  setShowPicker2, 
-  onChange1, 
+export default function DateTimePickerBox({
+  val1,
+  val2,
+  showPicker1,
+  showPicker2,
+  setShowPicker1,
+  setShowPicker2,
+  onChange1,
   onChange2,
   mode = 'date',
   icon = 'calendar-outline'

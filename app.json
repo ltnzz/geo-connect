@@ -51,6 +51,11 @@
           "defaultChannel": "social"
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "0597d250-9ade-4e1a-9e79-663f4d4cb87c"
+      }
+    }
   }
 }

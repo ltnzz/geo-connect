@@ -74,7 +74,7 @@ export default function HomeScreen() {
   }, []);
 
   useEffect(() => {
-    handleGetLocation();
+    handleGetLocation(false);
     fetchFeed(currentUserId);
     loadStories();
     if (events.length === 0) {
@@ -183,7 +183,7 @@ export default function HomeScreen() {
         onRefresh={() => {
           refreshFeed(currentUserId);
           loadStories();
-          handleGetLocation();
+          handleGetLocation(false);
         }}
         refreshing={isRefreshing}
         renderItem={({ item }) => <PostCard post={item} />}

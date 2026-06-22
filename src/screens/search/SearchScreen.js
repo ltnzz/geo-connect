@@ -53,7 +53,7 @@ export default function SearchScreen() {
   const { handleGetLocation } = useLocation();
 
   useEffect(() => {
-    handleGetLocation();
+    handleGetLocation(false);
   }, [handleGetLocation]);
 
 

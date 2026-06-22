@@ -7,13 +7,21 @@ const useLocationStore = create((set, get) => ({
   isFetchingLocation: false,
   locationError: null,
 
-  handleGetLocation: async () => {
+  handleGetLocation: async (requestIfMissing = true) => {
     if (get().isFetchingLocation) return;
     set({ isFetchingLocation: true, locationError: null });
     try {
-      let { status } = await locationService.requestForegroundPermission();
+      let status;
+      if (requestIfMissing) {
+        const response = await locationService.requestForegroundPermission();
+        status = response.status;
+      } else {
+        const response = await locationService.getPermissionStatus();
+        status = response.status;
+      }
+
       if (status !== 'granted') {
-        set({ locationError: 'Location permission denied.', isFetchingLocation: false });
+        set({ isFetchingLocation: false });
         return;
       }
 
@@ -47,7 +55,7 @@ const useLocationStore = create((set, get) => ({
       });
     } catch (err) {
       set({
-        locationError: 'Failed to get location. Make sure GPS is enabled.',
+        locationError: requestIfMissing ? 'Failed to get location. Make sure GPS is enabled.' : null,
         isFetchingLocation: false,
       });
     }

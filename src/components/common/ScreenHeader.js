@@ -5,6 +5,7 @@ import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useColors, radius, spacing } from '../../utils/theme';
+import { useNotificationStore } from '../../stores/notificationStore';
 
 export default function ScreenHeader({
   title,
@@ -24,6 +25,7 @@ export default function ScreenHeader({
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const unreadCount = useNotificationStore((state) => state.unreadCount);
   const colors = useColors();
   const styles = useMemo(() => makeStyles(colors), [colors]);
 
@@ -109,7 +111,16 @@ export default function ScreenHeader({
               (showBack || leftIcon) && !showRightOnBack && { opacity: 0 },
             ]}
           >
-            <Ionicons color={colors.text} name={rightIcon} size={24} />
+            <View>
+              <Ionicons color={colors.text} name={rightIcon} size={24} />
+              {rightIcon.includes('notification') && unreadCount > 0 && (
+                <View style={styles.badge}>
+                  <Text style={styles.badgeText}>
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </Text>
+                </View>
+              )}
+            </View>
           </Pressable>
         )}
       </View>
@@ -157,5 +168,24 @@ const makeStyles = (colors) => StyleSheet.create({
     height: 42,
     marginLeft: spacing.sm,
     paddingVertical: 0,
+  },
+  badge: {
+    position: 'absolute',
+    top: -2,
+    right: -4,
+    backgroundColor: colors.danger,
+    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+    borderWidth: 1.5,
+    borderColor: colors.surface,
+  },
+  badgeText: {
+    color: '#FFFFFF',
+    fontSize: 9,
+    fontFamily: 'Inter_700Bold',
   },
 });

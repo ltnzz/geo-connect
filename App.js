@@ -21,6 +21,7 @@ import { useAuthStore } from './src/stores/authStore';
 import { useThemeStore } from './src/stores/themeStore';
 import { notificationService } from './src/services/notificationService';
 import { useColors } from './src/utils/theme';
+import { useNotificationStore } from './src/stores/notificationStore';
 
 notificationService.configureForegroundNotifications();
 
@@ -31,6 +32,8 @@ export default function App() {
   const isInitialized = useAuthStore((state) => state.isInitialized);
   const themeMode = useThemeStore((state) => state.mode);
   const user = useAuthStore((state) => state.user);
+  const startListening = useNotificationStore((state) => state.startListening);
+  const stopListening = useNotificationStore((state) => state.stopListening);
   const colors = useColors();
   const [fontsLoaded] = useFonts({
     Poppins_400Regular,
@@ -56,14 +59,15 @@ export default function App() {
       return undefined;
     }
 
+    startListening(user.uid);
     notificationService.registerDevice(user.uid).catch((error) => {
       if (__DEV__) {
         console.warn('Unable to register FCM token:', error.message);
       }
     });
 
-    return undefined;
-  }, [user?.uid]);
+    return () => stopListening();
+  }, [user?.uid, startListening, stopListening]);
 
   if (!fontsLoaded) {
     return null;

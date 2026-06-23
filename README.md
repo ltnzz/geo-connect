@@ -75,3 +75,82 @@ Location sharing must stay off by default. Only request foreground location perm
 - Dika: feed, post, like, comment, follow.
 - Zidan: UI, notification, check-in.
 - Zanet: map, marker, venue.
+
+## Panduan Instalasi & Konfigurasi
+
+1. **Kloning Repositori**
+   Pastikan kamu sudah memiliki kode repositori ini di perangkat lokalmu.
+
+2. **Instalasi Dependensi**
+   Buka terminal di dalam folder proyek, lalu jalankan perintah berikut untuk menginstal semua *library* yang diperlukan:
+   ```bash
+   npm install
+   ```
+
+## Konfigurasi `.env`
+
+Aplikasi ini membutuhkan beberapa kunci rahasia API (seperti Firebase, Google Cloud, dan Cloudinary) agar seluruh fiturnya menyala.
+Salin file `.env.example` menjadi `.env` lalu isikan nilainya dengan *API key* kamu:
+
+```env
+# Konfigurasi Firebase
+EXPO_PUBLIC_FIREBASE_API_KEY=kunci_api_firebase_kamu
+EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN=domain_auth_firebase_kamu
+EXPO_PUBLIC_FIREBASE_PROJECT_ID=id_proyek_firebase
+EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET=bucket_storage_firebase
+EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=sender_id_firebase
+EXPO_PUBLIC_FIREBASE_APP_ID=app_id_firebase
+EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID=measurement_id_firebase
+
+# Konfigurasi Google Cloud (Untuk Auth & Maps)
+EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=client_id_web_kamu
+EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID=client_id_android_kamu
+# Jika Google Maps API Key kosong, sistem akan menggunakan FIREBASE_API_KEY sebagai alternatif fallback.
+EXPO_PUBLIC_GOOGLE_MAPS_API_KEY=kunci_api_google_maps_kamu
+
+# Konfigurasi Cloudinary (Untuk unggah gambar)
+EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME=nama_cloud_kamu
+EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET=preset_upload_kamu
+EXPO_PUBLIC_CLOUDINARY_UPLOAD_FOLDER=folder_upload_kamu
+```
+
+> **Penting**: File `.env` ini akan otomatis diabaikan oleh Git. Jika kamu ingin mem-*build* APK mandiri, jangan lupa unggah *environment variables* ini ke server EAS menggunakan perintah `eas secret:push --env-file .env`!
+
+## Cara Menjalankan Aplikasi
+
+Setelah proses instalasi dan `.env` beres, jalankan aplikasi melalui terminal dengan perintah:
+
+**Menjalankan di server pengembangan lokal (Expo Go):**
+```bash
+npx expo start
+```
+*(Tekan `a` untuk membuka di Emulator Android, atau pindai QR Code-nya dengan aplikasi Expo Go di HP kamu).*
+
+**Membuat Build Standalone (Aplikasi APK Android):**
+```bash
+eas build --platform android --profile preview
+```
+
+## Screenshot Fitur Utama
+
+Berikut adalah pratinjau fungsionalitas dan antarmuka utama dari aplikasi GeoConnect:
+
+### Layar Peta Utama (Maps)
+Menampilkan lokasi kamu, event terdekat, serta pos/lokasi interaktif dari pengguna lain.
+![Maps Screen](./image/maps-screen.jpeg)
+
+### Daftar Acara (Event)
+Menelusuri direktori komunitas untuk menemukan dan melihat sekumpulan acara di sekitarmu.
+![Event Screen](./image/event-screen.jpeg)
+
+### Detail Acara
+Informasi spesifik terkait sebuah acara yang sedang berlangsung, mencakup waktu, lokasi, dan pengguna lain yang bergabung.
+![Event Details](./image/event-details.jpeg)
+
+### Membuat Acara Baru
+Tampilan formulir pembuatan acara yang bisa langsung disematkan ke dalam peta.
+![Create Event](./image/craete-event.jpeg)
+
+### Pengaturan & Privasi
+Halaman untuk mengonfigurasi profil pengguna, notifikasi, dan pengelolaan preferensi akun.
+![Settings Screen](./image/settings-screen.jpeg)

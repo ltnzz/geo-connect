@@ -495,7 +495,7 @@ export default function PostDetailScreen({ route }) {
           )}
         </Pressable>
       </View>
-    </KeyboardAvoidingView>
+    </KeyboardComponent>
   );
 }
 

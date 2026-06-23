@@ -198,4 +198,21 @@ export const authService = {
     assertFirebaseConfigured();
     await signOut(auth);
   },
+
+  async deleteAccount() {
+    assertFirebaseConfigured();
+    const user = auth.currentUser;
+    if (!user) {
+      throw new Error('No user is currently signed in.');
+    }
+    
+    try {
+      await deleteUser(user);
+    } catch (error) {
+      if (error.code === 'auth/requires-recent-login') {
+        throw new Error('Penghapusan akun membutuhkan login ulang demi keamanan. Silakan logout dan login kembali untuk menghapus akun Anda.');
+      }
+      throw withFriendlyAuthError(error);
+    }
+  },
 };

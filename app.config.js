@@ -13,7 +13,7 @@ module.exports = ({ config }) => {
       config: {
         ...config.android?.config,
         googleMaps: {
-          apiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || '',
+          apiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || process.env.EXPO_PUBLIC_FIREBASE_API_KEY || '',
         },
       },
     },

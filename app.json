@@ -33,7 +33,10 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "AroundU uses your location only while you explore nearby public posts, places, and events."
+          "locationWhenInUsePermission": "AroundU uses your location only while you explore nearby public posts, places, and events.",
+          "locationAlwaysAndWhenInUsePermission": "AroundU uses your background location to find nearby events even when the app is closed.",
+          "locationAlwaysPermission": "AroundU uses your background location to find nearby events even when the app is closed.",
+          "isAndroidBackgroundLocationEnabled": true
         }
       ],
       [

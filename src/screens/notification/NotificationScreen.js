@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import {
   collection,
   doc,
@@ -51,6 +52,7 @@ const formatTime = (timestamp) => {
 };
 
 export default function NotificationScreen() {
+  const navigation = useNavigation();
   const userId = useAuthStore((state) => state.user?.uid);
   const [items, setItems] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -99,6 +101,19 @@ export default function NotificationScreen() {
     });
   };
 
+  const handleNotificationPress = async (notification) => {
+    await markAsRead(notification);
+
+    if (notification.type === NOTIFICATION_TYPES.follow && notification.actorId) {
+      navigation.push('UserProfile', { userId: notification.actorId });
+    } else if (
+      (notification.type === NOTIFICATION_TYPES.like || notification.type === NOTIFICATION_TYPES.comment) &&
+      notification.postId
+    ) {
+      navigation.navigate('PostDetail', { postId: notification.postId });
+    }
+  };
+
   return (
     <View style={styles.screen}>
       <ScreenHeader title="Notifications" showBack />
@@ -132,7 +147,7 @@ export default function NotificationScreen() {
 
             return (
               <Pressable
-                onPress={() => markAsRead(item)}
+                onPress={() => handleNotificationPress(item)}
                 style={[
                   styles.item,
                   !item.read && styles.unreadItem,

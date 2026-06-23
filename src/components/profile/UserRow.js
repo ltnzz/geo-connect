@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useColors, radius, spacing } from '../../utils/theme';
 
@@ -10,14 +11,25 @@ export default function UserRow({
   onFollowPress, 
   showFollowButton = false 
 }) {
+  const navigation = useNavigation();
   const colors = useColors();
   const styles = useMemo(() => makeStyles(colors), [colors]);
 
   const targetUserId = user.id || user.uid;
   const isOwnUser = currentUserId === targetUserId;
 
+  const handlePress = () => {
+    if (targetUserId) {
+      if (isOwnUser) {
+        navigation.navigate('Profile');
+      } else {
+        navigation.push('UserProfile', { userId: targetUserId });
+      }
+    }
+  };
+
   return (
-    <View style={styles.personRow}>
+    <Pressable style={styles.personRow} onPress={handlePress}>
       <View style={styles.avatar}>
         {user.avatarUrl ? (
           <Image source={{ uri: user.avatarUrl }} style={styles.avatarImage} />
@@ -44,7 +56,7 @@ export default function UserRow({
           </Text>
         </Pressable>
       ) : null}
-    </View>
+    </Pressable>
   );
 }
 

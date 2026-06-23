@@ -1409,4 +1409,17 @@ export const firestoreService = {
     const lastDoc = snapshot.docs[snapshot.docs.length - 1] ?? null;
     return { events, lastDoc };
   },
+
+  async getEventsByCreator(userId) {
+    assertFirebaseConfigured();
+    const snapshot = await getDocs(
+      query(collection(db, COLLECTIONS.events), where('creatorId', '==', userId))
+    );
+    const events = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+    return events.sort((a, b) => {
+      const timeA = a.startTime?.toMillis?.() || 0;
+      const timeB = b.startTime?.toMillis?.() || 0;
+      return timeB - timeA;
+    });
+  },
 };

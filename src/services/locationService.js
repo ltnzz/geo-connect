@@ -35,4 +35,31 @@ export const locationService = {
       mayShowUserSettingsDialog: true,
     });
   },
+
+  async requestBackgroundPermission() {
+    return Location.requestBackgroundPermissionsAsync();
+  },
+
+  async startBackgroundLocationUpdates(taskName) {
+    const isTaskDefined = await Location.hasStartedLocationUpdatesAsync(taskName);
+    if (!isTaskDefined) {
+      await Location.startLocationUpdatesAsync(taskName, {
+        accuracy: Location.Accuracy.Balanced,
+        timeInterval: 60000,
+        distanceInterval: 100,
+        showsBackgroundLocationIndicator: true,
+        foregroundService: {
+          notificationTitle: 'Location Tracking',
+          notificationBody: 'AroundU is tracking your location to find nearby events.',
+        },
+      });
+    }
+  },
+
+  async stopBackgroundLocationUpdates(taskName) {
+    const isTaskDefined = await Location.hasStartedLocationUpdatesAsync(taskName);
+    if (isTaskDefined) {
+      await Location.stopLocationUpdatesAsync(taskName);
+    }
+  },
 };

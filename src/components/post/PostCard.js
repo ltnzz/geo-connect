@@ -9,6 +9,7 @@ import { useColors, radius, spacing } from '../../utils/theme';
 import { formatCount, formatRelativeTime } from '../../utils/format';
 import { useLocation } from '../../hooks/useLocation';
 import { calculateDistance } from '../../utils/locationUtils';
+import { POST_LOCATION_VISIBILITY } from '../../constants/firestore';
 
 
 const PostCard = memo(function PostCard({ post }) {
@@ -22,6 +23,14 @@ const PostCard = memo(function PostCard({ post }) {
 
   const distanceLabel = useMemo(() => {
     if (!post) return null;
+
+    if (post.location?.visibility === POST_LOCATION_VISIBILITY.city || post.location?.visibility === POST_LOCATION_VISIBILITY.hidden) {
+      return null;
+    }
+
+    if (post.location?.visibility === POST_LOCATION_VISIBILITY.blurred) {
+      return 'Nearby';
+    }
 
     if (post.distance && typeof post.distance === 'string' && post.distance !== '0 km') {
       return post.distance;
@@ -47,8 +56,15 @@ const PostCard = memo(function PostCard({ post }) {
     return `${dist.toFixed(1)} km away`;
   }, [userLocation, post]);
 
-  const locationLabel =
-    post?.location?.address || post?.location?.city || 'Around you';
+  const locationLabel = useMemo(() => {
+    if (post?.location?.visibility === POST_LOCATION_VISIBILITY.city) {
+      return post?.location?.city || 'Around you';
+    }
+    if (post?.location?.visibility === POST_LOCATION_VISIBILITY.hidden) {
+      return 'Around you';
+    }
+    return post?.location?.address || post?.location?.city || 'Around you';
+  }, [post]);
 
   if (!post) return null;
 

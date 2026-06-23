@@ -1,6 +1,7 @@
 import * as Location from 'expo-location';
 import { create } from 'zustand';
 import { locationService } from '../services/locationService';
+import { BACKGROUND_LOCATION_TASK } from '../services/backgroundTasks';
 
 const useLocationStore = create((set, get) => ({
   location: null,
@@ -15,6 +16,12 @@ const useLocationStore = create((set, get) => ({
       if (requestIfMissing) {
         const response = await locationService.requestForegroundPermission();
         status = response.status;
+        if (status === 'granted') {
+          const bgResponse = await locationService.requestBackgroundPermission();
+          if (bgResponse.status === 'granted') {
+            await locationService.startBackgroundLocationUpdates(BACKGROUND_LOCATION_TASK);
+          }
+        }
       } else {
         const response = await locationService.getPermissionStatus();
         status = response.status;

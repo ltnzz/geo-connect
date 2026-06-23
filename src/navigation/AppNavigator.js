@@ -13,6 +13,8 @@ import AllNewEventsScreen from '../screens/event/AllNewEventsScreen';
 import EditEventScreen from '../screens/create/EditEventScreen';
 import DraftsScreen from '../screens/create/DraftsScreen';
 import VenueDetailScreen from '../screens/venue/VenueDetailScreen';
+import AccountDetailsScreen from '../screens/settings/AccountDetailsScreen';
+import UserProfileScreen from '../screens/profile/UserProfileScreen';
 import { useColors } from '../utils/theme';
 import { useThemeStore } from '../stores/themeStore';
 
@@ -53,6 +55,8 @@ export default function AppNavigator() {
         <Stack.Screen name="EditEvent" component={EditEventScreen} />
         <Stack.Screen name="Drafts" component={DraftsScreen} />
         <Stack.Screen name="VenueDetail" component={VenueDetailScreen} />
+        <Stack.Screen name="AccountDetails" component={AccountDetailsScreen} />
+        <Stack.Screen name="UserProfile" component={UserProfileScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

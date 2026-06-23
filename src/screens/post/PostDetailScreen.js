@@ -387,16 +387,25 @@ export default function PostDetailScreen({ route }) {
     }));
   }, [comments]);
 
-  const KeyboardComponent = KeyboardAvoidingView;
-  const keyboardProps = {
-    behavior: 'padding',
-    keyboardVerticalOffset: Platform.OS === 'ios' ? insets.top : 0,
-  };
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  useEffect(() => {
+    if (Platform.OS === 'ios') return;
+    const showSub = Keyboard.addListener('keyboardDidShow', (e) => setKeyboardHeight(e.endCoordinates.height));
+    const hideSub = Keyboard.addListener('keyboardDidHide', () => setKeyboardHeight(0));
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+
+  const KeyboardComponent = Platform.OS === 'ios' ? KeyboardAvoidingView : View;
+  const keyboardProps = Platform.OS === 'ios' ? { behavior: 'padding', keyboardVerticalOffset: insets.top } : {};
 
   return (
     <KeyboardComponent
       {...keyboardProps}
-      style={styles.screen}
+      style={[styles.screen, Platform.OS !== 'ios' && { paddingBottom: keyboardHeight }]}
     >
       <ScreenHeader title="Post" showBack onLeftPress={() => navigation.goBack()} />
 

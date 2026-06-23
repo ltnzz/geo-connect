@@ -1188,12 +1188,18 @@ export const firestoreService = {
     }
   },
 
-  getNearbyEvents(center, radiusMeters, maxResults = 50) {
-    return getNearbyDocuments({
+  async getNearbyEvents(center, radiusMeters, maxResults = 50) {
+    const events = await getNearbyDocuments({
       collectionName: COLLECTIONS.events,
       center,
       radiusMeters,
       maxResults,
+    });
+    const now = Date.now();
+    return events.filter((e) => {
+      if (!e.endTime) return true;
+      const endD = e.endTime.toDate ? e.endTime.toDate().getTime() : new Date(e.endTime).getTime();
+      return endD >= now;
     });
   },
 

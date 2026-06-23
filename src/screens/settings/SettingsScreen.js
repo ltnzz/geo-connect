@@ -236,13 +236,7 @@ export default function SettingsScreen() {
             label="Account Details"
             styles={styles}
             colors={colors}
-            onPress={() => {
-              if (navigation.canGoBack()) {
-                navigation.goBack();
-              } else {
-                navigation.navigate('Profile');
-              }
-            }}
+            onPress={() => navigation.navigate('AccountDetails')}
           />
           <MenuRow
             icon="notifications-outline"

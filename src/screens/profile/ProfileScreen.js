@@ -16,7 +16,7 @@ import {
 
 import ScreenHeader from '../../components/common/ScreenHeader';
 import NewEventCard from '../../components/event/NewEventCard';
-import ProfileLocationPicker from '../../components/profile/ProfileLocationPicker';
+import NewEventCard from '../../components/event/NewEventCard';
 import { useAuthStore } from '../../stores/authStore';
 import { useEventStore } from '../../stores/eventStore';
 import { firestoreService } from '../../services/firestoreService';
@@ -62,15 +62,6 @@ export default function ProfileScreen() {
   const [savedPosts, setSavedPosts] = useState([]);
   const [isSavedLoading, setIsSavedLoading] = useState(false);
   const [savedError, setSavedError] = useState('');
-  const [isEditVisible, setIsEditVisible] = useState(false);
-  const [isSavingProfile, setIsSavingProfile] = useState(false);
-  const [isLocationPickerVisible, setIsLocationPickerVisible] = useState(false);
-  const [editForm, setEditForm] = useState({
-    username: user?.username || '',
-    bio: user?.bio || '',
-    city: user?.city || '',
-    profileLocation: user?.profileLocation || null,
-  });
 
   const username = user?.username || 'aroundu';
   const city = user?.city || 'Jakarta';
@@ -186,46 +177,7 @@ export default function ProfileScreen() {
   }, [activeSegment, user?.uid]);
 
   const openEditProfile = () => {
-    setEditForm({
-      username: user?.username || '',
-      bio: user?.bio || '',
-      city: user?.city || '',
-      profileLocation: user?.profileLocation || null,
-    });
-    setIsEditVisible(true);
-  };
-
-  const updateEditField = (field, value) => {
-    setEditForm((current) => ({ ...current, [field]: value }));
-  };
-
-  const saveProfile = async () => {
-    if (!user?.uid || isSavingProfile) {
-      return;
-    }
-
-    const updates = {
-      username: editForm.username.trim().toLowerCase(),
-      bio: editForm.bio.trim(),
-      city: editForm.city.trim(),
-      profileLocation: editForm.profileLocation,
-    };
-
-    if (!updates.username) {
-      Alert.alert('Username required', 'Please enter a username.');
-      return;
-    }
-
-    setIsSavingProfile(true);
-    try {
-      await firestoreService.updateUser(user.uid, updates);
-      updateCurrentUser(updates);
-      setIsEditVisible(false);
-    } catch {
-      Alert.alert('Unable to save profile', 'Please check your connection and try again.');
-    } finally {
-      setIsSavingProfile(false);
-    }
+    navigation.navigate('AccountDetails');
   };
 
   return (
@@ -552,96 +504,7 @@ export default function ProfileScreen() {
           </View>
         )}
       </ScrollView>
-
-      <Modal
-        animationType="slide"
-        onRequestClose={() => setIsEditVisible(false)}
-        transparent
-        visible={isEditVisible}
-      >
-        <View style={styles.modalBackdrop}>
-          <View style={styles.editSheet}>
-            <View style={styles.sheetHeader}>
-              <Text style={styles.sheetTitle}>Edit Profile</Text>
-              <Pressable
-                accessibilityLabel="Close edit profile"
-                accessibilityRole="button"
-                onPress={() => setIsEditVisible(false)}
-                style={styles.closeButton}
-              >
-                <Ionicons color={colors.neutral} name="close" size={22} />
-              </Pressable>
-            </View>
-
-            <Text style={styles.inputLabel}>Username</Text>
-            <TextInput
-              autoCapitalize="none"
-              onChangeText={(value) => updateEditField('username', value)}
-              placeholder="username"
-              placeholderTextColor={colors.neutral}
-              style={styles.input}
-              value={editForm.username}
-            />
-
-            <Text style={styles.inputLabel}>Location</Text>
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => setIsLocationPickerVisible(true)}
-              style={styles.locationPickerButton}
-            >
-              <View style={styles.locationPickerIcon}>
-                <Ionicons color={colors.primary} name="map-outline" size={18} />
-              </View>
-              <View style={styles.locationPickerCopy}>
-                <Text style={styles.locationPickerText}>
-                  {editForm.city || editForm.profileLocation?.address || 'Pick from map'}
-                </Text>
-                <Text style={styles.locationPickerHint}>
-                  Tap to choose your profile location
-                </Text>
-              </View>
-              <Ionicons color={colors.neutral} name="chevron-forward" size={18} />
-            </Pressable>
-
-            <Text style={styles.inputLabel}>Bio</Text>
-            <TextInput
-              multiline
-              onChangeText={(value) => updateEditField('bio', value)}
-              placeholder="Tell people what you are into"
-              placeholderTextColor={colors.neutral}
-              style={[styles.input, styles.bioInput]}
-              value={editForm.bio}
-            />
-
-            <Pressable
-              accessibilityRole="button"
-              disabled={isSavingProfile}
-              onPress={saveProfile}
-              style={[styles.saveButton, isSavingProfile && styles.saveButtonDisabled]}
-            >
-              {isSavingProfile ? (
-                <ActivityIndicator color="#FFFFFF" size="small" />
-              ) : (
-                <Text style={styles.saveButtonText}>Save Profile</Text>
-              )}
-            </Pressable>
-          </View>
-        </View>
-      </Modal>
-
-      <ProfileLocationPicker
-        onClose={() => setIsLocationPickerVisible(false)}
-        onSelect={(location) => {
-          setEditForm((current) => ({
-            ...current,
-            city: location.city || location.address || current.city,
-            profileLocation: location,
-          }));
-          setIsLocationPickerVisible(false);
-        }}
-        visible={isLocationPickerVisible}
-      />
-      </View>
+    </View>
   );
 }
 

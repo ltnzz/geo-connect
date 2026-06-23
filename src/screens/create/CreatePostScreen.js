@@ -32,6 +32,7 @@ export default function CreatePostScreen() {
 
   const { location: userLocation, handleGetLocation } = useLocation();
   const [postLocation, setPostLocation] = useState(null);
+  const [postVisibility, setPostVisibility] = useState(POST_LOCATION_VISIBILITY.exact);
   const [selectedVenue, setSelectedVenue] = useState(null);
   const [isLocationModalVisible, setIsLocationModalVisible] = useState(false);
 
@@ -107,7 +108,7 @@ export default function CreatePostScreen() {
         placeId: selectedVenue?.id || null,
         location: {
           ...postLocation,
-          visibility: POST_LOCATION_VISIBILITY.exact,
+          visibility: postVisibility,
         },
       });
 
@@ -122,7 +123,7 @@ export default function CreatePostScreen() {
         placeId: selectedVenue?.id || null,
         location: {
           ...postLocation,
-          visibility: POST_LOCATION_VISIBILITY.exact,
+          visibility: postVisibility,
         },
         likesCount: 0,
         commentsCount: 0,
@@ -342,6 +343,40 @@ export default function CreatePostScreen() {
             )}
           </Pressable>
 
+          {postLocation && (
+            <View style={styles.visibilityContainer}>
+              <Text style={styles.visibilityLabel}>Location Privacy</Text>
+              <View style={styles.visibilityTabs}>
+                {[
+                  { value: POST_LOCATION_VISIBILITY.exact, label: 'Exact', icon: 'pin' },
+                  { value: POST_LOCATION_VISIBILITY.blurred, label: 'Blurred', icon: 'scan' },
+                  { value: POST_LOCATION_VISIBILITY.city, label: 'City Only', icon: 'business' }
+                ].map((option) => (
+                  <Pressable
+                    key={option.value}
+                    onPress={() => setPostVisibility(option.value)}
+                    style={[
+                      styles.visibilityTab,
+                      postVisibility === option.value && styles.visibilityTabActive
+                    ]}
+                  >
+                    <Ionicons 
+                      name={postVisibility === option.value ? option.icon : `${option.icon}-outline`} 
+                      size={16} 
+                      color={postVisibility === option.value ? colors.surface : colors.neutral} 
+                    />
+                    <Text style={[
+                      styles.visibilityTabText,
+                      postVisibility === option.value && styles.visibilityTabTextActive
+                    ]}>
+                      {option.label}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+          )}
+
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
         </View>
 
@@ -537,5 +572,43 @@ const makeStyles = (colors) => StyleSheet.create({
   },
   submitButtonTextDisabled: {
     color: colors.mutedText,
+  },
+  visibilityContainer: {
+    marginBottom: spacing.md,
+  },
+  visibilityLabel: {
+    color: colors.mutedText,
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 11,
+    marginBottom: spacing.sm,
+    marginLeft: 4,
+  },
+  visibilityTabs: {
+    backgroundColor: colors.background,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    flexDirection: 'row',
+    padding: 4,
+  },
+  visibilityTab: {
+    alignItems: 'center',
+    borderRadius: radius.sm,
+    flex: 1,
+    flexDirection: 'row',
+    gap: 6,
+    justifyContent: 'center',
+    paddingVertical: 10,
+  },
+  visibilityTabActive: {
+    backgroundColor: colors.primary,
+  },
+  visibilityTabText: {
+    color: colors.neutral,
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 12,
+  },
+  visibilityTabTextActive: {
+    color: colors.surface,
   },
 });

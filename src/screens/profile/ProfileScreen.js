@@ -16,7 +16,7 @@ import {
 
 import ScreenHeader from '../../components/common/ScreenHeader';
 import NewEventCard from '../../components/event/NewEventCard';
-import NewEventCard from '../../components/event/NewEventCard';
+
 import { useAuthStore } from '../../stores/authStore';
 import { useEventStore } from '../../stores/eventStore';
 import { firestoreService } from '../../services/firestoreService';

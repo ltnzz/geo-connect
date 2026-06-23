@@ -6,6 +6,7 @@ import {
   Alert,
   FlatList,
   Image,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -13,6 +14,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  ToastAndroid,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -310,6 +312,10 @@ export default function PostDetailScreen({ route }) {
       });
       setDraft('');
       setReplyingTo(null);
+      Keyboard.dismiss();
+      if (Platform.OS === 'android') {
+        ToastAndroid.show('Komentar terkirim', ToastAndroid.SHORT);
+      }
     } finally {
       setIsSending(false);
     }

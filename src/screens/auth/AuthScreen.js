@@ -235,7 +235,7 @@ export default function AuthScreen() {
           <Pressable onPress={Keyboard.dismiss} style={styles.dismissArea}>
             <View style={[styles.hero, keyboardVisible && styles.heroKeyboardVisible]}>
               <View style={styles.logo}>
-                <BrandMark size={68} />
+                <BrandMark size={100} />
               </View>
               {!keyboardVisible ? (
                 <>

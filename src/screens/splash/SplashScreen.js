@@ -143,7 +143,7 @@ export default function SplashScreen({ onFinish }) {
             },
           ]}
         >
-          <BrandMark size={104} />
+          <BrandMark size={150} />
         </Animated.View>
 
         <Animated.Text

@@ -109,7 +109,7 @@ export default function SettingsScreen() {
 
   const handleThemeToggle = (value) => {
     setLocalDarkMode(value);
-    // Defer the heavy theme rendering recalculation by 150ms to allow switch slide animation to run smoothly on Native thread
+    
     setTimeout(() => {
       setThemeMode(value ? 'dark' : 'light');
     }, 150);

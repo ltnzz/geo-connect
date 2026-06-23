@@ -217,7 +217,7 @@ export default function EventDetailScreen({ route }) {
             </Text>
           </View>
 
-          {/* Active Stories List */}
+          {}
           <Text style={styles.subSectionTitle}>Active Stories</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.storiesRow}>
             <Pressable onPress={handleAddStory} style={styles.addStoryThumbnail}>

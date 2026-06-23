@@ -37,7 +37,7 @@ export default function SplashScreen({ onFinish }) {
       splashPlayer.seekTo(SPLASH_AUDIO_START_SECONDS).catch(() => {});
       splashPlayer.play();
     } catch {
-      // Web browsers can block autoplay. The splash should continue silently.
+      
     }
 
     const stopTimer = setTimeout(() => {

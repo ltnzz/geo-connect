@@ -28,7 +28,7 @@ export default function LocationSelectModal({ visible, onClose, onSelect, curren
   const colors = useColors();
   const styles = useMemo(() => makeStyles(colors), [colors]);
 
-  const [currentView, setCurrentView] = useState('menu'); // 'menu' | 'map' | 'venue'
+  const [currentView, setCurrentView] = useState('menu'); 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -119,7 +119,7 @@ export default function LocationSelectModal({ visible, onClose, onSelect, curren
     }
   };
 
-  // Map view geocoding & reverse geocoding helper
+  
   const updateAddressLabel = async (coord) => {
     try {
       const geocode = await Location.reverseGeocodeAsync(coord);
@@ -224,7 +224,7 @@ export default function LocationSelectModal({ visible, onClose, onSelect, curren
     }
   }, [currentView, venueSearchQuery, loadVenues]);
 
-  // Handle debounce search for venue
+  
   useEffect(() => {
     if (currentView !== 'venue') return;
     const timer = setTimeout(() => {
@@ -237,7 +237,7 @@ export default function LocationSelectModal({ visible, onClose, onSelect, curren
     onSelect({
       latitude: venue.location.latitude,
       longitude: venue.location.longitude,
-      address: venue.name, // Use venue name as address to tag it clearly
+      address: venue.name, 
       city: venue.city || venue.address || '',
       placeId: venue.id,
     });
@@ -311,7 +311,7 @@ export default function LocationSelectModal({ visible, onClose, onSelect, curren
           </View>
         )}
 
-        {/* Render View: Choose Location from Map */}
+        {}
         {currentView === 'map' && (
           <View style={styles.viewContainer}>
             <View style={styles.header}>
@@ -385,7 +385,7 @@ export default function LocationSelectModal({ visible, onClose, onSelect, curren
           </View>
         )}
 
-        {/* Render View: Select Venue */}
+        {}
         {currentView === 'venue' && (
           <View style={styles.viewContainer}>
             <View style={styles.header}>

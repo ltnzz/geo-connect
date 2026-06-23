@@ -83,7 +83,7 @@ export function useEventResponse(eventId) {
       
       await firestoreService.setEventParticipation(eventId, user.uid, newGoingState);
       
-      // Optimistic count update
+      
       const event = events.find((e) => e.id === eventId);
       if (event) {
         const diff = newGoingState ? 1 : -1;
@@ -113,7 +113,7 @@ export function useEventResponse(eventId) {
 
       await firestoreService.setEventInterest(eventId, user.uid, newInterestState);
       
-      // Optimistic count update
+      
       const event = events.find((e) => e.id === eventId);
       if (event) {
         const diff = newInterestState ? 1 : -1;

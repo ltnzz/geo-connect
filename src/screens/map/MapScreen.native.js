@@ -421,7 +421,7 @@ export default function MapScreen() {
   ]);
 
   useEffect(() => {
-    // Reset cache on manual refresh/location changes
+    
     dataCache.current = {};
   }, [refreshVersion]);
 

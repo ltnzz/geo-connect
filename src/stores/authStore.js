@@ -73,7 +73,7 @@ export const useAuthStore = create((set) => ({
     try {
       const currentUser = useAuthStore.getState().user;
 
-      // Clear user state early to trigger listener unsubscribes
+      
       set({ user: null });
 
       if (currentUser?.uid) {

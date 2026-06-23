@@ -38,7 +38,7 @@ export default function EventStorySection({ eventId, eventLocation }) {
       eventLocation.longitude
     );
 
-    // 0.5 km = 500 meters
+    
     if (distanceKm > 0.5) {
       Alert.alert(
         'Too Far', 

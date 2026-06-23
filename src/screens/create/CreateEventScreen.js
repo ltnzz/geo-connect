@@ -49,7 +49,7 @@ export default function CreateEventScreen({ initialDraft, onEventDataChange, onS
         category: formData.category,
         bannerUrl,
         location: formData.location,
-        radiusMeters: 5000, // Default 5km radius for visibility
+        radiusMeters: 5000, 
         startTime: startDateTime,
         endTime: endDateTime,
         status: 'published',

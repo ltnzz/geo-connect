@@ -27,7 +27,7 @@ async function saveDraft(draftData) {
     content: content || '',
     assetUri: assetUri || null,
     radius: radius || 5,
-    eventData: eventData || null, // Stores title, description, category, startTime, endTime, location
+    eventData: eventData || null, 
     createdAt: Date.now(),
     updatedAt: Date.now(),
   };
@@ -35,7 +35,7 @@ async function saveDraft(draftData) {
   const existingIndex = drafts.findIndex((d) => d.id === newDraft.id);
   
   if (existingIndex >= 0) {
-    // Preserve original createdAt
+    
     newDraft.createdAt = drafts[existingIndex].createdAt;
     drafts[existingIndex] = newDraft;
   } else {

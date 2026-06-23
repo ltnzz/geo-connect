@@ -25,7 +25,7 @@ export default function CreateStoryModal({
   const colors = useColors();
   const styles = useMemo(() => makeStyles(colors), [colors]);
 
-  // Reset selected event when modal becomes visible or resets
+  
   useEffect(() => {
     if (visible) {
       setSelectedEvent(null);
@@ -46,7 +46,7 @@ export default function CreateStoryModal({
     >
       <View style={styles.backdrop}>
         <View style={styles.modalContent}>
-          {/* Header */}
+          {}
           <View style={styles.header}>
             <Text style={styles.headerTitle}>New Story</Text>
             <Pressable hitSlop={8} onPress={onClose} style={styles.closeButton}>
@@ -58,7 +58,7 @@ export default function CreateStoryModal({
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
           >
-            {/* Image Preview */}
+            {}
             <Text style={styles.sectionTitle}>Preview</Text>
             <View style={styles.previewContainer}>
               {imageUri ? (
@@ -70,7 +70,7 @@ export default function CreateStoryModal({
               )}
             </View>
 
-            {/* Event Selector */}
+            {}
             <Text style={styles.sectionTitle}>Tag an Event</Text>
             <Text style={styles.sectionSubtitle}>Select the event where you want to share this photo:</Text>
             
@@ -122,7 +122,7 @@ export default function CreateStoryModal({
             )}
           </ScrollView>
 
-          {/* Action Footer */}
+          {}
           <View style={styles.footer}>
             <Pressable
               disabled={!selectedEvent || isSharing}

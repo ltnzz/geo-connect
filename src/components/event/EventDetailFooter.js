@@ -145,7 +145,7 @@ const makeStyles = (colors) => StyleSheet.create({
     borderColor: colors.primary,
   },
   goingButton: {
-    // previously flex: 2, now just flex: 1
+    
   },
   notGoingSelected: {
     backgroundColor: colors.danger + '1A',

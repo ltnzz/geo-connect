@@ -285,7 +285,7 @@ const makeStyles = (colors) => StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     position: 'absolute',
-    top: 70, // Below header
+    top: 70, 
     left: 0,
     right: 0,
     zIndex: 10,

@@ -26,10 +26,10 @@ export const darkColors = Object.freeze({
   border: '#334155',
 });
 
-/** Backward-compat alias — always returns light palette (for module-level usage) */
+
 export const colors = lightColors;
 
-/** Hook: returns the correct color palette based on the current theme mode */
+
 export function useColors() {
   const mode = useThemeStore((s) => s.mode);
   return mode === 'dark' ? darkColors : lightColors;

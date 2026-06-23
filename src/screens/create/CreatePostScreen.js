@@ -59,7 +59,7 @@ export default function CreatePostScreen() {
     }
   }, [userLocation]);
 
-  // Load draft from params
+  
   useEffect(() => {
     const draft = route.params?.draft;
     if (draft) {
@@ -222,10 +222,10 @@ export default function CreatePostScreen() {
 
         if (!shouldPrompt) return;
 
-        // Prevent default tab switch
+        
         e.preventDefault();
         showDraftAlert(() => {
-          // After discard/save, manually navigate to the tab that was pressed
+          
           navigation.navigate(e.target.split('-')[0]);
         });
       });
@@ -233,7 +233,7 @@ export default function CreatePostScreen() {
     }, [navigation, showDraftAlert])
   );
 
-  // Intercept Android hardware back button / edge-swipe gesture
+  
   useFocusEffect(
     useCallback(() => {
       const onBackPress = () => {
@@ -244,10 +244,10 @@ export default function CreatePostScreen() {
         const eventHasContent = efd?.title?.trim().length > 0 || !!efd?.asset || efd?.description?.trim().length > 0;
         const shouldPrompt = (isPostActive && postHasContent) || (isEventActive && eventHasContent);
 
-        if (!shouldPrompt) return false; // let default back behavior happen
+        if (!shouldPrompt) return false; 
 
         showDraftAlert(() => navigation.navigate('Home'));
-        return true; // prevent default
+        return true; 
       };
 
       const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
@@ -255,7 +255,7 @@ export default function CreatePostScreen() {
     }, [navigation, showDraftAlert])
   );
 
-  // X button handler
+  
   const handleClose = () => {
     if (!hasContent && !hasEventContent) {
       navigation.goBack();

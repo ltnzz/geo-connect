@@ -24,7 +24,7 @@ export default function StoryRingRow({
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {/* Add Story / Current User Story Button */}
+        {}
         <View style={styles.ringWrapper}>
           {hasStories ? (
             <Pressable
@@ -86,7 +86,7 @@ export default function StoryRingRow({
           </Text>
         </View>
 
-        {/* Other Story Rings */}
+        {}
         {groupedStories.map((group) => {
           const avatarUrl = group.userAvatar;
 

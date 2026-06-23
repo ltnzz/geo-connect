@@ -90,12 +90,12 @@ export default function StoryViewerModal({ visible, stories = [], initialIndex =
       visible={visible}
     >
       <Pressable onPress={handleTap} style={styles.container}>
-        {/* Fullscreen Image */}
+        {}
         <Image source={{ uri: currentStory.mediaUrl }} style={styles.storyImage} />
 
-        {/* Top Header Overlay */}
+        {}
         <View style={styles.topOverlay}>
-          {/* Progress Bars */}
+          {}
           <View style={styles.progressRow}>
             {stories.map((story, index) => {
               let width = '0%';
@@ -115,7 +115,7 @@ export default function StoryViewerModal({ visible, stories = [], initialIndex =
             })}
           </View>
 
-          {/* User Profile / Info */}
+          {}
           <View style={styles.userInfoRow}>
             <View style={styles.avatar}>
               {currentStory.userAvatar ? (

@@ -21,6 +21,8 @@ export default function ScreenHeader({
   onLeftPress,
   rightComponent,
   onSearchIconPress,
+  hideLeft = false,
+  searchPlaceholder = 'Search around you',
 }) {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
@@ -48,7 +50,7 @@ export default function ScreenHeader({
               accessibilityLabel="Search posts"
               autoFocus
               onChangeText={onSearchChange}
-              placeholder="Search around you"
+              placeholder={searchPlaceholder}
               placeholderTextColor={colors.neutral}
               returnKeyType="search"
               style={styles.searchInput}
@@ -67,6 +69,8 @@ export default function ScreenHeader({
               />
             </Pressable>
           </View>
+        ) : hideLeft ? (
+          <View style={{ width: 40 }} />
         ) : showBack || leftIcon ? (
           <Pressable
             accessibilityRole="button"

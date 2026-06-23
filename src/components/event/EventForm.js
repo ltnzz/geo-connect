@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import DateTimePickerBox from './DateTimePickerBox';
+import LocationSelectModal from '../create/LocationSelectModal';
 import { useLocation } from '../../hooks/useLocation';
 import { useColors, radius, spacing } from '../../utils/theme';
 import { imagePickerService } from '../../services/imagePickerService';
@@ -48,6 +49,7 @@ export default function EventForm({
 
   const { location, isFetchingLocation, locationError, handleGetLocation } = useLocation();
   const [currentLocation, setCurrentLocation] = useState(null);
+  const [isLocationModalVisible, setIsLocationModalVisible] = useState(false);
   const [error, setError] = useState(null);
 
 
@@ -80,7 +82,7 @@ export default function EventForm({
 
 
   useEffect(() => {
-    if (location) {
+    if (location && !currentLocation) {
       setCurrentLocation(location);
     }
   }, [location]);
@@ -203,7 +205,7 @@ export default function EventForm({
         icon="time-outline"
       />
 
-      <Pressable style={styles.eventLocationButton} onPress={handleGetLocation} disabled={isFetchingLocation}>
+      <Pressable style={styles.eventLocationButton} onPress={() => setIsLocationModalVisible(true)} disabled={isFetchingLocation}>
         <Ionicons color={colors.primary} name="location" size={18} />
         <View style={styles.locationTextContainer}>
           {isFetchingLocation ? (
@@ -260,6 +262,13 @@ export default function EventForm({
           )}
         </Pressable>
       </View>
+
+      <LocationSelectModal
+        visible={isLocationModalVisible}
+        onClose={() => setIsLocationModalVisible(false)}
+        onSelect={(loc) => setCurrentLocation(loc)}
+        currentUserLocation={location}
+      />
     </View>
   );
 }

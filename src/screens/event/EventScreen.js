@@ -19,6 +19,7 @@ import NewEventCard from '../../components/event/NewEventCard';
 import TrendingEventCard from '../../components/event/TrendingEventCard';
 import EventSectionHeader from '../../components/event/EventSectionHeader';
 import EmptyNearbyEvent from '../../components/event/EmptyNearbyEvent';
+import EmptyNewEvent from '../../components/event/EmptyNewEvent';
 import { useEventStore } from '../../stores/eventStore';
 import { useAuthStore } from '../../stores/authStore';
 import { firestoreService } from '../../services/firestoreService';
@@ -86,12 +87,7 @@ export default function EventScreen() {
 
   const matchingReal = normalizedSearch
     ? events.filter((event) =>
-      [
-        event.title,
-        event.location?.address,
-        event.location?.city,
-        event.description,
-      ].some((value) => value?.toLowerCase().includes(normalizedSearch))
+      event.title?.toLowerCase().includes(normalizedSearch)
     )
     : events;
 
@@ -130,6 +126,7 @@ export default function EventScreen() {
         onSearchChange={setSearchQuery}
         searchValue={searchQuery}
         showSearch
+        searchPlaceholder="Search events..."
       />
       {isOffline ? (
         <View style={styles.offlineBanner}>
@@ -212,7 +209,7 @@ export default function EventScreen() {
             ))}
           </ScrollView>
         ) : (
-          <Text style={styles.emptyNewEventsText}>No new events recently.</Text>
+          <EmptyNewEvent />
         )}
 
         {trendingPlaces.length > 0 ? (

@@ -63,12 +63,14 @@ export default function EventForm({
       if (initialValues.category) setCategory(initialValues.category);
       
       if (initialValues.startTime) {
-        setDate(initialValues.startTime);
-        setTime(initialValues.startTime);
+        const start = new Date(initialValues.startTime);
+        setDate(start);
+        setTime(start);
       }
       if (initialValues.endTime) {
-        setEndDate(initialValues.endTime);
-        setEndTime(initialValues.endTime);
+        const end = new Date(initialValues.endTime);
+        setEndDate(end);
+        setEndTime(end);
       }
       if (initialValues.location) {
         setCurrentLocation(initialValues.location);

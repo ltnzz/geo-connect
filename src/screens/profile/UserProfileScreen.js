@@ -16,6 +16,7 @@ import { firestoreService } from '../../services/firestoreService';
 import { useAuthStore } from '../../stores/authStore';
 import { useFeedStore } from '../../stores/feedstore';
 import { useColors, radius, spacing } from '../../utils/theme';
+import { POST_LOCATION_VISIBILITY } from '../../constants/firestore';
 
 const POST_COLORS = ['#E9F0FF', '#E9FDF5', '#FFF7E8', '#F3E8FF', '#FFECEF'];
 
@@ -34,6 +35,15 @@ const getPostLocationLabel = (post) => {
   if (typeof post.location === 'string') {
     return post.location;
   }
+
+  if (post.location?.visibility === POST_LOCATION_VISIBILITY.hidden) {
+    return 'AroundU';
+  }
+
+  if (post.location?.visibility === POST_LOCATION_VISIBILITY.city) {
+    return post.location?.city || 'AroundU';
+  }
+
   return post.location?.address || post.location?.city || post.placeName || 'AroundU';
 };
 

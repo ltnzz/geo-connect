@@ -21,6 +21,7 @@ export default function ProfileFeedScreen() {
   const [localPosts, setLocalPosts] = useState(posts);
   const prevPostsRef = useRef(posts);
   const deletedPostIds = useFeedStore((s) => s.deletedPostIds);
+  const unbookmarkedPostIds = useFeedStore((s) => s.unbookmarkedPostIds);
 
   useEffect(() => {
     const newPosts = route.params?.posts || [];
@@ -36,8 +37,8 @@ export default function ProfileFeedScreen() {
   }, [route.params?.posts]);
 
   const displayedPosts = useMemo(() => {
-    return localPosts.filter((p) => !deletedPostIds.includes(p.id));
-  }, [localPosts, deletedPostIds]);
+    return localPosts.filter((p) => !deletedPostIds.includes(p.id) && !unbookmarkedPostIds.includes(p.id));
+  }, [localPosts, deletedPostIds, unbookmarkedPostIds]);
 
   const initialIndex = displayedPosts.findIndex((p) => p.id === initialPostId);
   const scrollIndex = initialIndex !== -1 ? initialIndex : 0;

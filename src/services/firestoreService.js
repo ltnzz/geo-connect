@@ -1349,9 +1349,6 @@ export const firestoreService = {
       .filter((event) =>
         [
           event.title,
-          event.description,
-          event.location?.address,
-          event.location?.city,
         ].some((value) => value?.toLowerCase().includes(normalizedSearch)),
       );
   },

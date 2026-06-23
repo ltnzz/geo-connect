@@ -64,14 +64,23 @@ export default function HomeScreen() {
   };
 
   const loadStories = useCallback(async () => {
+    if (!currentUserId) return;
     try {
-      const activeStories = await firestoreService.getAllActiveStories();
-      const grouped = groupStoriesByUser(activeStories);
+      const [activeStories, followingProfiles] = await Promise.all([
+        firestoreService.getAllActiveStories(),
+        firestoreService.getConnections(currentUserId, false)
+      ]);
+      
+      const followingSet = new Set(followingProfiles.map(p => p.id));
+      followingSet.add(currentUserId);
+
+      const filteredStories = activeStories.filter(story => followingSet.has(story.userId));
+      const grouped = groupStoriesByUser(filteredStories);
       setGroupedStories(grouped);
     } catch (err) {
       console.warn('Failed to load stories:', err);
     }
-  }, []);
+  }, [currentUserId]);
 
   useEffect(() => {
     handleGetLocation(false);

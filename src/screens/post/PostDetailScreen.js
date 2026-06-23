@@ -316,8 +316,7 @@ export default function PostDetailScreen({ route }) {
       await addComment(postId, {
         userId: currentUserId,
         content: draft,
-        authorName: currentUser?.username || 'Anonymous',
-        authorAvatar: currentUser?.avatarUrl || '',
+        author: currentUser,
         parentId: replyingTo?.id ?? null,
         replyToAuthorName: replyingTo?.authorName ?? '',
       });

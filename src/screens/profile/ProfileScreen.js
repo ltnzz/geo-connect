@@ -12,16 +12,18 @@ import {
   Text,
   TextInput,
   View,
+  RefreshControl,
 } from 'react-native';
 
 import ScreenHeader from '../../components/common/ScreenHeader';
 import NewEventCard from '../../components/event/NewEventCard';
 
 import { useAuthStore } from '../../stores/authStore';
+import { useFeedStore } from '../../stores/feedstore';
 import { useEventStore } from '../../stores/eventStore';
 import { firestoreService } from '../../services/firestoreService';
 import { useColors, radius, spacing } from '../../utils/theme';
-
+import { POST_LOCATION_VISIBILITY } from '../../constants/firestore';
 
 const POST_COLORS = ['#E9F0FF', '#E9FDF5', '#FFF7E8', '#F3E8FF', '#FFECEF'];
 
@@ -44,6 +46,14 @@ const getPostLocationLabel = (post) => {
     return post.location;
   }
 
+  if (post.location?.visibility === POST_LOCATION_VISIBILITY.hidden) {
+    return 'AroundU';
+  }
+
+  if (post.location?.visibility === POST_LOCATION_VISIBILITY.city) {
+    return post.location?.city || 'AroundU';
+  }
+
   return post.location?.address || post.location?.city || post.placeName || 'AroundU';
 };
 
@@ -62,14 +72,88 @@ export default function ProfileScreen() {
   const [savedPosts, setSavedPosts] = useState([]);
   const [isSavedLoading, setIsSavedLoading] = useState(false);
   const [savedError, setSavedError] = useState('');
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const username = user?.username || 'aroundu';
   const city = user?.city || 'Jakarta';
-  const visiblePosts = activeSegment === 'posts' ? profilePosts : savedPosts;
   const events = useEventStore((state) => state.events);
   const fetchEvents = useEventStore((state) => state.fetchEvents);
   const isEventsLoading = useEventStore((state) => state.isLoading);
   const userEvents = events.filter((e) => e.creatorId === user?.uid);
+  const unbookmarkedPostIds = useFeedStore((state) => state.unbookmarkedPostIds);
+
+  const displayedSavedPosts = useMemo(() => {
+    return savedPosts.filter(p => !unbookmarkedPostIds.includes(p.id));
+  }, [savedPosts, unbookmarkedPostIds]);
+
+  const visiblePosts = activeSegment === 'posts' ? profilePosts : displayedSavedPosts;
+
+  const fetchProfileData = useCallback(async () => {
+    if (!user?.uid) return;
+    setIsPostsLoading(true);
+    setPostsError('');
+    try {
+      const [profile, posts, bookmarkedIds] = await Promise.all([
+        firestoreService.getUser(user.uid),
+        firestoreService.getUserPosts(user.uid),
+        firestoreService.getBookmarkedPostIds(user.uid),
+      ]);
+      const likedIds = posts.length
+        ? await firestoreService.getLikedPostIds(posts.map((p) => p.id), user.uid)
+        : new Set();
+      const enrichedPosts = posts.map((p) => ({
+        ...p,
+        isLiked: likedIds.has(p.id),
+        isBookmarked: bookmarkedIds.has(p.id),
+      }));
+      if (profile) {
+        updateCurrentUser({
+          followersCount: profile.followersCount ?? 0,
+          followingCount: profile.followingCount ?? 0,
+          postsCount: profile.postsCount ?? enrichedPosts.length,
+        });
+      }
+      setProfilePosts(enrichedPosts);
+    } catch (err) {
+      setPostsError('Unable to load your posts.');
+    } finally {
+      setIsPostsLoading(false);
+    }
+  }, [user?.uid, updateCurrentUser]);
+
+  const fetchSavedData = useCallback(async () => {
+    if (!user?.uid) return;
+    setIsSavedLoading(true);
+    setSavedError('');
+    try {
+      const [posts, bookmarkedIds] = await Promise.all([
+        firestoreService.getBookmarkedPosts(user.uid),
+        firestoreService.getBookmarkedPostIds(user.uid),
+      ]);
+      const likedIds = posts.length
+        ? await firestoreService.getLikedPostIds(posts.map((p) => p.id), user.uid)
+        : new Set();
+      const enrichedPosts = posts.map((p) => ({
+        ...p,
+        isLiked: likedIds.has(p.id),
+        isBookmarked: bookmarkedIds.has(p.id),
+      }));
+      setSavedPosts(enrichedPosts);
+    } catch {
+      setSavedError('Unable to load saved posts.');
+    } finally {
+      setIsSavedLoading(false);
+    }
+  }, [user?.uid]);
+
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    const promises = [fetchProfileData()];
+    if (activeSegment === 'events') promises.push(fetchEvents());
+    if (activeSegment === 'saved') promises.push(fetchSavedData());
+    await Promise.allSettled(promises);
+    setIsRefreshing(false);
+  }, [fetchProfileData, fetchEvents, fetchSavedData, activeSegment]);
 
   useEffect(() => {
     if (activeSegment === 'events' && events.length === 0 && !isEventsLoading) {
@@ -77,104 +161,19 @@ export default function ProfileScreen() {
     }
   }, [activeSegment, events.length, isEventsLoading, fetchEvents]);
 
+  useEffect(() => {
+    if (activeSegment === 'saved' && savedPosts.length === 0 && !isSavedLoading) {
+      fetchSavedData();
+    }
+  }, [activeSegment, savedPosts.length, isSavedLoading, fetchSavedData]);
+
   useFocusEffect(
     useCallback(() => {
-      if (!user?.uid) {
-        return undefined;
+      if (user?.uid && profilePosts.length === 0 && !isPostsLoading) {
+        fetchProfileData();
       }
-
-      let isActive = true;
-
-      setIsPostsLoading(true);
-      setPostsError('');
-
-      Promise.all([
-        firestoreService.getUser(user.uid),
-        firestoreService.getUserPosts(user.uid),
-        firestoreService.getBookmarkedPostIds(user.uid),
-      ])
-        .then(async ([profile, posts, bookmarkedIds]) => {
-          const likedIds = posts.length
-            ? await firestoreService.getLikedPostIds(posts.map((p) => p.id), user.uid)
-            : new Set();
-
-          const enrichedPosts = posts.map((p) => ({
-            ...p,
-            isLiked: likedIds.has(p.id),
-            isBookmarked: bookmarkedIds.has(p.id),
-          }));
-
-          if (isActive) {
-            if (profile) {
-              updateCurrentUser({
-                followersCount: profile.followersCount ?? 0,
-                followingCount: profile.followingCount ?? 0,
-                postsCount: profile.postsCount ?? enrichedPosts.length,
-              });
-            }
-            setProfilePosts(enrichedPosts);
-          }
-        })
-        .catch(() => {
-          if (isActive) {
-            setPostsError('Unable to load your posts.');
-          }
-        })
-        .finally(() => {
-          if (isActive) {
-            setIsPostsLoading(false);
-          }
-        });
-
-      return () => {
-        isActive = false;
-      };
-    }, [updateCurrentUser, user?.uid]),
+    }, [user?.uid, profilePosts.length, isPostsLoading, fetchProfileData])
   );
-
-  useEffect(() => {
-    if (activeSegment !== 'saved' || !user?.uid) {
-      return;
-    }
-
-    let isActive = true;
-    setIsSavedLoading(true);
-    setSavedError('');
-
-    Promise.all([
-      firestoreService.getBookmarkedPosts(user.uid),
-      firestoreService.getBookmarkedPostIds(user.uid),
-    ])
-      .then(async ([posts, bookmarkedIds]) => {
-        const likedIds = posts.length
-          ? await firestoreService.getLikedPostIds(posts.map((p) => p.id), user.uid)
-          : new Set();
-
-        const enrichedPosts = posts.map((p) => ({
-          ...p,
-          isLiked: likedIds.has(p.id),
-          isBookmarked: bookmarkedIds.has(p.id),
-        }));
-
-        if (isActive) {
-          setSavedPosts(enrichedPosts);
-        }
-      })
-      .catch(() => {
-        if (isActive) {
-          setSavedError('Unable to load saved posts.');
-        }
-      })
-      .finally(() => {
-        if (isActive) {
-          setIsSavedLoading(false);
-        }
-      });
-
-    return () => {
-      isActive = false;
-    };
-  }, [activeSegment, user?.uid]);
 
   const openEditProfile = () => {
     navigation.navigate('AccountDetails');
@@ -192,6 +191,9 @@ export default function ProfileScreen() {
       <ScrollView
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} tintColor={colors.primary} />
+        }
       >
         <View style={styles.avatar}>
           {user?.avatarUrl ? (
@@ -456,7 +458,7 @@ export default function ProfileScreen() {
                 <Ionicons color={colors.danger} name="alert-circle-outline" size={25} />
                 <Text style={styles.feedStateText}>{savedError}</Text>
               </View>
-            ) : savedPosts.length === 0 ? (
+            ) : displayedSavedPosts.length === 0 ? (
               <View style={styles.feedState}>
                 <Ionicons color={colors.neutral} name="bookmark-outline" size={28} />
                 <Text style={styles.feedStateTitle}>No saved posts yet</Text>
@@ -466,7 +468,7 @@ export default function ProfileScreen() {
               </View>
             ) : (
               <View style={styles.feedGrid}>
-                {savedPosts.map((post, index) => (
+                {displayedSavedPosts.map((post, index) => (
                   <Pressable
                     accessibilityLabel={`Post at ${getPostLocationLabel(post)}`}
                     accessibilityRole="button"
@@ -474,7 +476,7 @@ export default function ProfileScreen() {
                     onPress={() =>
                       navigation.navigate('ProfileFeed', {
                         initialPostId: post.id,
-                        posts: savedPosts,
+                        posts: displayedSavedPosts,
                         title: 'Saved',
                       })
                     }

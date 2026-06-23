@@ -60,6 +60,7 @@ export const useFeedStore = create((set, get) => ({
   loopPage: 0,
   isOffline: false,
   error: null,
+  unbookmarkedPostIds: [],
 
   commentsByPost: {},
   commentsLoadingByPost: {},
@@ -315,6 +316,9 @@ export const useFeedStore = create((set, get) => ({
           ? { ...p, isBookmarked: nextBookmarked }
           : p,
       ),
+      unbookmarkedPostIds: nextBookmarked
+        ? s.unbookmarkedPostIds.filter((id) => id !== postId)
+        : [...s.unbookmarkedPostIds, postId],
     }));
 
     try {

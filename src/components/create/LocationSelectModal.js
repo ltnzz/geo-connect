@@ -11,7 +11,8 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import MapView, { Marker } from 'react-native-maps';
+import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { firestoreService } from '../../services/firestoreService';
 import { useColors, radius, spacing } from '../../utils/theme';
@@ -26,7 +27,8 @@ const DEFAULT_REGION = {
 
 export default function LocationSelectModal({ visible, onClose, onSelect, currentUserLocation }) {
   const colors = useColors();
-  const styles = useMemo(() => makeStyles(colors), [colors]);
+  const insets = useSafeAreaInsets();
+  const styles = useMemo(() => makeStyles(colors, insets), [colors, insets]);
 
   const [currentView, setCurrentView] = useState('menu'); 
   const [isLoading, setIsLoading] = useState(false);
@@ -346,6 +348,7 @@ export default function LocationSelectModal({ visible, onClose, onSelect, curren
 
             <View style={{ flex: 1 }}>
               <MapView
+                provider={PROVIDER_GOOGLE}
                 region={mapRegion}
                 onRegionChangeComplete={setMapRegion}
                 onPress={handleMapPress}
@@ -472,10 +475,11 @@ export default function LocationSelectModal({ visible, onClose, onSelect, curren
   );
 }
 
-const makeStyles = (colors) => StyleSheet.create({
+const makeStyles = (colors, insets) => StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: colors.background,
+    paddingTop: insets?.top || 0,
   },
   viewContainer: {
     flex: 1,

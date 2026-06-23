@@ -15,7 +15,7 @@ TaskManager.defineTask(BACKGROUND_LOCATION_TASK, async ({ data, error }) => {
     if (user && locations && locations.length > 0) {
       const location = locations[0];
       try {
-        await firestoreService.updateUserLocation(user.uid, {
+        await firestoreService.updatePrivateLocation(user.uid, {
           latitude: location.coords.latitude,
           longitude: location.coords.longitude,
         });

@@ -15,6 +15,7 @@ export function useEventResponse(eventId) {
   const [isGoing, setIsGoing] = useState(false);
   const [isInterested, setIsInterested] = useState(false);
   const [isNotGoing, setIsNotGoing] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
 
   useEffect(() => {
     if (!user || !eventId) {
@@ -40,7 +41,7 @@ export function useEventResponse(eventId) {
     const unsubRegistrations = onSnapshot(
       registrationRef,
       (docSnap) => {
-        setIsInterested(docSnap.exists() && docSnap.data()?.status === 'interested');
+        setIsInterested(docSnap.exists());
       },
       (error) => {
         console.warn('Error fetching event registration status:', error.message);
@@ -65,7 +66,8 @@ export function useEventResponse(eventId) {
   }, [eventId, user]);
 
   const toggleGoing = async () => {
-    if (!user || !eventId) return;
+    if (!user || !eventId || isUpdating) return;
+    setIsUpdating(true);
     const newGoingState = !isGoing;
     
     try {
@@ -83,7 +85,6 @@ export function useEventResponse(eventId) {
       
       await firestoreService.setEventParticipation(eventId, user.uid, newGoingState);
       
-      
       const event = events.find((e) => e.id === eventId);
       if (event) {
         const diff = newGoingState ? 1 : -1;
@@ -91,11 +92,14 @@ export function useEventResponse(eventId) {
       }
     } catch (error) {
       console.error('Failed to toggle going state:', error);
+    } finally {
+      setIsUpdating(false);
     }
   };
 
   const toggleInterested = async () => {
-    if (!user || !eventId) return;
+    if (!user || !eventId || isUpdating) return;
+    setIsUpdating(true);
     const newInterestState = !isInterested;
 
     try {
@@ -113,7 +117,6 @@ export function useEventResponse(eventId) {
 
       await firestoreService.setEventInterest(eventId, user.uid, newInterestState);
       
-      
       const event = events.find((e) => e.id === eventId);
       if (event) {
         const diff = newInterestState ? 1 : -1;
@@ -121,11 +124,14 @@ export function useEventResponse(eventId) {
       }
     } catch (error) {
       console.error('Failed to toggle interested state:', error);
+    } finally {
+      setIsUpdating(false);
     }
   };
 
   const toggleNotGoing = async () => {
-    if (!user || !eventId) return;
+    if (!user || !eventId || isUpdating) return;
+    setIsUpdating(true);
     const newNotGoingState = !isNotGoing;
 
     try {
@@ -148,10 +154,12 @@ export function useEventResponse(eventId) {
       await firestoreService.setEventDecline(eventId, user.uid, newNotGoingState);
     } catch (error) {
       console.error('Failed to toggle not going state:', error);
+    } finally {
+      setIsUpdating(false);
     }
   };
 
   const response = isNotGoing ? 'not_going' : isGoing ? 'going' : isInterested ? 'interested' : null;
 
-  return { response, toggleGoing, toggleInterested, toggleNotGoing };
+  return { response, toggleGoing, toggleInterested, toggleNotGoing, isUpdating };
 }

@@ -240,6 +240,22 @@ export const firestoreService = {
     await deleteDoc(doc(db, COLLECTIONS.users, userId));
   },
 
+  async getVenueStories(placeId) {
+    assertFirebaseConfigured();
+    const snapshot = await getDocs(
+      query(
+        collection(db, COLLECTIONS.stories),
+        where('placeId', '==', placeId)
+      )
+    );
+    
+    const since = Date.now() - 24 * 60 * 60 * 1000;
+    return snapshot.docs
+      .map(d => ({ id: d.id, ...d.data({ serverTimestamps: 'estimate' }) }))
+      .filter(story => !story.createdAt || getMillis(story.createdAt) >= since)
+      .sort((a, b) => getMillis(a.createdAt) - getMillis(b.createdAt));
+  },
+
   async createPost({
     authorId,
     caption,
@@ -1088,6 +1104,50 @@ export const firestoreService = {
     });
   },
 
+  async checkIn({ userId, placeId, location }) {
+    assertFirebaseConfigured();
+    
+    // Fallback to in-memory filtering to avoid requiring a composite index
+    const checkinsSnapshot = await getDocs(
+      query(
+        collection(db, COLLECTIONS.checkins),
+        where('userId', '==', userId)
+      )
+    );
+
+    const hasRecentCheckin = checkinsSnapshot.docs.some((docSnap) => {
+      const data = docSnap.data();
+      if (data.placeId !== placeId) return false;
+      const createdAt = data.createdAt?.toMillis ? data.createdAt.toMillis() : 0;
+      return (Date.now() - createdAt) < 24 * 60 * 60 * 1000;
+    });
+
+    if (hasRecentCheckin) {
+      throw new Error('You have already checked in here within the last 24 hours.');
+    }
+
+    const placeSnapshot = await getDoc(doc(db, COLLECTIONS.places, placeId));
+    let placeName = '';
+    if (placeSnapshot.exists()) {
+      placeName = placeSnapshot.data().name;
+      await updateDoc(doc(db, COLLECTIONS.places, placeId), {
+        checkinsCount: increment(1)
+      });
+    }
+
+    const reference = doc(collection(db, COLLECTIONS.checkins));
+    await setDoc(reference, {
+      userId,
+      placeId,
+      placeName,
+      ...createLocation(location),
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+
+    return reference.id;
+  },
+
   async createEventPromptLog(data) {
     return createDocument(COLLECTIONS.eventPromptLogs, {
       userId: data.userId,
@@ -1238,8 +1298,8 @@ export const firestoreService = {
 
     const since = Date.now() - 24 * 60 * 60 * 1000;
     return snapshot.docs
-      .map((d) => ({ id: d.id, ...d.data() }))
-      .filter((story) => getMillis(story.createdAt) >= since)
+      .map((d) => ({ id: d.id, ...d.data({ serverTimestamps: 'estimate' }) }))
+      .filter((story) => !story.createdAt || getMillis(story.createdAt) >= since)
       .sort((a, b) => getMillis(a.createdAt) - getMillis(b.createdAt));
   },
 
@@ -1306,11 +1366,7 @@ export const firestoreService = {
     const filteredPosts = snapshot.docs
       .map((documentSnapshot) => ({ id: documentSnapshot.id, ...documentSnapshot.data() }))
       .filter((post) =>
-        [
-          post.caption,
-          post.location?.address,
-          post.location?.city,
-        ].some((value) => value?.toLowerCase().includes(normalizedSearch)),
+        post.caption?.toLowerCase().includes(normalizedSearch)
       );
 
     return await Promise.all(
@@ -1362,13 +1418,30 @@ export const firestoreService = {
     }
 
     if (location) {
-      await this._fetchAndSyncFoursquare(location, 50000, searchText);
+      await this._fetchAndSyncFoursquare(location, 10000, searchText);
+      const nearbyDocs = await getNearbyDocuments({
+        collectionName: COLLECTIONS.places,
+        center: location,
+        radiusMeters: 10000,
+        maxResults: 100,
+      });
+
+      return nearbyDocs
+        .filter((place) =>
+          [
+            place.name,
+            place.category,
+            place.address,
+            place.city,
+          ].some((value) => value?.toLowerCase().includes(normalizedSearch)),
+        )
+        .slice(0, maxResults);
     }
 
     const snapshot = await getDocs(
       query(
         collection(db, COLLECTIONS.places),
-        limit(maxResults),
+        limit(100),
       ),
     );
 
@@ -1381,7 +1454,8 @@ export const firestoreService = {
           place.address,
           place.city,
         ].some((value) => value?.toLowerCase().includes(normalizedSearch)),
-      );
+      )
+      .slice(0, maxResults);
   },
 
   async getAllPlaces(maxResults = 25) {

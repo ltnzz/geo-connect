@@ -28,6 +28,7 @@ export const foursquareService = {
         radiusMeters,
         query,
         limit: 25,
+        sort: 'DISTANCE',
       }),
     });
 

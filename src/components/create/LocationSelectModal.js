@@ -12,7 +12,7 @@ import {
   View,
 } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { firestoreService } from '../../services/firestoreService';
 import { useColors, radius, spacing } from '../../utils/theme';
@@ -27,8 +27,7 @@ const DEFAULT_REGION = {
 
 export default function LocationSelectModal({ visible, onClose, onSelect, currentUserLocation }) {
   const colors = useColors();
-  const insets = useSafeAreaInsets();
-  const styles = useMemo(() => makeStyles(colors, insets), [colors, insets]);
+  const styles = useMemo(() => makeStyles(colors), [colors]);
 
   const [currentView, setCurrentView] = useState('menu'); 
   const [isLoading, setIsLoading] = useState(false);
@@ -253,7 +252,7 @@ export default function LocationSelectModal({ visible, onClose, onSelect, curren
       visible={visible}
       onRequestClose={onClose}
     >
-      <View style={styles.screen}>
+      <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
         {/* Render View: Option Menu */}
         {currentView === 'menu' && (
           <View style={styles.viewContainer}>
@@ -295,16 +294,6 @@ export default function LocationSelectModal({ visible, onClose, onSelect, curren
                     <Ionicons name="chevron-forward" size={18} color={colors.neutral} />
                   </Pressable>
 
-                  <Pressable onPress={() => setCurrentView('venue')} style={styles.menuOption}>
-                    <View style={[styles.optionIconContainer, { backgroundColor: '#DB27771A' }]}>
-                      <Ionicons name="business" size={22} color="#DB2777" />
-                    </View>
-                    <View style={styles.optionTextContainer}>
-                      <Text style={styles.optionTitle}>Pilih Venue</Text>
-                      <Text style={styles.optionDescription}>Kaitkan postingan dengan tempat / venue</Text>
-                    </View>
-                    <Ionicons name="chevron-forward" size={18} color={colors.neutral} />
-                  </Pressable>
 
                   {error ? <Text style={styles.errorText}>{error}</Text> : null}
                 </>
@@ -470,16 +459,15 @@ export default function LocationSelectModal({ visible, onClose, onSelect, curren
             {error ? <Text style={styles.errorText}>{error}</Text> : null}
           </View>
         )}
-      </View>
+      </SafeAreaView>
     </Modal>
   );
 }
 
-const makeStyles = (colors, insets) => StyleSheet.create({
+const makeStyles = (colors) => StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: colors.background,
-    paddingTop: insets?.top || 0,
+    backgroundColor: colors.surface,
   },
   viewContainer: {
     flex: 1,
@@ -569,6 +557,7 @@ const makeStyles = (colors, insets) => StyleSheet.create({
   searchContainer: {
     backgroundColor: colors.surface,
     paddingHorizontal: spacing.md,
+    paddingTop: spacing.sm,
     paddingBottom: spacing.sm,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,

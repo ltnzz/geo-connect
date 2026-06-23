@@ -4,12 +4,16 @@ Aplikasi mobile komunitas berbasis lokasi (GeoConnect) yang dibangun dengan Expo
 
 ## Teknologi
 
-- **Framework**: Expo SDK 54, React Native 0.81, React 19.1
-- **Navigasi & State**: React Navigation, Zustand
-- **Backend & DB**: Firebase Auth, Firestore
-- **Peta & Lokasi**: `react-native-maps`, `expo-location`
-- **Penyimpanan Media**: Cloudinary (`expo-image`)
-- **Animasi**: Reanimated 4, Gesture Handler (New Architecture)
+- **Core**: React Native 0.81, React 19.1, Expo SDK 54
+- **Navigasi**: React Navigation 7 (Bottom Tabs, Drawer, Native Stack)
+- **State Management**: Zustand 5
+- **Backend & Database**: Firebase (Auth & Firestore)
+- **Lokasi & Peta**: `react-native-maps`, `expo-location`, `geofire-common` (untuk pencarian *geo-query*)
+- **Autentikasi**: `@react-native-google-signin/google-signin` (Google OAuth)
+- **Media & Penyimpanan**: Cloudinary, `expo-image`, `expo-image-picker`
+- **Animasi & Interaksi**: Reanimated 4, React Native Gesture Handler (menggunakan *New Architecture*)
+- **Notifikasi**: `expo-notifications`, `expo-device`
+- **Lain-lain**: `@expo-google-fonts`, `expo-crypto`, `expo-linear-gradient`
 
 ## Panduan Instalasi & Menjalankan Aplikasi
 

@@ -117,7 +117,9 @@ service cloud.firestore {
             'location',
             'rating',
             'checkinsCount',
-            'updatedAt'
+            'updatedAt',
+            'source',
+            'status'
           ]);
       allow delete: if false;
     }

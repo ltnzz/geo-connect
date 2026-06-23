@@ -147,6 +147,7 @@ function PostHeader({ post, currentUserId, onLike, onBookmark, showFollow, isFol
               {locationLabel}
             </Text>
           </View>
+        </View>
         </Pressable>
 
         {showFollow ? (

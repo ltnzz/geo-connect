@@ -19,11 +19,6 @@
       "package": "com.aroundu.app",
       "googleServicesFile": "./google-services.json",
       "softwareKeyboardLayoutMode": "resize",
-      "config": {
-        "googleMaps": {
-          "apiKey": "AIzaSyDgEHc-BfWWFw4tgpzK6DIMTCQ4sToGmJE"
-        }
-      },
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",

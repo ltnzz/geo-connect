@@ -15,6 +15,7 @@ import {
 
 import ScreenHeader from '../../components/common/ScreenHeader';
 import { LOCATION_SHARING } from '../../constants/firestore';
+import { authService } from '../../services/authService';
 import { firestoreService } from '../../services/firestoreService';
 import { useAuthStore } from '../../stores/authStore';
 import { useThemeStore } from '../../stores/themeStore';
@@ -133,9 +134,9 @@ export default function SettingsScreen() {
   const changeInvisibleMode = (value) => {
     setInvisibleMode(value);
     if (value && user?.uid) {
-      firestoreService.clearSharedLocation(user.uid).catch(() => {});
+      firestoreService.clearSharedLocation(user.uid).catch(() => { });
     }
-    savePrivacySetting({ invisibleMode: value }).catch(() => {});
+    savePrivacySetting({ invisibleMode: value }).catch(() => { });
   };
 
   const changeLocationSharing = (value) => {
@@ -144,9 +145,9 @@ export default function SettingsScreen() {
       user?.uid &&
       [LOCATION_SHARING.city, LOCATION_SHARING.hidden].includes(value)
     ) {
-      firestoreService.clearSharedLocation(user.uid).catch(() => {});
+      firestoreService.clearSharedLocation(user.uid).catch(() => { });
     }
-    savePrivacySetting({ locationSharing: value }).catch(() => {});
+    savePrivacySetting({ locationSharing: value }).catch(() => { });
   };
 
   const openLocationHistory = async () => {
@@ -231,110 +232,100 @@ export default function SettingsScreen() {
       >
         <SectionLabel styles={styles}>ACCOUNT</SectionLabel>
         <View style={styles.card}>
-          <View style={styles.cardInner}>
-            <MenuRow
-              icon="person-outline"
-              label="Account Details"
-              styles={styles}
-              colors={colors}
-              onPress={() => navigation.navigate('AccountDetails')}
-            />
-            <MenuRow
-              icon="notifications-outline"
-              label="Notifications"
-              last
-              styles={styles}
-              colors={colors}
-              onPress={() => navigation.navigate('Notification')}
-            />
-          </View>
+          <MenuRow
+            icon="person-outline"
+            label="Account Details"
+            styles={styles}
+            colors={colors}
+            onPress={() => navigation.navigate('AccountDetails')}
+          />
+          <MenuRow
+            icon="notifications-outline"
+            label="Notifications"
+            last
+            styles={styles}
+            colors={colors}
+            onPress={() => navigation.navigate('Notification')}
+          />
         </View>
 
         <SectionLabel styles={styles}>APPEARANCE</SectionLabel>
         <View style={styles.card}>
-          <View style={styles.cardInner}>
-            <MenuRow
-              icon="contrast"
-              label="Dark Mode"
-              description="Switch between light and dark app appearance."
-              last
-              styles={styles}
-              colors={colors}
-              rightElement={
-                <Switch
-                  accessibilityLabel="Dark mode"
-                  onValueChange={handleThemeToggle}
-                  thumbColor="#FFFFFF"
-                  trackColor={{ false: '#D8DEE8', true: colors.primary }}
-                  value={localDarkMode}
-                />
-              }
-            />
-          </View>
+          <MenuRow
+            icon="contrast"
+            label="Dark Mode"
+            description="Switch between light and dark app appearance."
+            last
+            styles={styles}
+            colors={colors}
+            rightElement={
+              <Switch
+                accessibilityLabel="Dark mode"
+                onValueChange={handleThemeToggle}
+                thumbColor="#FFFFFF"
+                trackColor={{ false: '#D8DEE8', true: colors.primary }}
+                value={localDarkMode}
+              />
+            }
+          />
         </View>
 
         <SectionLabel styles={styles}>LOCATION VISIBILITY</SectionLabel>
         <View style={styles.card}>
-          <View style={styles.cardInner}>
-            <MenuRow
-              icon="lock-closed"
-              label="Invisible Mode"
-              description="Stay active without appearing in Nearby People."
-              last
-              styles={styles}
-              colors={colors}
-              rightElement={
-                <Switch
-                  accessibilityLabel="Invisible mode"
-                  disabled={isSaving}
-                  onValueChange={changeInvisibleMode}
-                  thumbColor="#FFFFFF"
-                  trackColor={{ false: '#D8DEE8', true: colors.primary }}
-                  value={invisibleMode}
-                />
-              }
-            />
-          </View>
+          <MenuRow
+            icon="lock-closed"
+            label="Invisible Mode"
+            description="Stay active without appearing in Nearby People."
+            last
+            styles={styles}
+            colors={colors}
+            rightElement={
+              <Switch
+                accessibilityLabel="Invisible mode"
+                disabled={isSaving}
+                onValueChange={changeInvisibleMode}
+                thumbColor="#FFFFFF"
+                trackColor={{ false: '#D8DEE8', true: colors.primary }}
+                value={invisibleMode}
+              />
+            }
+          />
         </View>
 
         <SectionLabel styles={styles}>SHARE LOCATION PRECISION</SectionLabel>
         <View style={styles.card}>
-          <View style={styles.cardInner}>
-            {LOCATION_OPTIONS.map((option, index) => {
-              const isSelected = locationSharing === option.value;
-              return (
-                <MenuRow
-                  key={option.value}
-                  label={option.label}
-                  description={option.description}
-                  onPress={() => changeLocationSharing(option.value)}
-                  last={index === LOCATION_OPTIONS.length - 1}
-                  styles={styles}
-                  colors={colors}
-                  rightElement={
-                    <View style={[styles.radio, isSelected && styles.radioSelected]}>
-                      {isSelected ? <View style={styles.radioDot} /> : null}
-                    </View>
-                  }
-                />
-              );
-            })}
-          </View>
+          {LOCATION_OPTIONS.map((option, index) => {
+            const isSelected = locationSharing === option.value;
+            return (
+              <MenuRow
+                key={option.value}
+                label={option.label}
+                description={option.description}
+                onPress={() => changeLocationSharing(option.value)}
+                last={index === LOCATION_OPTIONS.length - 1}
+                styles={styles}
+                colors={colors}
+                rightElement={
+                  <View style={[styles.radio, isSelected && styles.radioSelected]}>
+                    {isSelected ? <View style={styles.radioDot} /> : null}
+                  </View>
+                }
+              />
+            );
+          })}
         </View>
 
         <SectionLabel styles={styles}>DATA MANAGEMENT</SectionLabel>
         <View style={styles.card}>
-          <View style={styles.cardInner}>
-            <MenuRow
-              icon="location-outline"
-              description="View and delete your past geodata."
-              label="Location History"
-              last
-              styles={styles}
-              colors={colors}
-              onPress={openLocationHistory}
-            />
-          </View>
+          <MenuRow
+            icon="location-outline"
+            description="View and delete your past geodata."
+            label="Location History"
+            last
+            styles={styles}
+            colors={colors}
+            onPress={openLocationHistory}
+          />
         </View>
 
         <SectionLabel styles={styles}>DANGER ZONE</SectionLabel>
@@ -345,7 +336,32 @@ export default function SettingsScreen() {
               label="Delete Account"
               styles={styles}
               colors={{ ...colors, primary: colors.danger, text: colors.danger }}
-              onPress={() => Alert.alert('Request Deletion', 'Account deletion must be requested to the administrator manually. Please email admin@aroundu.app for processing.')}
+              onPress={() => {
+                Alert.alert(
+                  'Hapus Akun',
+                  'Apakah Anda yakin ingin menghapus akun ini secara permanen? Semua data Anda akan hilang.',
+                  [
+                    { text: 'Batal', style: 'cancel' },
+                    {
+                      text: 'Hapus',
+                      style: 'destructive',
+                      onPress: async () => {
+                        if (!user?.uid) return;
+                        setIsSaving(true);
+                        try {
+                          await firestoreService.deleteAccountData(user.uid);
+                          await authService.deleteAccount();
+                          await logout();
+                        } catch (error) {
+                          Alert.alert('Gagal Menghapus Akun', error.message);
+                        } finally {
+                          setIsSaving(false);
+                        }
+                      }
+                    }
+                  ]
+                );
+              }}
             />
             <MenuRow
               icon="trash-outline"
@@ -494,20 +510,15 @@ const makeStyles = (colors) => StyleSheet.create({
     marginTop: spacing.lg,
   },
   card: {
+    backgroundColor: colors.surface,
     borderColor: colors.border,
     borderRadius: radius.lg,
     borderWidth: 1,
+    overflow: 'hidden',
     shadowColor: colors.neutral,
     shadowOffset: { height: 3, width: 0 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
-    elevation: 2,
-    marginBottom: spacing.sm,
-  },
-  cardInner: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    overflow: 'hidden',
   },
   menuRow: {
     alignItems: 'center',
@@ -601,6 +612,16 @@ const makeStyles = (colors) => StyleSheet.create({
     lineHeight: 18,
     marginTop: spacing.sm,
     textAlign: 'center',
+  },
+  deleteHint: {
+    color: colors.neutral,
+    fontFamily: 'Poppins_400Regular',
+    fontSize: 11,
+    marginTop: spacing.md,
+    paddingHorizontal: spacing.xl,
+    paddingBottom: spacing.lg,
+    textAlign: 'center',
+    opacity: 0.8,
   },
   logoutModalActions: {
     flexDirection: 'row',

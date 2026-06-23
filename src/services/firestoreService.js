@@ -234,6 +234,12 @@ export const firestoreService = {
     await batch.commit();
   },
 
+  async deleteAccountData(userId) {
+    assertFirebaseConfigured();
+    await this.clearLocationHistory(userId);
+    await deleteDoc(doc(db, COLLECTIONS.users, userId));
+  },
+
   async createPost({
     authorId,
     caption,

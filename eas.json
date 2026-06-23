@@ -12,45 +12,13 @@
       "distribution": "internal",
       "android": {
         "buildType": "apk"
-      },
-      "env": {
-        "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyDgEHc-BfWWFw4tgpzK6DIMTCQ4sToGmJE",
-        "EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN": "aroundu-96361.firebaseapp.com",
-        "EXPO_PUBLIC_FIREBASE_PROJECT_ID": "aroundu-96361",
-        "EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET": "aroundu-96361.firebasestorage.app",
-        "EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID": "274759311290",
-        "EXPO_PUBLIC_FIREBASE_APP_ID": "1:274759311290:web:50a7fb03c60cd68891c783",
-        "EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID": "G-ZB8S4MKQRY",
-        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "274759311290-ofv2bk0u0tfubfimq325ea5nk52hm27o.apps.googleusercontent.com",
-        "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID": "274759311290-ine3mk8k92md7g6n87dm7he085lc0ufo.apps.googleusercontent.com",
-        "EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME": "dfq3dbpo9",
-        "EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET": "aroundu",
-        "EXPO_PUBLIC_CLOUDINARY_UPLOAD_FOLDER": "aroundu",
-        "EXPO_PUBLIC_FOURSQUARE_PROXY_URL": "https://aroundu-foursquare-proxy.aroundu.workers.dev",
-        "EXPO_PUBLIC_FOURSQUARE_WORKER_URL": "https://aroundu-foursquare-proxy.aroundu.workers.dev"
       }
     },
     "production": {
       "android": {
         "buildType": "apk"
       },
-      "autoIncrement": true,
-      "env": {
-        "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyDgEHc-BfWWFw4tgpzK6DIMTCQ4sToGmJE",
-        "EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN": "aroundu-96361.firebaseapp.com",
-        "EXPO_PUBLIC_FIREBASE_PROJECT_ID": "aroundu-96361",
-        "EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET": "aroundu-96361.firebasestorage.app",
-        "EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID": "274759311290",
-        "EXPO_PUBLIC_FIREBASE_APP_ID": "1:274759311290:web:50a7fb03c60cd68891c783",
-        "EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID": "G-ZB8S4MKQRY",
-        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "274759311290-ofv2bk0u0tfubfimq325ea5nk52hm27o.apps.googleusercontent.com",
-        "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID": "274759311290-ine3mk8k92md7g6n87dm7he085lc0ufo.apps.googleusercontent.com",
-        "EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME": "dfq3dbpo9",
-        "EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET": "aroundu",
-        "EXPO_PUBLIC_CLOUDINARY_UPLOAD_FOLDER": "aroundu",
-        "EXPO_PUBLIC_FOURSQUARE_PROXY_URL": "https://aroundu-foursquare-proxy.aroundu.workers.dev",
-        "EXPO_PUBLIC_FOURSQUARE_WORKER_URL": "https://aroundu-foursquare-proxy.aroundu.workers.dev"
-      }
+      "autoIncrement": true
     }
   },
   "submit": {

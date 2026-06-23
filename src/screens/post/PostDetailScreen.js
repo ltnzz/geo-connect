@@ -476,7 +476,7 @@ export default function PostDetailScreen({ route }) {
         </View>
       ) : null}
 
-      <View style={[styles.inputBar, { paddingBottom: Math.max(insets.bottom, spacing.sm) }]}>
+      <View style={[styles.inputBar, { paddingBottom: (Platform.OS !== 'ios' && keyboardHeight > 0) ? 12 : Math.max(insets.bottom, spacing.sm) }]}>
         {currentUser?.avatarUrl ? (
           <Image source={{ uri: currentUser.avatarUrl }} style={styles.inputAvatar} />
         ) : (

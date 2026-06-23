@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
-import { useCallback, useEffect, useState, useMemo } from 'react';
+import { useCallback, useState, useMemo } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -56,6 +56,20 @@ const getPostLocationLabel = (post) => {
 
   return post.location?.address || post.location?.city || post.placeName || 'AroundU';
 };
+
+const GridSkeleton = ({ styles, colors }) => (
+  <View style={styles.feedGrid}>
+    {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((key) => (
+      <View
+        key={key}
+        style={[
+          styles.feedItem,
+          { backgroundColor: colors.border, opacity: 0.5 }
+        ]}
+      />
+    ))}
+  </View>
+);
 
 export default function ProfileScreen() {
   const navigation = useNavigation();
@@ -148,32 +162,24 @@ export default function ProfileScreen() {
 
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
-    const promises = [fetchProfileData()];
-    if (activeSegment === 'events') promises.push(fetchEvents());
-    if (activeSegment === 'saved') promises.push(fetchSavedData());
-    await Promise.allSettled(promises);
+    await Promise.allSettled([
+      fetchProfileData(),
+      fetchEvents(),
+      fetchSavedData()
+    ]);
     setIsRefreshing(false);
-  }, [fetchProfileData, fetchEvents, fetchSavedData, activeSegment]);
-
-  useEffect(() => {
-    if (activeSegment === 'events' && events.length === 0 && !isEventsLoading) {
-      fetchEvents();
-    }
-  }, [activeSegment, events.length, isEventsLoading, fetchEvents]);
-
-  useEffect(() => {
-    if (activeSegment === 'saved' && savedPosts.length === 0 && !isSavedLoading) {
-      fetchSavedData();
-    }
-  }, [activeSegment, savedPosts.length, isSavedLoading, fetchSavedData]);
+  }, [fetchProfileData, fetchEvents, fetchSavedData]);
 
   useFocusEffect(
     useCallback(() => {
       if (user?.uid && profilePosts.length === 0 && !isPostsLoading) {
         fetchProfileData();
+        fetchEvents();
+        fetchSavedData();
       }
-    }, [user?.uid, profilePosts.length, isPostsLoading, fetchProfileData])
+    }, [user?.uid, profilePosts.length, isPostsLoading, fetchProfileData, fetchEvents, fetchSavedData])
   );
+
 
   const openEditProfile = () => {
     navigation.navigate('AccountDetails');
@@ -181,11 +187,12 @@ export default function ProfileScreen() {
 
   return (
     <View style={styles.screen}>
-        <ScreenHeader
+      <ScreenHeader
+        hideLeft
         onRightPress={() => navigation.navigate('Settings')}
         rightIcon="settings-outline"
-        rightLabel="Account settings"
-        title="Profile"
+        rightLabel="Settings"
+        title={username}
       />
 
       <ScrollView
@@ -340,10 +347,7 @@ export default function ProfileScreen() {
         {activeSegment === 'posts' && (
           <View style={{ width: '100%' }}>
             {isPostsLoading ? (
-              <View style={styles.feedState}>
-                <ActivityIndicator color={colors.primary} />
-                <Text style={styles.feedStateText}>Loading your posts...</Text>
-              </View>
+              <GridSkeleton styles={styles} colors={colors} />
             ) : postsError ? (
               <View style={styles.feedState}>
                 <Ionicons color={colors.danger} name="alert-circle-outline" size={25} />
@@ -400,10 +404,7 @@ export default function ProfileScreen() {
         {activeSegment === 'events' && (
           <View style={{ width: '100%' }}>
             {isEventsLoading ? (
-              <View style={styles.feedState}>
-                <ActivityIndicator color={colors.primary} />
-                <Text style={styles.feedStateText}>Loading events...</Text>
-              </View>
+              <GridSkeleton styles={styles} colors={colors} />
             ) : userEvents.length === 0 ? (
               <View style={styles.feedState}>
                 <Ionicons color={colors.neutral} name="calendar-outline" size={28} />
@@ -449,10 +450,7 @@ export default function ProfileScreen() {
         {activeSegment === 'saved' && (
           <View style={{ width: '100%' }}>
             {isSavedLoading ? (
-              <View style={styles.feedState}>
-                <ActivityIndicator color={colors.primary} />
-                <Text style={styles.feedStateText}>Loading saved posts...</Text>
-              </View>
+              <GridSkeleton styles={styles} colors={colors} />
             ) : savedError ? (
               <View style={styles.feedState}>
                 <Ionicons color={colors.danger} name="alert-circle-outline" size={25} />

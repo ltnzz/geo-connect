@@ -387,8 +387,11 @@ export default function PostDetailScreen({ route }) {
     }));
   }, [comments]);
 
-  const KeyboardComponent = Platform.OS === 'ios' ? KeyboardAvoidingView : View;
-  const keyboardProps = Platform.OS === 'ios' ? { behavior: 'padding', keyboardVerticalOffset: insets.top } : {};
+  const KeyboardComponent = KeyboardAvoidingView;
+  const keyboardProps = {
+    behavior: Platform.OS === 'ios' ? 'padding' : 'height',
+    keyboardVerticalOffset: Platform.OS === 'ios' ? insets.top : 0,
+  };
 
   return (
     <KeyboardComponent

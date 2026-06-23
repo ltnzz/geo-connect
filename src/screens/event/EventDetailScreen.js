@@ -92,8 +92,21 @@ export default function EventDetailScreen({ route }) {
 
   if (!event) {
     return (
-      <View style={[styles.screen, { justifyContent: 'center', alignItems: 'center' }]}>
-        <Text style={{ color: colors.text }}>Event not found.</Text>
+      <View style={styles.screen}>
+        <ScreenHeader
+          onBack={() => navigation.goBack()}
+          showBack
+          title="Event Expired"
+        />
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <Ionicons name="calendar-outline" size={64} color={colors.neutral} />
+          <Text style={{ color: colors.text, marginTop: 16, fontFamily: 'Inter_600SemiBold', fontSize: 16 }}>
+            Event Expired or Not Found
+          </Text>
+          <Text style={{ color: colors.neutral, marginTop: 8, fontFamily: 'Inter_400Regular', fontSize: 13, textAlign: 'center', paddingHorizontal: 32 }}>
+            This event has ended or no longer exists.
+          </Text>
+        </View>
       </View>
     );
   }

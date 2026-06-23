@@ -1405,8 +1405,8 @@ export const firestoreService = {
     assertFirebaseConfigured();
     const now = Timestamp.now();
     const constraints = [
-      where('startTime', '>=', now),
-      orderBy('startTime', 'asc'),
+      where('endTime', '>=', now),
+      orderBy('endTime', 'asc'),
       limit(pageSize),
     ];
     if (cursor) constraints.push(startAfter(cursor));

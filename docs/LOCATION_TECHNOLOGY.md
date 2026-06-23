@@ -1,58 +1,40 @@
-# 🌍 Teknologi Lokasi (Location Tech Stack)
+# Arsitektur dan Teknologi Lokasi
 
-Dokumen ini adalah ringkasan dapur pacu dari fitur peta dan geospasial di **AroundU**. Kalau kamu penasaran bagaimana cara kami mencari postingan di sekitarmu dalam hitungan detik, ini jawabannya! 🚀
+Dokumen ini menjelaskan arsitektur teknis dan algoritma yang menggerakkan fitur geospasial pada aplikasi AroundU, mulai dari akuisisi koordinat hingga visualisasi pada peta.
 
----
-
-## 🗺️ Gambaran Sistem
-
-Secara garis besar, beginilah perjalanan koordinat lokasimu dari HP sampai muncul di peta:
+## 1. Alur Sistem Geospasial
+Sistem mengelola siklus hidup data lokasi melalui komponen berikut:
 
 ```mermaid
 graph TD
-    A[GPS HP Kamu] -->|expo-location| B(Masuk ke State Aplikasi)
-    B -->|Buat Post/Event| C[(Database Firestore)]
-    C -->|Pencarian Geohash| D[Tampil di Feed]
-    D -->|react-native-maps| E[Titik Marker di Peta]
+    A[Sensor GPS Perangkat] -->|expo-location| B(State Manajemen Lokal)
+    B -->|Pembuatan Konten| C[(Cloud Firestore)]
+    C -->|Kueri Geohash| D[Pemrosesan Feed]
+    D -->|react-native-maps| E[Visualisasi Peta]
 ```
 
----
+## 2. Akuisisi Koordinat Lokasi
+Aplikasi memanfaatkan modul `expo-location` untuk mengambil data lokasi pengguna:
+- **Latar Depan (Foreground):** Aplikasi meminta koordinat dengan tingkat akurasi seimbang (Balanced Accuracy) untuk memperbarui Peta Eksplorasi saat aplikasi sedang digunakan.
+- **Sistem Perizinan Bertahap:** Izin lokasi diminta secara transparan. Izin latar belakang (Background Location) tidak diwajibkan secara bawaan, dan aplikasi menyediakan mekanisme alternatif (pencarian manual) apabila izin ditolak.
 
-## 📡 Bagaimana Kami Mendapatkan Lokasimu?
-Kami menggunakan modul `expo-location` bawaan dari Expo:
-1. **Saat Aplikasi Dibuka:** Kami meminta koordinat dengan akurasi seimbang (*Balanced Accuracy*) untuk menggeser peta tepat ke lokasimu.
-2. **Persetujuan Izin Bertahap:** Kami tidak akan memaksa meminta izin *Background Location* di awal. Kami hanya akan meminta izin *Foreground* (saat aplikasi dipakai) terlebih dahulu agar pengguna tidak kaget.
+## 3. Optimasi Pencarian Geospasial dengan Geohash
+Firestore tidak memiliki dukungan bawaan untuk kueri koordinat multi-dimensi secara langsung. Untuk mengatasi hal ini, AroundU mengimplementasikan algoritma **Geohash**:
+- Geohash mengonversi koordinat lintang (latitude) dan bujur (longitude) menjadi sebuah string alfanumerik tunggal.
+- Area yang berdekatan secara geografis akan memiliki awalan string geohash yang sama. 
+- Aplikasi melakukan pencarian "Kotak Pembatas" (Bounding Box Query) untuk memfilter rentang string geohash yang identik di sekitar area pengguna, mengurangi beban komputasi server secara signifikan.
 
----
+## 4. Penghitungan Jarak Akurat
+Kueri Geohash pada dasarnya menghasilkan area pencarian berbentuk persegi, yang dapat mengembalikan hasil di luar radius lingkaran yang diinginkan (false positives).
+Oleh karena itu, aplikasi menerapkan pemfilteran sisi klien menggunakan **Formula Haversine**. Formula ini menghitung jarak garis lurus bola bumi antara pengguna dan titik lokasi dokumen. Dokumen yang berada di luar batas radius akan dibuang sebelum dirender ke antarmuka pengguna.
 
-## ⚡ Rahasia Pencarian Cepat: Geohash
-Karena database *Firebase Firestore* tidak bisa mencari berdasarkan *Latitude* dan *Longitude* sekaligus, kami menggunakan algoritma ajaib bernama **Geohash**.
+## 5. Integrasi Foursquare API
+Untuk fitur penandaan tempat (check-in), aplikasi menggunakan Foursquare Places API:
+1. Koordinat pengguna dikirimkan melalui server proksi (Cloudflare Worker).
+2. Sistem mengambil daftar tempat komersial atau fasilitas umum terdekat yang divalidasi oleh Foursquare.
+3. ID tempat (Venue ID) yang dipilih pengguna akan disimpan ke dalam dokumen Firestore, memastikan integrasi tempat berjalan efisien tanpa menyimpan metadata tempat yang redundan.
 
-**Gimana Cara Kerjanya?**
-1. Kami mengubah koordinat GPS 2D (misal: `-6.200, 106.816`) menjadi satu baris teks (*string*) seperti `qqgu2b3`.
-2. Titik-titik lokasi yang berdekatan di dunia nyata akan memiliki teks awalan yang sama!
-3. Saat kamu membuka aplikasi, kami membuat "Kotak Pencarian" di sekitarmu dan menyuruh Firestore mencari semua teks *geohash* yang mirip. Jauh lebih ringan dan cepat!
-
----
-
-## 📍 Menghitung Jarak Akurat (Formula Haversine)
-Karena Geohash bentuk pencariannya kotak (bukan lingkaran sempurna), kadang ada hasil yang *sedikit* meleset di ujung-ujung kotak. 
-
-Untuk memastikan tulisan "2.5 km dari kamu" di aplikasi itu akurat 100%, kami menghitung ulang jarak aslinya di HP kamu (*Client-side*) menggunakan **Formula Haversine** sebelum menampilkannya di layar. Hasil yang terlalu jauh akan langsung dibuang!
-
----
-
-## 🏨 Integrasi Foursquare (Fitur Check-in)
-Kalau kamu mau membagikan lokasimu di kafe atau taman tertentu, kami menggunakan **Foursquare Places API**. 
-- Kami mengirimkan perkiraan lokasimu ke *server proxy* kami (di Cloudflare).
-- Foursquare membalas dengan daftar tempat terdekat yang valid.
-- Kamu tinggal pilih tempatnya, lalu ID tempat tersebut disimpan di postinganmu.
-
----
-
-## 🚀 Performa & Optimasi Peta
-Menampilkan ratusan titik di peta bisa bikin HP lag. Makanya kami menggunakan trik:
-- **Debounce:** Saat kamu menggeser peta dengan cepat, kami tidak langsung mengirim kueri ke server di setiap milidetik. Kami menunggu kamu berhenti menggeser peta selama setengah detik, baru memuat data baru.
-- **Batas Tampilan:** Kami membatasi maksimal 50 dokumen per pencarian area untuk menghemat kuota pembacaan (*read quota*) Firebase sekaligus menjaga HP kamu tetap ngebut!
-
-💡 *Arsitektur ini dirancang supaya aplikasi tetap responsif meskipun dipakai oleh jutaan orang secara bersamaan!*
+## 6. Manajemen Performa Rendering
+Untuk memastikan antarmuka peta tetap mulus (60 FPS) meskipun menampilkan ratusan titik penanda (marker):
+- **Debouncing Kueri:** Permintaan data ke basis data ditunda hingga pengguna selesai menggeser peta selama periode waktu tertentu, mencegah permintaan data berlebih.
+- **Pembatasan Dokumen:** Kueri geospasial dibatasi secara ketat (maksimal 50 dokumen per area pembatas) guna meminimalkan penggunaan memori klien dan mengoptimalkan kuota baca Firestore.

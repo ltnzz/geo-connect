@@ -1,54 +1,46 @@
-# 🛡️ Kebijakan Privasi Data (Privacy Policy)
+# Kebijakan Privasi dan Tata Kelola Data
 
-Selamat datang di **AroundU**! Karena aplikasi ini sangat bergantung pada fitur lokasi (untuk mencari teman, tempat, atau acara di sekitarmu), kami sangat peduli dengan privasi datamu. 
+Dokumen ini menguraikan kerangka kebijakan privasi dan tata kelola data untuk aplikasi AroundU. Sebagai platform penemuan sosial berbasis lokasi, perlindungan privasi pengguna dan transparansi pengumpulan data merupakan prioritas utama.
 
-Dokumen ini menjelaskan secara transparan data apa saja yang kami ambil, untuk apa, dan bagaimana kami melindunginya.
+## 1. Tujuan Pengumpulan Data
+Pengumpulan data dilakukan secara terbatas untuk mendukung fungsionalitas inti aplikasi, yang meliputi:
+- **Autentikasi:** Memverifikasi identitas pengguna dan mengamankan akses akun.
+- **Eksplorasi Geospasial:** Memungkinkan fitur penemuan lokasi untuk pengguna, tempat (venue), dan acara di sekitar.
+- **Interaksi Sosial:** Memfasilitasi reservasi acara (RSVP), penandaan lokasi (check-in), dan berbagi konten media.
 
----
+## 2. Jenis Data yang Dikumpulkan
 
-## 🎯 Mengapa Kami Mengumpulkan Data?
-Singkatnya, kami hanya mengambil data yang **benar-benar dibutuhkan** agar fitur aplikasi bisa berjalan:
-- 🔐 **Autentikasi:** Supaya kamu bisa login dan akunmu aman.
-- 📍 **Eksplorasi Geospasial:** Supaya kamu bisa melihat post, event, atau tempat nongkrong terdekat dari lokasimu.
-- 💬 **Interaksi Sosial:** Supaya kamu bisa RSVP event, *check-in* tempat, dan membagikan momenmu.
+### 2.1. Informasi Akun dan Profil
+| Data | Sumber | Tujuan Penggunaan |
+| --- | --- | --- |
+| **Alamat Email** | Pendaftaran / Google OAuth | Diperlukan untuk pembuatan akun dan komunikasi. |
+| **Google UID** | Google Sign-In | Diperlukan untuk pemetaan autentikasi pengguna secara aman. |
+| **Nama Tampilan** | Input Pengguna | Diperlukan sebagai identitas publik di dalam aplikasi. |
+| **Foto Profil** | Akun Google | Digunakan sebagai identifikasi visual. |
 
----
+### 2.2. Informasi Lokasi
+| Data | Sumber | Tujuan Penggunaan |
+| --- | --- | --- |
+| **Koordinat GPS** | Sensor Perangkat | Menentukan jarak dan menempatkan titik pada Peta Eksplorasi. |
+| **Geohash** | Dihitung oleh Sistem | Mempercepat proses pencarian geospasial pada basis data. |
+| **Data Tempat (Venue)** | Foursquare API | Mengaitkan koordinat pengguna dengan lokasi di dunia nyata saat melakukan check-in. |
 
-## 🗂️ Data Apa Saja yang Kami Ambil?
+### 2.3. Konten Pengguna
+- **Media dan Teks:** Kapsion dan foto yang diunggah pengguna disimpan di layanan Cloudinary dan direferensikan dalam bentuk URL.
+- **Status RSVP:** Aktivitas partisipasi acara disimpan untuk mengelola daftar kehadiran.
 
-### 1. 👤 Informasi Akun & Profil
-- **Email & Google UID:** Digunakan untuk *login* dan mengamankan akunmu. Disimpan aman di Firebase Authentication.
-- **Nama & Bio:** Identitasmu di dalam aplikasi yang bisa dilihat pengguna lain.
-- **Foto Profil (Avatar):** Diambil otomatis dari Google saat kamu mendaftar. (Saat ini foto profil belum bisa diganti manual ya!).
+## 3. Penyimpanan dan Retensi Data
+AroundU menggunakan arsitektur tanpa server (serverless):
+- **Firebase Authentication & Cloud Firestore:** Menyimpan kredensial sesi, profil teks, koordinat, dan metadata acara.
+- **Cloudinary:** Secara khusus menyimpan seluruh berkas media gambar untuk mengoptimalkan kinerja basis data utama.
 
-### 2. 🗺️ Informasi Lokasi
-- **Koordinat GPS:** Hanya digunakan untuk menghitung jarak dan menampilkan *marker* di peta.
-- **Geohash:** Versi "teks" dari lokasimu yang membantu *database* mencari hal-hal di sekitarmu dengan super cepat.
-- **Data Tempat (Foursquare):** Kalau kamu *check-in*, kami menyambungkan koordinatmu dengan nama tempat asli di dunia nyata.
+**Kebijakan Retensi:** Data pengguna hanya disimpan selama akun berstatus aktif. Pembaruan lokasi secara sementara akan selalu menimpa koordinat sebelumnya untuk mencegah terbentuknya jejak riwayat perjalanan.
 
-### 3. 📸 Postingan & Acara (Event)
-- **Foto & Teks:** Media yang kamu bagikan di aplikasi akan diunggah ke layanan *cloud* kami (Cloudinary).
-- **Status RSVP:** Data yang mencatat event mana saja yang akan kamu datangi.
+## 4. Hak dan Kendali Pengguna
+Sistem kami dirancang agar pengguna memiliki kendali penuh atas data mereka:
+1. **Mode Tak Terlihat (Invisible Mode):** Pengguna dapat menyembunyikan lokasi presisi mereka dari pengguna lain kapan saja melalui pengaturan aplikasi.
+2. **Pengelolaan Konten:** Pengguna memiliki akses untuk melihat, mengubah, dan menghapus postingan atau acara yang mereka buat.
+3. **Penghapusan Akun:** Pengguna dapat mengajukan penghapusan akun permanen, yang akan memicu proses penghapusan seluruh data terkait dari server.
 
----
-
-## 🏗️ Di Mana Kami Menyimpan Datamu?
-Kami menggunakan arsitektur modern tanpa server (*serverless*), yang artinya:
-- ☁️ **Cloud Firestore (Firebase):** Tempat kami menaruh semua data teks seperti Profil, Kapsion Postingan, dan Koordinat Lokasi.
-- 🖼️ **Cloudinary:** Tempat khusus untuk menyimpan file gambarmu agar bisa dimuat dengan cepat di aplikasi tanpa membebani *database* utama.
-
----
-
-## 🕹️ Hak & Kendali Penuh di Tanganmu
-Kamu adalah bos dari datamu sendiri:
-1. **Atur Visibilitas:** Merasa privasimu terganggu? Kamu bisa mengaktifkan **Mode Tak Terlihat (Invisible Mode)** di pengaturan supaya lokasimu tidak muncul di radar pengguna lain.
-2. **Hapus Kapan Saja:** Kamu bisa menghapus postingan atau event yang sudah kamu buat, dan datanya akan lenyap.
-3. **Hapus Akun:** Jika kamu ingin berhenti menggunakan AroundU dan menghapus *semua* datamu (akun, foto, postingan), kamu bisa menghubungi tim *support* kami untuk dilakukan penghapusan permanen dari server.
-
----
-
-## 🔒 Sistem Keamanan Kami
-- **Koneksi Terenkripsi:** Semua lalu lintas data dari HP-mu ke server dilindungi dengan enkripsi standar industri (HTTPS/TLS).
-- **Aturan Database Ketat:** Orang lain hanya bisa membaca profil publikmu, tapi **tidak ada yang bisa mengubah atau menghapus** postinganmu selain kamu sendiri.
-
-💡 *Intinya: Kami merancang AroundU agar kamu bisa bebas berekspresi dan menjelajah dunia sekitarmu dengan rasa aman!*
+## 5. Keamanan
+Semua lalu lintas data antara perangkat pengguna dan server dilindungi menggunakan enkripsi standar industri (TLS/HTTPS). Basis data Firestore dilengkapi dengan Aturan Keamanan (Security Rules) yang ketat, memastikan bahwa data profil hanya dapat dimodifikasi oleh pemilik akun yang bersangkutan.

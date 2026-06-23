@@ -1126,12 +1126,19 @@ export const firestoreService = {
     }
   },
 
-  getNearbyPosts(center, radiusMeters, maxResults = 50) {
-    return getNearbyDocuments({
+  async getNearbyPosts(center, radiusMeters, maxResults = 50) {
+    const posts = await getNearbyDocuments({
       collectionName: COLLECTIONS.posts,
       center,
       radiusMeters,
       maxResults,
+    });
+    
+    const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
+    return posts.filter(post => {
+      if (!post.createdAt) return true;
+      const createdAtMs = post.createdAt.toDate ? post.createdAt.toDate().getTime() : new Date(post.createdAt).getTime();
+      return createdAtMs >= oneDayAgo;
     });
   },
 

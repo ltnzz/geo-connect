@@ -389,7 +389,7 @@ export default function PostDetailScreen({ route }) {
 
   const KeyboardComponent = KeyboardAvoidingView;
   const keyboardProps = {
-    behavior: Platform.OS === 'ios' ? 'padding' : 'height',
+    behavior: 'padding',
     keyboardVerticalOffset: Platform.OS === 'ios' ? insets.top : 0,
   };
 

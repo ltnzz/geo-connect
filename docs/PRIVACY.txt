@@ -1,0 +1,42 @@
+KEBIJAKAN PRIVASI DAN TATA KELOLA DATA
+
+Dokumen ini menguraikan kerangka kebijakan privasi dan tata kelola data untuk aplikasi AroundU. Sebagai platform penemuan sosial berbasis lokasi, perlindungan privasi pengguna dan transparansi pengumpulan data merupakan prioritas utama.
+
+1. TUJUAN PENGUMPULAN DATA
+Pengumpulan data dilakukan secara terbatas untuk mendukung fungsionalitas inti aplikasi, yang meliputi:
+- Autentikasi: Memverifikasi identitas pengguna dan mengamankan akses akun.
+- Eksplorasi Geospasial: Memungkinkan fitur penemuan lokasi untuk pengguna, tempat (venue), dan acara di sekitar.
+- Interaksi Sosial: Memfasilitasi reservasi acara (RSVP), penandaan lokasi (check-in), dan berbagi konten media.
+
+2. JENIS DATA YANG DIKUMPULKAN
+
+2.1. Informasi Akun dan Profil
+- Alamat Email: Diperlukan untuk pembuatan akun dan komunikasi (bersumber dari Pendaftaran / Google OAuth).
+- Google UID: Diperlukan untuk pemetaan autentikasi pengguna secara aman (bersumber dari Google Sign-In).
+- Nama Tampilan: Diperlukan sebagai identitas publik di dalam aplikasi (bersumber dari Input Pengguna).
+- Foto Profil: Digunakan sebagai identifikasi visual (bersumber dari Akun Google).
+
+2.2. Informasi Lokasi
+- Koordinat GPS: Menentukan jarak dan menempatkan titik pada Peta Eksplorasi (bersumber dari Sensor Perangkat).
+- Geohash: Mempercepat proses pencarian geospasial pada basis data (dihitung oleh Sistem).
+- Data Tempat (Venue): Mengaitkan koordinat pengguna dengan lokasi di dunia nyata saat melakukan check-in (bersumber dari Foursquare API).
+
+2.3. Konten Pengguna
+- Media dan Teks: Kapsion dan foto yang diunggah pengguna disimpan di layanan Cloudinary dan direferensikan dalam bentuk URL.
+- Status RSVP: Aktivitas partisipasi acara disimpan untuk mengelola daftar kehadiran.
+
+3. PENYIMPANAN DAN RETENSI DATA
+AroundU menggunakan arsitektur tanpa server (serverless):
+- Firebase Authentication & Cloud Firestore: Menyimpan kredensial sesi, profil teks, koordinat, dan metadata acara.
+- Cloudinary: Secara khusus menyimpan seluruh berkas media gambar untuk mengoptimalkan kinerja basis data utama.
+
+Kebijakan Retensi: Data pengguna hanya disimpan selama akun berstatus aktif. Pembaruan lokasi secara sementara akan selalu menimpa koordinat sebelumnya untuk mencegah terbentuknya jejak riwayat perjalanan.
+
+4. HAK DAN KENDALI PENGGUNA
+Sistem kami dirancang agar pengguna memiliki kendali penuh atas data mereka:
+1. Mode Tak Terlihat (Invisible Mode): Pengguna dapat menyembunyikan lokasi presisi mereka dari pengguna lain kapan saja melalui pengaturan aplikasi.
+2. Pengelolaan Konten: Pengguna memiliki akses untuk melihat, mengubah, dan menghapus postingan atau acara yang mereka buat.
+3. Penghapusan Akun: Pengguna dapat mengajukan penghapusan akun permanen, yang akan memicu proses penghapusan seluruh data terkait dari server.
+
+5. KEAMANAN
+Semua lalu lintas data antara perangkat pengguna dan server dilindungi menggunakan enkripsi standar industri (TLS/HTTPS). Basis data Firestore dilengkapi dengan Aturan Keamanan (Security Rules) yang ketat, memastikan bahwa data profil hanya dapat dimodifikasi oleh pemilik akun yang bersangkutan.

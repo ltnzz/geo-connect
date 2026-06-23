@@ -779,7 +779,9 @@ const makeStyles = (colors) => StyleSheet.create({
   },
   input: {
     backgroundColor: colors.background,
+    borderColor: colors.border,
     borderRadius: radius.lg,
+    borderWidth: 1,
     color: colors.text,
     flex: 1,
     fontFamily: 'Poppins_400Regular',

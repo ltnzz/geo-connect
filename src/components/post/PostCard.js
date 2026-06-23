@@ -99,10 +99,10 @@ const PostCard = memo(function PostCard({ post }) {
 
   const handleOpenProfile = (event) => {
     event.stopPropagation?.();
-    if (post.userId === currentUserId) {
+    if (post.authorId === currentUserId) {
       navigation.navigate('ProfileTab');
     } else {
-      navigation.navigate('UserProfile', { userId: post.userId });
+      navigation.navigate('UserProfile', { userId: post.authorId });
     }
   };
 

@@ -122,19 +122,20 @@ function CommentThread({ comment, replies, currentUserId, onDelete, onReply, sty
   );
 }
 
-function PostHeader({ post, currentUserId, onLike, onBookmark, showFollow, isFollowing, onToggleFollow, styles, colors, onDeletePost }) {
+function PostHeader({ post, currentUserId, onLike, onBookmark, showFollow, isFollowing, onToggleFollow, onOpenProfile, styles, colors, onDeletePost }) {
   const locationLabel = getLocationLabel(post);
 
   return (
     <View style={styles.post}>
       <View style={styles.authorRow}>
-        {post.authorAvatar ? (
-          <Image source={{ uri: post.authorAvatar }} style={styles.avatar} />
-        ) : (
-          <View style={[styles.avatar, styles.avatarPlaceholder]}>
-            <Ionicons color={colors.mutedText} name="person" size={22} />
-          </View>
-        )}
+        <Pressable onPress={onOpenProfile} style={styles.authorPressable}>
+          {post.authorAvatar ? (
+            <Image source={{ uri: post.authorAvatar }} style={styles.avatar} />
+          ) : (
+            <View style={[styles.avatar, styles.avatarPlaceholder]}>
+              <Ionicons color={colors.mutedText} name="person" size={22} />
+            </View>
+          )}
 
         <View style={styles.authorInfo}>
           <Text numberOfLines={1} style={styles.author}>
@@ -146,7 +147,7 @@ function PostHeader({ post, currentUserId, onLike, onBookmark, showFollow, isFol
               {locationLabel}
             </Text>
           </View>
-        </View>
+        </Pressable>
 
         {showFollow ? (
           <Pressable
@@ -298,6 +299,15 @@ export default function PostDetailScreen({ route }) {
     toggleFollow(currentUserId, post.authorId);
   };
 
+  const handleOpenProfile = () => {
+    if (!post?.authorId) return;
+    if (post.authorId === currentUserId) {
+      navigation.navigate('ProfileTab');
+    } else {
+      navigation.navigate('UserProfile', { userId: post.authorId });
+    }
+  };
+
   const handleSendComment = async () => {
     if (!draft.trim() || !currentUserId || isSending) return;
     setIsSending(true);
@@ -431,6 +441,7 @@ export default function PostDetailScreen({ route }) {
               showFollow={!!currentUserId && post.authorId !== currentUserId}
               isFollowing={!!followingByUser[post.authorId]}
               onToggleFollow={handleToggleFollow}
+              onOpenProfile={handleOpenProfile}
               onDeletePost={handleDeletePost}
               styles={styles}
               colors={colors}
@@ -534,6 +545,11 @@ const makeStyles = (colors) => StyleSheet.create({
     alignItems: 'center',
     flexDirection: 'row',
     padding: spacing.md,
+  },
+  authorPressable: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    flex: 1,
   },
   avatar: {
     borderRadius: radius.md,

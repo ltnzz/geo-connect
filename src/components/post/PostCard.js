@@ -97,10 +97,19 @@ const PostCard = memo(function PostCard({ post }) {
     });
   };
 
+  const handleOpenProfile = (event) => {
+    event.stopPropagation?.();
+    if (post.userId === currentUserId) {
+      navigation.navigate('ProfileTab');
+    } else {
+      navigation.navigate('UserProfile', { userId: post.userId });
+    }
+  };
+
   return (
     <Pressable onPress={handleOpenDetail} style={styles.card}>
       <View style={styles.header}>
-        <View style={styles.userInfo}>
+        <Pressable onPress={handleOpenProfile} style={styles.userInfo}>
 
           {post.authorAvatar ? (
             <Image source={{ uri: post.authorAvatar }} style={styles.avatar} />
@@ -118,7 +127,7 @@ const PostCard = memo(function PostCard({ post }) {
               <Text style={styles.locationText}>{locationLabel}</Text>
             </View>
           </View>
-        </View>
+        </Pressable>
 
         {distanceLabel ? (
           <View style={styles.distanceBadge}>

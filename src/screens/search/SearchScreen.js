@@ -20,6 +20,7 @@ import { firestoreService } from '../../services/firestoreService';
 import { useAuthStore } from '../../stores/authStore';
 import { useEventStore } from '../../stores/eventStore';
 import { useFeedStore } from '../../stores/feedstore';
+import { useLocation } from '../../hooks/useLocation';
 import { useColors, radius, spacing } from '../../utils/theme';
 
 

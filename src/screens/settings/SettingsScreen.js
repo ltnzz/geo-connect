@@ -231,119 +231,138 @@ export default function SettingsScreen() {
       >
         <SectionLabel styles={styles}>ACCOUNT</SectionLabel>
         <View style={styles.card}>
-          <MenuRow
-            icon="person-outline"
-            label="Account Details"
-            styles={styles}
-            colors={colors}
-            onPress={() => navigation.navigate('AccountDetails')}
-          />
-          <MenuRow
-            icon="notifications-outline"
-            label="Notifications"
-            last
-            styles={styles}
-            colors={colors}
-            onPress={() => navigation.navigate('Notification')}
-          />
+          <View style={styles.cardInner}>
+            <MenuRow
+              icon="person-outline"
+              label="Account Details"
+              styles={styles}
+              colors={colors}
+              onPress={() => navigation.navigate('AccountDetails')}
+            />
+            <MenuRow
+              icon="notifications-outline"
+              label="Notifications"
+              last
+              styles={styles}
+              colors={colors}
+              onPress={() => navigation.navigate('Notification')}
+            />
+          </View>
         </View>
 
         <SectionLabel styles={styles}>APPEARANCE</SectionLabel>
         <View style={styles.card}>
-          <MenuRow
-            icon="contrast"
-            label="Dark Mode"
-            description="Switch between light and dark app appearance."
-            last
-            styles={styles}
-            colors={colors}
-            rightElement={
-              <Switch
-                accessibilityLabel="Dark mode"
-                onValueChange={handleThemeToggle}
-                thumbColor="#FFFFFF"
-                trackColor={{ false: '#D8DEE8', true: colors.primary }}
-                value={localDarkMode}
-              />
-            }
-          />
+          <View style={styles.cardInner}>
+            <MenuRow
+              icon="contrast"
+              label="Dark Mode"
+              description="Switch between light and dark app appearance."
+              last
+              styles={styles}
+              colors={colors}
+              rightElement={
+                <Switch
+                  accessibilityLabel="Dark mode"
+                  onValueChange={handleThemeToggle}
+                  thumbColor="#FFFFFF"
+                  trackColor={{ false: '#D8DEE8', true: colors.primary }}
+                  value={localDarkMode}
+                />
+              }
+            />
+          </View>
         </View>
 
         <SectionLabel styles={styles}>LOCATION VISIBILITY</SectionLabel>
         <View style={styles.card}>
-          <MenuRow
-            icon="lock-closed"
-            label="Invisible Mode"
-            description="Stay active without appearing in Nearby People."
-            last
-            styles={styles}
-            colors={colors}
-            rightElement={
-              <Switch
-                accessibilityLabel="Invisible mode"
-                disabled={isSaving}
-                onValueChange={changeInvisibleMode}
-                thumbColor="#FFFFFF"
-                trackColor={{ false: '#D8DEE8', true: colors.primary }}
-                value={invisibleMode}
-              />
-            }
-          />
+          <View style={styles.cardInner}>
+            <MenuRow
+              icon="lock-closed"
+              label="Invisible Mode"
+              description="Stay active without appearing in Nearby People."
+              last
+              styles={styles}
+              colors={colors}
+              rightElement={
+                <Switch
+                  accessibilityLabel="Invisible mode"
+                  disabled={isSaving}
+                  onValueChange={changeInvisibleMode}
+                  thumbColor="#FFFFFF"
+                  trackColor={{ false: '#D8DEE8', true: colors.primary }}
+                  value={invisibleMode}
+                />
+              }
+            />
+          </View>
         </View>
 
         <SectionLabel styles={styles}>SHARE LOCATION PRECISION</SectionLabel>
         <View style={styles.card}>
-          {LOCATION_OPTIONS.map((option, index) => {
-            const isSelected = locationSharing === option.value;
-            return (
-              <MenuRow
-                key={option.value}
-                label={option.label}
-                description={option.description}
-                onPress={() => changeLocationSharing(option.value)}
-                last={index === LOCATION_OPTIONS.length - 1}
-                styles={styles}
-                colors={colors}
-                rightElement={
-                  <View style={[styles.radio, isSelected && styles.radioSelected]}>
-                    {isSelected ? <View style={styles.radioDot} /> : null}
-                  </View>
-                }
-              />
-            );
-          })}
+          <View style={styles.cardInner}>
+            {LOCATION_OPTIONS.map((option, index) => {
+              const isSelected = locationSharing === option.value;
+              return (
+                <MenuRow
+                  key={option.value}
+                  label={option.label}
+                  description={option.description}
+                  onPress={() => changeLocationSharing(option.value)}
+                  last={index === LOCATION_OPTIONS.length - 1}
+                  styles={styles}
+                  colors={colors}
+                  rightElement={
+                    <View style={[styles.radio, isSelected && styles.radioSelected]}>
+                      {isSelected ? <View style={styles.radioDot} /> : null}
+                    </View>
+                  }
+                />
+              );
+            })}
+          </View>
         </View>
 
         <SectionLabel styles={styles}>DATA MANAGEMENT</SectionLabel>
         <View style={styles.card}>
-          <MenuRow
-            icon="location-outline"
-            description="View and delete your past geodata."
-            label="Location History"
-            last
-            styles={styles}
-            colors={colors}
-            onPress={openLocationHistory}
-          />
+          <View style={styles.cardInner}>
+            <MenuRow
+              icon="location-outline"
+              description="View and delete your past geodata."
+              label="Location History"
+              last
+              styles={styles}
+              colors={colors}
+              onPress={openLocationHistory}
+            />
+          </View>
         </View>
 
         <SectionLabel styles={styles}>DANGER ZONE</SectionLabel>
         <View style={[styles.card, styles.dangerCard]}>
-          <MenuRow
-            icon="trash-outline"
-            label="Delete All Location Data"
-            styles={styles}
-            colors={{ ...colors, primary: colors.danger, text: colors.danger }}
-            onPress={deleteLocationData}
-          />
-          <MenuRow
-            icon="log-out-outline"
-            label="Log Out"
-            last
-            styles={styles}
-            colors={{ ...colors, primary: colors.danger, text: colors.danger }}
-            onPress={() => setIsLogoutConfirmVisible(true)}
-          />
+          <View style={styles.cardInner}>
+            <MenuRow
+              icon="warning-outline"
+              label="Delete Account"
+              styles={styles}
+              colors={{ ...colors, primary: colors.danger, text: colors.danger }}
+              onPress={() => Alert.alert('Request Deletion', 'Account deletion must be requested to the administrator manually. Please email admin@aroundu.app for processing.')}
+            />
+            <MenuRow
+              icon="trash-outline"
+              label="Delete All Location Data"
+              styles={styles}
+              colors={{ ...colors, primary: colors.danger, text: colors.danger }}
+              onPress={deleteLocationData}
+            />
+            <MenuRow
+              icon="log-out-outline"
+              label="Log Out"
+              last
+              styles={styles}
+              colors={{ ...colors, primary: colors.danger, text: colors.danger }}
+              onPress={() => setIsLogoutConfirmVisible(true)}
+            />
+          </View>
         </View>
         <Text style={styles.deleteHint}>
           Account deletion and data wiping are permanent actions.
@@ -475,15 +494,20 @@ const makeStyles = (colors) => StyleSheet.create({
     marginTop: spacing.lg,
   },
   card: {
-    backgroundColor: colors.surface,
     borderColor: colors.border,
     borderRadius: radius.lg,
     borderWidth: 1,
-    overflow: 'hidden',
     shadowColor: colors.neutral,
     shadowOffset: { height: 3, width: 0 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
+    elevation: 2,
+    marginBottom: spacing.sm,
+  },
+  cardInner: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    overflow: 'hidden',
   },
   menuRow: {
     alignItems: 'center',

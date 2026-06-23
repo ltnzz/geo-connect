@@ -201,7 +201,7 @@ export default function LocationSelectModal({ visible, onClose, onSelect, curren
             latitude: currentUserLocation.latitude,
             longitude: currentUserLocation.longitude,
           },
-          10000
+          10000,
           30
         );
         data = nearby || [];

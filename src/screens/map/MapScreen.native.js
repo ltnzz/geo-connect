@@ -585,7 +585,7 @@ export default function MapScreen() {
 
   return (
     <View style={styles.screen}>
-      <ScreenHeader title="Explore Map" />
+      <ScreenHeader title="Explore Map" hideLeft />
 
       <View style={styles.mapContainer}>
         <MapView
@@ -762,54 +762,56 @@ export default function MapScreen() {
                     ? `${selectedCluster.items.length} results in this area`
                     : selectedCluster.items[0].title}
                 </Text>
-                {selectedCluster.items.map((item) => {
-                  const meta = TYPE_META[item.type];
+                <ScrollView showsVerticalScrollIndicator={false}>
+                  {selectedCluster.items.map((item) => {
+                    const meta = TYPE_META[item.type];
 
-                  return (
-                    <Pressable
-                      accessibilityRole={['event', 'place', 'post'].includes(item.type) ? 'button' : 'text'}
-                      disabled={!['event', 'place', 'post'].includes(item.type)}
-                      key={item.id}
-                      onPress={() => {
-                        if (item.type === 'event') {
-                          navigation.navigate('EventDetail', {
-                            eventId: item.sourceId,
-                          });
-                        } else if (item.type === 'place') {
-                          navigation.navigate('VenueDetail', {
-                            placeId: item.sourceId,
-                          });
-                        } else if (item.type === 'post') {
-                          navigation.navigate('PostDetail', {
-                            initialPostId: item.sourceId,
-                            posts: item.post ? [item.post] : [],
-                          });
-                        }
-                      }}
-                      style={styles.clusterItem}
-                    >
-                      <View
-                        style={[
-                          styles.clusterItemIcon,
-                          { backgroundColor: `${meta.color}18` },
-                        ]}
+                    return (
+                      <Pressable
+                        accessibilityRole={['event', 'place', 'post'].includes(item.type) ? 'button' : 'text'}
+                        disabled={!['event', 'place', 'post'].includes(item.type)}
+                        key={item.id}
+                        onPress={() => {
+                          if (item.type === 'event') {
+                            navigation.navigate('EventDetail', {
+                              eventId: item.sourceId,
+                            });
+                          } else if (item.type === 'place') {
+                            navigation.navigate('VenueDetail', {
+                              placeId: item.sourceId,
+                            });
+                          } else if (item.type === 'post') {
+                            navigation.navigate('PostDetail', {
+                              initialPostId: item.sourceId,
+                              posts: item.post ? [item.post] : [],
+                            });
+                          }
+                        }}
+                        style={styles.clusterItem}
                       >
-                        <Ionicons color={meta.color} name={meta.icon} size={17} />
-                      </View>
-                      <View style={styles.clusterItemCopy}>
-                        <Text numberOfLines={1} style={styles.clusterItemTitle}>
-                          {item.title}
-                        </Text>
-                        <Text
-                          numberOfLines={1}
-                          style={styles.clusterItemSubtitle}
+                        <View
+                          style={[
+                            styles.clusterItemIcon,
+                            { backgroundColor: `${meta.color}18` },
+                          ]}
                         >
-                          {item.subtitle}
-                        </Text>
-                      </View>
-                    </Pressable>
-                  );
-                })}
+                          <Ionicons color={meta.color} name={meta.icon} size={17} />
+                        </View>
+                        <View style={styles.clusterItemCopy}>
+                          <Text numberOfLines={1} style={styles.clusterItemTitle}>
+                            {item.title}
+                          </Text>
+                          <Text
+                            numberOfLines={1}
+                            style={styles.clusterItemSubtitle}
+                          >
+                            {item.subtitle}
+                          </Text>
+                        </View>
+                      </Pressable>
+                    );
+                  })}
+                </ScrollView>
               </View>
             ) : null}
           </>

@@ -22,7 +22,7 @@ export const useNotificationStore = create((set, get) => ({
     const q = query(
       collection(db, COLLECTIONS.notifications),
       where('recipientId', '==', userId),
-      where('isRead', '==', false)
+      where('read', '==', false)
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {

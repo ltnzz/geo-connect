@@ -42,7 +42,7 @@ export default function UserRow({
           @{user.username || 'aroundu'}
         </Text>
         <Text numberOfLines={1} style={styles.personUsername}>
-          {user.city || 'AroundU'}
+          {user.city || 'Unknown Location'}
         </Text>
       </View>
       {showFollowButton && !isOwnUser && targetUserId && onFollowPress ? (

@@ -32,7 +32,7 @@ export default function LocationSelectModal({ visible, onClose, onSelect, curren
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Map state
+
   const [mapRegion, setMapRegion] = useState(DEFAULT_REGION);
   const [selectedCoord, setSelectedCoord] = useState(null);
   const [mapAddressLabel, setMapAddressLabel] = useState('');
@@ -40,19 +40,19 @@ export default function LocationSelectModal({ visible, onClose, onSelect, curren
   const [mapSearchQuery, setMapSearchQuery] = useState('');
   const [isMapGeocoding, setIsMapGeocoding] = useState(false);
 
-  // Venue state
+
   const [venueSearchQuery, setVenueSearchQuery] = useState('');
   const [venues, setVenues] = useState([]);
   const [isFetchingVenues, setIsFetchingVenues] = useState(false);
 
-  // Reset state when opening/closing
+
   useEffect(() => {
     if (visible) {
       setCurrentView('menu');
       setError('');
       setIsLoading(false);
       
-      // Initialize map state
+
       if (currentUserLocation) {
         setMapRegion({
           latitude: currentUserLocation.latitude,
@@ -79,7 +79,7 @@ export default function LocationSelectModal({ visible, onClose, onSelect, curren
     }
   }, [visible, currentUserLocation]);
 
-  // Handle Option 1: Lokasi Anda
+
   const handleSelectCurrentLocation = async () => {
     setIsLoading(true);
     setError('');
@@ -186,7 +186,7 @@ export default function LocationSelectModal({ visible, onClose, onSelect, curren
     onClose();
   };
 
-  // Venue selection: Fetch venues from Firestore
+
   const loadVenues = useCallback(async (searchQuery = '') => {
     setIsFetchingVenues(true);
     setError('');
@@ -195,18 +195,18 @@ export default function LocationSelectModal({ visible, onClose, onSelect, curren
       if (searchQuery.trim()) {
         data = await firestoreService.searchPlaces(searchQuery, currentUserLocation);
       } else if (currentUserLocation) {
-        // Fetch nearby places if user location is available
+
         const nearby = await firestoreService.getNearbyPlaces(
           {
             latitude: currentUserLocation.latitude,
             longitude: currentUserLocation.longitude,
           },
-          10000, // 10 km
+          10000
           30
         );
         data = nearby || [];
       } else {
-        // Fetch all places as a fallback
+
         data = await firestoreService.getAllPlaces(30);
       }
       setVenues(data);
@@ -217,7 +217,7 @@ export default function LocationSelectModal({ visible, onClose, onSelect, curren
     }
   }, [currentUserLocation]);
 
-  // Load venues on mount / view switch
+
   useEffect(() => {
     if (currentView === 'venue') {
       loadVenues(venueSearchQuery);

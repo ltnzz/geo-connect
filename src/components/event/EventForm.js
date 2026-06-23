@@ -50,7 +50,7 @@ export default function EventForm({
   const [currentLocation, setCurrentLocation] = useState(null);
   const [error, setError] = useState(null);
 
-  // Initialize values
+
   useEffect(() => {
     if (initialValues) {
       if (initialValues.title) setTitle(initialValues.title);
@@ -76,14 +76,14 @@ export default function EventForm({
     }
   }, [initialValues]);
 
-  // Sync new location from hook
+
   useEffect(() => {
     if (location) {
       setCurrentLocation(location);
     }
   }, [location]);
 
-  // Expose form state to parent
+
   useEffect(() => {
     if (onChange) {
       onChange({

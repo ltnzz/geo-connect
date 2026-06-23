@@ -79,7 +79,7 @@ export default function UserProfileScreen({ route }) {
     Promise.all([
       firestoreService.getUser(targetUserId),
       firestoreService.getUserPosts(targetUserId),
-      firestoreService.getEventsByCreator(targetUserId).catch(() => []), // Assuming this method exists or we can fetch events
+      firestoreService.getEventsByCreator(targetUserId).catch(() => []),
     ])
       .then(([profile, posts, events]) => {
         if (isActive) {
@@ -111,7 +111,7 @@ export default function UserProfileScreen({ route }) {
   const handleFollowPress = async () => {
     if (!currentUserId || !targetUserId) return;
     
-    // Optimistic UI update for followers count
+
     const delta = isFollowing ? -1 : 1;
     setProfileUser((prev) => ({
       ...prev,

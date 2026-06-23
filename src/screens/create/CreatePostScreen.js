@@ -43,16 +43,16 @@ export default function CreatePostScreen() {
   const [initialEventDraft, setInitialEventDraft] = useState(null);
   const [eventFormData, setEventFormData] = useState(null);
 
-  // Ref to always read latest state inside tabPress listener (prevents stale closure)
+
   const stateRef = useRef({});
   stateRef.current = { activeTab, content, asset, eventFormData };
 
-  // Fetch location on mount
+
   useEffect(() => {
     handleGetLocation();
   }, [handleGetLocation]);
 
-  // Sync user's current location once fetched
+
   useEffect(() => {
     if (userLocation && !postLocation) {
       setPostLocation(userLocation);
@@ -72,7 +72,7 @@ export default function CreatePostScreen() {
         setContent(draft.content || '');
         if (draft.assetUri) setAsset({ uri: draft.assetUri });
       }
-      // Clear params so it doesn't reload on focus
+
       navigation.setParams({ draft: undefined });
     }
   }, [route.params?.draft]);
@@ -135,7 +135,7 @@ export default function CreatePostScreen() {
       setPostLocation(null);
       setSelectedVenue(null);
 
-      // Auto-delete draft if it was loaded
+
       if (loadedDraftId.current) {
         await draftService.deleteDraft(loadedDraftId.current);
         loadedDraftId.current = null;
@@ -209,7 +209,7 @@ export default function CreatePostScreen() {
     );
   }, []);
 
-  // Intercept tab-switch: fires when user taps another tab while Create is active
+
   useFocusEffect(
     useCallback(() => {
       const unsubscribe = navigation.addListener('tabPress', (e) => {

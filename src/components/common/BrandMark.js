@@ -4,7 +4,7 @@ import { Image, StyleSheet, Text, View } from 'react-native';
 import { radius } from '../../utils/theme';
 
 export default function BrandMark({ size = 88 }) {
-  const height = size * 0.76; // 1744/2292 aspect ratio
+  const height = size * 0.76;
   return (
     <Image
       accessibilityLabel="AroundU logo"

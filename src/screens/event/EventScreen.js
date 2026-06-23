@@ -83,7 +83,7 @@ export default function EventScreen() {
 
   const normalizedSearch = searchQuery.trim().toLowerCase();
 
-  // Real Events (for New Events section)
+
   const matchingReal = normalizedSearch
     ? events.filter((event) =>
       [

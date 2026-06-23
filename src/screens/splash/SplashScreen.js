@@ -9,8 +9,8 @@ import { useColors, spacing } from '../../utils/theme';
 const BRAND_TEXT = 'AroundU';
 const TAGLINE_TEXT = "Discover What's Happening Around You";
 const SPLASH_SOUND = require('../../../assets/audio/splash.wav');
-const SPLASH_AUDIO_START_SECONDS = 1;
-const SPLASH_AUDIO_END_SECONDS = 4;
+const SPLASH_AUDIO_START_SECONDS = 0;
+const SPLASH_AUDIO_END_SECONDS = 2;
 const SPLASH_AUDIO_DURATION_MS =
   (SPLASH_AUDIO_END_SECONDS - SPLASH_AUDIO_START_SECONDS) * 1000;
 

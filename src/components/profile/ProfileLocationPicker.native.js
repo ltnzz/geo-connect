@@ -4,13 +4,12 @@ import { useEffect, useState, useMemo } from 'react';
 import {
   ActivityIndicator,
   Modal,
-  Platform,
   Pressable,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
-import MapView, { Marker, UrlTile } from 'react-native-maps';
+import MapView, { Marker } from 'react-native-maps';
 
 import { useColors, radius, spacing } from '../../utils/theme';
 
@@ -140,19 +139,11 @@ export default function ProfileLocationPicker({ onClose, onSelect, visible }) {
         </View>
 
         <MapView
-          mapType={Platform.OS === 'android' ? 'none' : 'standard'}
           onPress={(event) => chooseCoordinate(event.nativeEvent.coordinate)}
           onRegionChangeComplete={setRegion}
           region={region}
           style={styles.map}
         >
-          {Platform.OS === 'android' && (
-            <UrlTile
-              urlTemplate="https://a.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              maximumZ={19}
-              flipY={false}
-            />
-          )}
           {selected ? <Marker coordinate={selected} /> : null}
         </MapView>
 

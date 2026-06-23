@@ -13,7 +13,6 @@ import {
   Alert,
   AppState,
   Modal,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -32,7 +31,7 @@ import { getDistanceMeters } from '../../utils/geo';
 import { clusterMapItems } from '../../utils/mapCluster';
 import { useColors, radius, spacing } from '../../utils/theme';
 
-import MapView, { Callout, Marker, UrlTile } from 'react-native-maps';
+import MapView, { Callout, Marker } from 'react-native-maps';
 
 const LOCATION_REFRESH_INTERVAL = 2 * 60 * 1000;
 
@@ -591,22 +590,15 @@ export default function MapScreen() {
       <View style={styles.mapContainer}>
         <MapView
           initialRegion={INITIAL_REGION}
-          mapType={Platform.OS === 'android' ? 'none' : 'standard'}
           onPress={() => setSelectedCluster(null)}
           onRegionChangeComplete={handleRegionChangeComplete}
           ref={mapRef}
+
           showsCompass={false}
           showsMyLocationButton={false}
           showsUserLocation={isEnabled}
           style={StyleSheet.absoluteFill}
         >
-          {Platform.OS === 'android' && (
-            <UrlTile
-              urlTemplate="https://a.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              maximumZ={19}
-              flipY={false}
-            />
-          )}
           {clusters.map((cluster) => (
             <DiscoveryMarker
               cluster={cluster}

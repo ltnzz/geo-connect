@@ -5,14 +5,13 @@ import {
   ActivityIndicator,
   FlatList,
   Modal,
-  Platform,
   Pressable,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
-import MapView, { Marker, UrlTile } from 'react-native-maps';
+import MapView, { Marker } from 'react-native-maps';
 
 import { firestoreService } from '../../services/firestoreService';
 import { useColors, radius, spacing } from '../../utils/theme';
@@ -347,19 +346,11 @@ export default function LocationSelectModal({ visible, onClose, onSelect, curren
 
             <View style={{ flex: 1 }}>
               <MapView
-                mapType={Platform.OS === 'android' ? 'none' : 'standard'}
                 region={mapRegion}
                 onRegionChangeComplete={setMapRegion}
                 onPress={handleMapPress}
                 style={StyleSheet.absoluteFillObject}
               >
-                {Platform.OS === 'android' && (
-                  <UrlTile
-                    urlTemplate="https://a.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                    maximumZ={19}
-                    flipY={false}
-                  />
-                )}
                 {selectedCoord && <Marker coordinate={selectedCoord} />}
               </MapView>
 

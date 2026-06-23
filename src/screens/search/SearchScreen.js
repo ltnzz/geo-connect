@@ -154,23 +154,13 @@ export default function SearchScreen() {
 
   const visiblePosts = normalizedSearch
     ? uniqueById([...searchedPosts, ...feedPosts]).filter((post) =>
-      [
-        post.authorName,
-        post.caption,
-        post.location?.address,
-        post.location?.city,
-      ].some((value) => value?.toLowerCase().includes(normalizedSearch)),
+      post.caption?.toLowerCase().includes(normalizedSearch)
     )
     : [];
 
   const visibleEvents = normalizedSearch
     ? uniqueById([...searchedEvents, ...eventsData]).filter((event) =>
-      [
-        event.title,
-        event.location?.address,
-        event.location?.city,
-        event.description,
-      ].some((value) => value?.toLowerCase().includes(normalizedSearch)),
+      event.title?.toLowerCase().includes(normalizedSearch)
     )
     : [];
 
@@ -323,6 +313,7 @@ const makeStyles = (colors) => StyleSheet.create({
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
+    zIndex: 1,
   },
   searchTabText: {
     color: colors.neutral,

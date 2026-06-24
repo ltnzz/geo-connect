@@ -23,6 +23,7 @@ export default function CreateStoryModal({
   onClose,
   imageUri,
   events = [],
+  places = [],
   onShare,
   isSharing,
 }) {
@@ -121,10 +122,20 @@ export default function CreateStoryModal({
             </>
           )}
 
-          {events.length === 0 && (
+          {places.length > 0 && (
+            <>
+              <Text style={styles.sectionTitle}>Tag a Venue</Text>
+              <Text style={styles.sectionSubtitle}>Select the venue where you want to share this photo:</Text>
+              <View style={styles.eventList}>
+                {places.map((item) => renderTargetItem(item, false))}
+              </View>
+            </>
+          )}
+
+          {events.length === 0 && places.length === 0 && (
             <View style={styles.emptyState}>
-              <Ionicons name="calendar-outline" size={32} color={colors.neutral} />
-              <Text style={styles.emptyText}>No events available to tag.</Text>
+              <Ionicons name="location-outline" size={32} color={colors.neutral} />
+              <Text style={styles.emptyText}>No events or venues available to tag.</Text>
             </View>
           )}
 

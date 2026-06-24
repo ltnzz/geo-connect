@@ -68,6 +68,12 @@ const getMillis = (value) => {
 
 export const firestoreService = {
   
+  /**
+   * Fetches a user document from the database by ID.
+   * 
+   * @param {string} userId - The unique identifier of the user.
+   * @returns {Promise<Object|null>} A promise that resolves to the user object, or null if not found.
+   */
   async getUser(userId) {
     assertFirebaseConfigured();
     const snapshot = await getDoc(doc(db, COLLECTIONS.users, userId));
@@ -75,6 +81,14 @@ export const firestoreService = {
   },
 
   
+  /**
+   * Updates public profile information for a given user.
+   * Only allows specific fields (e.g., username, bio, avatar) to be updated securely.
+   * 
+   * @param {string} userId - The unique identifier of the user to update.
+   * @param {Object} updates - An object containing the fields to update.
+   * @returns {Promise<void>}
+   */
   async updateUser(userId, updates) {
     assertFirebaseConfigured();
     const allowedFields = [

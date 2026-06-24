@@ -1,4 +1,10 @@
 
+/**
+ * Checks whether a given date is within the last 24 hours from now.
+ * 
+ * @param {Date|Object} dateValue - The Date object or Firebase Timestamp.
+ * @returns {boolean} True if the date is within the last 24 hours.
+ */
 export function isWithin24Hours(dateValue) {
   if (!dateValue) return false;
 
@@ -11,6 +17,13 @@ export function isWithin24Hours(dateValue) {
 }
 
 
+/**
+ * Filters an array of events to only include those created within the last 24 hours,
+ * and sorts them in descending order (newest first).
+ * 
+ * @param {Array<Object>} events - Array of event objects containing a `createdAt` property.
+ * @returns {Array<Object>} Filtered and sorted array of events.
+ */
 export function filterRecentEvents(events) {
   if (!events || !Array.isArray(events)) return [];
   return events
@@ -23,6 +36,13 @@ export function filterRecentEvents(events) {
 }
 
 
+/**
+ * Formats the start and end time of an event into a readable schedule string.
+ * 
+ * @param {Date|Object} startTime - The start time.
+ * @param {Date|Object} endTime - The end time.
+ * @returns {string} The formatted schedule string.
+ */
 export function formatEventSchedule(startTime, endTime) {
   if (!startTime) return '';
 
@@ -41,6 +61,13 @@ export function formatEventSchedule(startTime, endTime) {
 }
 
 
+/**
+ * Combines a Date object and a Time object into a single Date object.
+ * 
+ * @param {Date} date - The date part.
+ * @param {Date} time - The time part.
+ * @returns {Date} The combined Date object.
+ */
 export function combineDateTime(date, time) {
   if (!date || !time) return new Date();
   return new Date(
@@ -53,6 +80,12 @@ export function combineDateTime(date, time) {
 }
 
 
+/**
+ * Formats a given date into a human-readable relative time string (e.g., "just now", "5 minutes ago").
+ * 
+ * @param {Date|Object} dateValue - The Date or Firebase Timestamp.
+ * @returns {string} The formatted relative time string.
+ */
 export function formatRelativeTime(dateValue) {
   if (!dateValue) return '';
 

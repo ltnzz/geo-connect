@@ -1,4 +1,11 @@
 
+/**
+ * Formats a timestamp into a relative time string (e.g., '2m ago', '1h ago', '3d ago').
+ * For older dates, it falls back to a short date string format.
+ * 
+ * @param {Date|Object} timestamp - The Date object or Firebase Timestamp (has toDate() method).
+ * @returns {string} The formatted relative time string.
+ */
 export const formatRelativeTime = (timestamp) => {
   if (!timestamp) return '';
 
@@ -24,6 +31,13 @@ export const formatRelativeTime = (timestamp) => {
 };
 
 
+/**
+ * Formats a numeric count into a short string representation with K/M suffixes.
+ * E.g., 1500 -> '1.5K', 2000000 -> '2M'.
+ * 
+ * @param {number} [value=0] - The numeric value to format.
+ * @returns {string} The formatted short string representation.
+ */
 export const formatCount = (value = 0) => {
   if (value < 1000) return String(value);
   if (value < 1000000)

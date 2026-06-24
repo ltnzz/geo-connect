@@ -10,6 +10,7 @@ const assertCoordinate = (value, name, min, max) => {
   }
 };
 
+
 export const createGeoPointData = (latitude, longitude) => {
   assertCoordinate(latitude, 'latitude', -90, 90);
   assertCoordinate(longitude, 'longitude', -180, 180);
@@ -20,6 +21,7 @@ export const createGeoPointData = (latitude, longitude) => {
     geohash: geohashForLocation([latitude, longitude]),
   };
 };
+
 
 export const getGeoQueryBounds = (latitude, longitude, radiusMeters) => {
   assertCoordinate(latitude, 'latitude', -90, 90);
@@ -32,11 +34,13 @@ export const getGeoQueryBounds = (latitude, longitude, radiusMeters) => {
   return geohashQueryBounds([latitude, longitude], radiusMeters);
 };
 
+
 export const getDistanceMeters = (from, to) =>
   distanceBetween(
     [from.latitude, from.longitude],
     [to.latitude, to.longitude],
   ) * 1000;
+
 
 export const blurCoordinate = (
   { latitude, longitude },

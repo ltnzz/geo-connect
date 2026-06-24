@@ -1,3 +1,4 @@
+
 export const formatRelativeTime = (timestamp) => {
   if (!timestamp) return '';
 
@@ -21,6 +22,7 @@ export const formatRelativeTime = (timestamp) => {
 
   return date.toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
 };
+
 
 export const formatCount = (value = 0) => {
   if (value < 1000) return String(value);

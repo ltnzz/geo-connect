@@ -1,3 +1,4 @@
+
 export function calculateDistance(lat1, lon1, lat2, lon2) {
   if (!lat1 || !lon1 || !lat2 || !lon2) return null;
 
@@ -14,9 +15,11 @@ export function calculateDistance(lat1, lon1, lat2, lon2) {
   return d;
 }
 
+
 function deg2rad(deg) {
   return deg * (Math.PI/180);
 }
+
 
 export function formatDistanceString(userLocation, eventLocation, isFetching) {
   if (isFetching) return 'Calculating...';

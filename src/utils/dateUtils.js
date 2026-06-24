@@ -1,3 +1,4 @@
+
 export function isWithin24Hours(dateValue) {
   if (!dateValue) return false;
 
@@ -8,6 +9,7 @@ export function isWithin24Hours(dateValue) {
 
   return date >= twentyFourHoursAgo;
 }
+
 
 export function filterRecentEvents(events) {
   if (!events || !Array.isArray(events)) return [];
@@ -20,22 +22,24 @@ export function filterRecentEvents(events) {
     });
 }
 
+
 export function formatEventSchedule(startTime, endTime) {
   if (!startTime) return '';
 
   const startD = startTime?.toDate ? startTime.toDate() : new Date(startTime);
   const endD = endTime?.toDate ? endTime.toDate() : (endTime ? new Date(endTime) : startD);
 
-  const startDateStr = startD.toLocaleDateString([], { day: 'numeric', month: 'short' });
-  const endDateStr = endD.toLocaleDateString([], { day: 'numeric', month: 'short' });
-  const startTimeStr = startD.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  const endTimeStr = endD.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const startDateStr = startD.toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
+  const endDateStr = endD.toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
+  const startTimeStr = startD.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+  const endTimeStr = endD.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
 
   if (startDateStr === endDateStr) {
     return `${startDateStr}, ${startTimeStr} - ${endTimeStr}`;
   }
   return `${startDateStr} - ${endDateStr}\n${startTimeStr} - ${endTimeStr}`;
 }
+
 
 export function combineDateTime(date, time) {
   if (!date || !time) return new Date();
@@ -47,6 +51,7 @@ export function combineDateTime(date, time) {
     time.getMinutes()
   );
 }
+
 
 export function formatRelativeTime(dateValue) {
   if (!dateValue) return '';

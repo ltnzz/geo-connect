@@ -256,7 +256,7 @@ export default function LocationSelectModal({ visible, onClose, onSelect, curren
       onRequestClose={onClose}
     >
       <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
-        {/* Render View: Option Menu */}
+        {}
         {currentView === 'menu' && (
           <View style={styles.viewContainer}>
             <View style={styles.header}>

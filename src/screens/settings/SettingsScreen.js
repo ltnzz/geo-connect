@@ -370,9 +370,9 @@ export default function SettingsScreen() {
                         if (!user?.uid) return;
                         setIsSaving(true);
                         try {
-                          // Try deleting auth account first. If it succeeds, we lose permission to delete Firestore data natively.
-                          // But we can catch "requires-recent-login" before deleting Firestore data!
-                          // Actually, we can't reliably "test" deleteAccount without deleting it.
+                          
+                          
+                          
                           await firestoreService.deleteAccountData(user.uid);
                           await authService.deleteAccount();
                           Alert.alert('Sayonara!', 'Akun Anda beserta seluruh datanya telah dihapus sepenuhnya.');

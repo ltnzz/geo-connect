@@ -67,12 +67,14 @@ const getMillis = (value) => {
 };
 
 export const firestoreService = {
+  
   async getUser(userId) {
     assertFirebaseConfigured();
     const snapshot = await getDoc(doc(db, COLLECTIONS.users, userId));
     return snapshot.exists() ? { id: snapshot.id, ...snapshot.data() } : null;
   },
 
+  
   async updateUser(userId, updates) {
     assertFirebaseConfigured();
     const allowedFields = [
@@ -243,7 +245,7 @@ export const firestoreService = {
       getDocs(query(collection(db, COLLECTIONS.follows), where('followingId', '==', userId))),
     ]);
 
-    // Delete follow docs
+    
     const batches = [];
     let currentBatch = writeBatch(db);
     let opCount = 0;
@@ -273,7 +275,7 @@ export const firestoreService = {
     }
     await Promise.all(batches);
 
-    // Update counters safely one by one to avoid crashing the whole process
+    
     const updatePromises = [];
     followingSnapshot.docs.forEach((docSnap) => {
       const data = docSnap.data();
@@ -1241,7 +1243,7 @@ export const firestoreService = {
   async checkIn({ userId, placeId, location }) {
     assertFirebaseConfigured();
     
-    // Fallback to in-memory filtering to avoid requiring a composite index
+    
     const checkinsSnapshot = await getDocs(
       query(
         collection(db, COLLECTIONS.checkins),

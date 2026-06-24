@@ -69,21 +69,21 @@ export default function SplashScreen({ onFinish }) {
   }, [splashPlayer]);
 
   useEffect(() => {
-    // Logo Sequence (starts immediately)
+    
     logoOpacity.value = withTiming(1, { duration: 420, easing: Easing.out(Easing.cubic) });
     logoScale.value = withSpring(1, { damping: 16, stiffness: 130, mass: 0.8 });
     logoTranslateY.value = withTiming(0, { duration: 420, easing: Easing.out(Easing.cubic) });
 
-    // Brand Sequence (starts after a short delay to overlap with logo)
+    
     brandOpacity.value = withDelay(420, withTiming(1, { duration: 280, easing: Easing.out(Easing.cubic) }));
     brandTranslateY.value = withDelay(420, withTiming(0, { duration: 280, easing: Easing.out(Easing.cubic) }));
 
-    // Tagline Sequence (starts after brand)
+    
     taglineOpacity.value = withDelay(700, withTiming(1, { duration: 260, easing: Easing.out(Easing.cubic) }));
     taglineTranslateY.value = withDelay(700, withTiming(0, { duration: 260, easing: Easing.out(Easing.cubic) }));
 
-    // Total sequence length was ~2040 in the old Animated implementation.
-    // Call onFinish after the delay.
+    
+    
     setTimeout(() => {
       onFinish();
     }, 2040);

@@ -91,7 +91,7 @@ export default function EventScreen() {
     )
     : events;
 
-  // 1. Filter ALL search-matching events by distance first
+  
   const nearbyEvents = location
     ? matchingReal
       .map((event) => {
@@ -109,7 +109,7 @@ export default function EventScreen() {
       .sort((a, b) => a.distance - b.distance)
     : [];
 
-  // 2. Filter places by distance
+  
   const nearbyPlaces = location
     ? trendingPlaces
       .map((place) => {
@@ -127,7 +127,7 @@ export default function EventScreen() {
       .sort((a, b) => a.distance - b.distance)
     : [];
 
-  // 3. Derive section data from the distance-filtered arrays
+  
   const newEvents = filterRecentEvents(nearbyEvents);
 
   const featuredEvent = nearbyEvents.length > 0 ? nearbyEvents[0] : null;

@@ -8,9 +8,8 @@ import {
   ActivityIndicator,
   Modal,
   ScrollView,
-  KeyboardAvoidingView,
   Platform,
-  TextInput,
+  View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -84,10 +83,7 @@ export default function CreateStoryModal({
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
-      <KeyboardAvoidingView
-        style={styles.modalContent}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
+      <View style={styles.modalContent}>
         <View style={[styles.header, { paddingTop: Math.max(insets.top, spacing.md) }]}>
           <Pressable hitSlop={8} onPress={onClose} style={styles.closeButton}>
             <Ionicons name="close" size={24} color={colors.text} />
@@ -160,7 +156,7 @@ export default function CreateStoryModal({
             )}
           </Pressable>
         </View>
-      </KeyboardAvoidingView>
+      </View>
     </Modal>
   );
 }

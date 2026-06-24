@@ -36,6 +36,18 @@ export const locationService = {
     });
   },
 
+  async reverseGeocode(latitude, longitude) {
+    try {
+      const results = await Location.reverseGeocodeAsync({ latitude, longitude });
+      if (results && results.length > 0) {
+        return results[0].city || results[0].subregion || results[0].region || '';
+      }
+      return '';
+    } catch {
+      return '';
+    }
+  },
+
   async requestBackgroundPermission() {
     return Location.requestBackgroundPermissionsAsync();
   },

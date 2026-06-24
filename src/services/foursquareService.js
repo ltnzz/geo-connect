@@ -33,7 +33,8 @@ export const foursquareService = {
     });
 
     if (!response.ok) {
-      throw new Error('Foursquare place search failed.');
+      const errorText = await response.text().catch(() => '');
+      throw new Error(`Foursquare place search failed: ${response.status} ${errorText}`);
     }
 
     const payload = await response.json();

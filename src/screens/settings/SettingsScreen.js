@@ -17,6 +17,7 @@ import ScreenHeader from '../../components/common/ScreenHeader';
 import { LOCATION_SHARING } from '../../constants/firestore';
 import { authService } from '../../services/authService';
 import { firestoreService } from '../../services/firestoreService';
+import { locationService } from '../../services/locationService';
 import { useAuthStore } from '../../stores/authStore';
 import { useThemeStore } from '../../stores/themeStore';
 import { useColors, radius, spacing } from '../../utils/theme';
@@ -109,7 +110,7 @@ export default function SettingsScreen() {
 
   const handleThemeToggle = (value) => {
     setLocalDarkMode(value);
-    
+
     setTimeout(() => {
       setThemeMode(value ? 'dark' : 'light');
     }, 150);
@@ -139,15 +140,35 @@ export default function SettingsScreen() {
     savePrivacySetting({ invisibleMode: value }).catch(() => { });
   };
 
-  const changeLocationSharing = (value) => {
+  const changeLocationSharing = async (value) => {
     setLocationSharing(value);
+    const updates = { locationSharing: value };
+
     if (
       user?.uid &&
       [LOCATION_SHARING.city, LOCATION_SHARING.hidden].includes(value)
     ) {
       firestoreService.clearSharedLocation(user.uid).catch(() => { });
     }
-    savePrivacySetting({ locationSharing: value }).catch(() => { });
+
+    if (value === LOCATION_SHARING.city) {
+      try {
+        const position = await locationService.getCurrentPosition();
+        if (position?.coords) {
+          const detectedCity = await locationService.reverseGeocode(
+            position.coords.latitude,
+            position.coords.longitude
+          );
+          if (detectedCity) {
+            updates.city = detectedCity;
+          }
+        }
+      } catch (err) {
+        console.warn('Auto-detect city failed:', err);
+      }
+    }
+
+    savePrivacySetting(updates).catch(() => { });
   };
 
   const openLocationHistory = async () => {
@@ -354,6 +375,7 @@ export default function SettingsScreen() {
                           // Actually, we can't reliably "test" deleteAccount without deleting it.
                           await firestoreService.deleteAccountData(user.uid);
                           await authService.deleteAccount();
+                          Alert.alert('Sayonara!', 'Akun Anda beserta seluruh datanya telah dihapus sepenuhnya.');
                           await logout();
                         } catch (error) {
                           const errorMsg = error?.message || 'Terjadi kesalahan tidak terduga.';

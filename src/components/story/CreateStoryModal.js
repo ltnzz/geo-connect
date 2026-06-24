@@ -1,14 +1,18 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import {
-  Modal,
   StyleSheet,
   Text,
   View,
   Image,
   Pressable,
-  ScrollView,
   ActivityIndicator,
+  Modal,
 } from 'react-native';
+import BottomSheet, {
+  BottomSheetScrollView,
+  BottomSheetBackdrop,
+} from '@gorhom/bottom-sheet';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Ionicons } from '@expo/vector-icons';
 
 import { useColors, radius, spacing } from '../../utils/theme';
@@ -25,12 +29,34 @@ export default function CreateStoryModal({
   const colors = useColors();
   const styles = useMemo(() => makeStyles(colors), [colors]);
 
-  
+  const bottomSheetRef = useRef(null);
+  const snapPoints = useMemo(() => ['85%'], []);
+
   useEffect(() => {
     if (visible) {
       setSelectedEvent(null);
+      bottomSheetRef.current?.expand();
+    } else {
+      bottomSheetRef.current?.close();
     }
   }, [visible]);
+
+  const handleSheetChanges = useCallback((index) => {
+    if (index === -1) {
+      onClose();
+    }
+  }, [onClose]);
+
+  const renderBackdrop = useCallback(
+    (props) => (
+      <BottomSheetBackdrop
+        {...props}
+        disappearsOnIndex={-1}
+        appearsOnIndex={0}
+      />
+    ),
+    []
+  );
 
   const handleShare = () => {
     if (!selectedEvent || !imageUri) return;
@@ -38,128 +64,132 @@ export default function CreateStoryModal({
   };
 
   return (
-    <Modal
-      animationType="slide"
-      onRequestClose={onClose}
-      transparent
-      visible={visible}
-    >
-      <View style={styles.backdrop}>
-        <View style={styles.modalContent}>
-          {}
-          <View style={styles.header}>
-            <Text style={styles.headerTitle}>New Story</Text>
-            <Pressable hitSlop={8} onPress={onClose} style={styles.closeButton}>
-              <Ionicons name="close" size={24} color={colors.text} />
-            </Pressable>
-          </View>
-
-          <ScrollView
-            contentContainerStyle={styles.scrollContent}
-            showsVerticalScrollIndicator={false}
+    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <View style={styles.modalOverlay}>
+          <BottomSheet
+            ref={bottomSheetRef}
+            index={0}
+            snapPoints={snapPoints}
+            onChange={handleSheetChanges}
+            backdropComponent={renderBackdrop}
+            handleIndicatorStyle={{ backgroundColor: colors.border }}
+            backgroundStyle={{ backgroundColor: colors.surface }}
+            enablePanDownToClose={true}
           >
-            {}
-            <Text style={styles.sectionTitle}>Preview</Text>
-            <View style={styles.previewContainer}>
-              {imageUri ? (
-                <Image source={{ uri: imageUri }} style={styles.previewImage} />
-              ) : (
-                <View style={styles.previewPlaceholder}>
-                  <Ionicons name="image-outline" size={48} color={colors.neutral} />
+            <View style={styles.modalContent}>
+              {}
+              <View style={styles.header}>
+                <Text style={styles.headerTitle}>New Story</Text>
+                <Pressable hitSlop={8} onPress={() => bottomSheetRef.current?.close()} style={styles.closeButton}>
+                  <Ionicons name="close" size={24} color={colors.text} />
+                </Pressable>
+              </View>
+
+              <BottomSheetScrollView
+                contentContainerStyle={styles.scrollContent}
+                showsVerticalScrollIndicator={false}
+              >
+                {}
+                <Text style={styles.sectionTitle}>Preview</Text>
+                <View style={styles.previewContainer}>
+                  {imageUri ? (
+                    <Image source={{ uri: imageUri }} style={styles.previewImage} />
+                  ) : (
+                    <View style={styles.previewPlaceholder}>
+                      <Ionicons name="image-outline" size={48} color={colors.neutral} />
+                    </View>
+                  )}
                 </View>
-              )}
+
+                {}
+                <Text style={styles.sectionTitle}>Tag an Event</Text>
+                <Text style={styles.sectionSubtitle}>Select the event where you want to share this photo:</Text>
+                
+                {events.length === 0 ? (
+                  <View style={styles.emptyState}>
+                    <Ionicons name="calendar-outline" size={32} color={colors.neutral} />
+                    <Text style={styles.emptyText}>No events available to tag.</Text>
+                  </View>
+                ) : (
+                  <View style={styles.eventList}>
+                    {events.map((item) => {
+                      const isSelected = selectedEvent?.id === item.id;
+                      return (
+                        <Pressable
+                          key={item.id}
+                          onPress={() => setSelectedEvent(item)}
+                          style={[
+                            styles.eventCard,
+                            isSelected && styles.eventCardActive,
+                          ]}
+                        >
+                          {item.bannerUrl ? (
+                            <Image source={{ uri: item.bannerUrl }} style={styles.eventBanner} />
+                          ) : (
+                            <View style={styles.eventBannerPlaceholder}>
+                              <Ionicons name="calendar" size={20} color={colors.primary} />
+                            </View>
+                          )}
+                          
+                          <View style={styles.eventInfo}>
+                            <Text numberOfLines={1} style={styles.eventTitle}>
+                              {item.title}
+                            </Text>
+                            <Text numberOfLines={1} style={styles.eventLocation}>
+                              {item.location?.city || item.location?.address || 'Nearby'}
+                            </Text>
+                          </View>
+
+                          <View style={[
+                            styles.radioCircle,
+                            isSelected && styles.radioCircleActive
+                          ]}>
+                            {isSelected && <View style={styles.radioInner} />}
+                          </View>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                )}
+              </BottomSheetScrollView>
+
+              {}
+              <View style={styles.footer}>
+                <Pressable
+                  disabled={!selectedEvent || isSharing}
+                  onPress={handleShare}
+                  style={[
+                    styles.shareButton,
+                    (!selectedEvent || isSharing) && styles.shareButtonDisabled,
+                  ]}
+                >
+                  {isSharing ? (
+                    <ActivityIndicator color="#FFFFFF" size="small" />
+                  ) : (
+                    <>
+                      <Ionicons name="paper-plane" size={16} color="#FFFFFF" />
+                      <Text style={styles.shareButtonText}>Share Story</Text>
+                    </>
+                  )}
+                </Pressable>
+              </View>
             </View>
-
-            {}
-            <Text style={styles.sectionTitle}>Tag an Event</Text>
-            <Text style={styles.sectionSubtitle}>Select the event where you want to share this photo:</Text>
-            
-            {events.length === 0 ? (
-              <View style={styles.emptyState}>
-                <Ionicons name="calendar-outline" size={32} color={colors.neutral} />
-                <Text style={styles.emptyText}>No events available to tag.</Text>
-              </View>
-            ) : (
-              <View style={styles.eventList}>
-                {events.map((item) => {
-                  const isSelected = selectedEvent?.id === item.id;
-                  return (
-                    <Pressable
-                      key={item.id}
-                      onPress={() => setSelectedEvent(item)}
-                      style={[
-                        styles.eventCard,
-                        isSelected && styles.eventCardActive,
-                      ]}
-                    >
-                      {item.bannerUrl ? (
-                        <Image source={{ uri: item.bannerUrl }} style={styles.eventBanner} />
-                      ) : (
-                        <View style={styles.eventBannerPlaceholder}>
-                          <Ionicons name="calendar" size={20} color={colors.primary} />
-                        </View>
-                      )}
-                      
-                      <View style={styles.eventInfo}>
-                        <Text numberOfLines={1} style={styles.eventTitle}>
-                          {item.title}
-                        </Text>
-                        <Text numberOfLines={1} style={styles.eventLocation}>
-                          {item.location?.city || item.location?.address || 'Nearby'}
-                        </Text>
-                      </View>
-
-                      <View style={[
-                        styles.radioCircle,
-                        isSelected && styles.radioCircleActive
-                      ]}>
-                        {isSelected && <View style={styles.radioInner} />}
-                      </View>
-                    </Pressable>
-                  );
-                })}
-              </View>
-            )}
-          </ScrollView>
-
-          {}
-          <View style={styles.footer}>
-            <Pressable
-              disabled={!selectedEvent || isSharing}
-              onPress={handleShare}
-              style={[
-                styles.shareButton,
-                (!selectedEvent || isSharing) && styles.shareButtonDisabled,
-              ]}
-            >
-              {isSharing ? (
-                <ActivityIndicator color="#FFFFFF" size="small" />
-              ) : (
-                <>
-                  <Ionicons name="paper-plane" size={16} color="#FFFFFF" />
-                  <Text style={styles.shareButtonText}>Share Story</Text>
-                </>
-              )}
-            </Pressable>
-          </View>
+          </BottomSheet>
         </View>
-      </View>
+      </GestureHandlerRootView>
     </Modal>
   );
 }
 
 const makeStyles = (colors) => StyleSheet.create({
-  backdrop: {
+  modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.6)',
-    justifyContent: 'flex-end',
+    backgroundColor: 'transparent',
   },
   modalContent: {
     backgroundColor: colors.surface,
-    borderTopLeftRadius: radius.xl,
-    borderTopRightRadius: radius.xl,
-    height: '85%',
-    width: '100%',
+    flex: 1,
   },
   header: {
     flexDirection: 'row',

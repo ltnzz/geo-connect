@@ -236,8 +236,71 @@ export const firestoreService = {
 
   async deleteAccountData(userId) {
     assertFirebaseConfigured();
-    await this.clearLocationHistory(userId);
-    await deleteDoc(doc(db, COLLECTIONS.users, userId));
+
+    const [followingSnapshot, followersSnapshot] = await Promise.all([
+      getDocs(query(collection(db, COLLECTIONS.follows), where('followerId', '==', userId))),
+      getDocs(query(collection(db, COLLECTIONS.follows), where('followingId', '==', userId))),
+    ]);
+
+    // Delete follow docs
+    const batches = [];
+    let currentBatch = writeBatch(db);
+    let opCount = 0;
+
+    const commitBatchIfNeeded = () => {
+      if (opCount === 500) {
+        batches.push(currentBatch.commit());
+        currentBatch = writeBatch(db);
+        opCount = 0;
+      }
+    };
+
+    followingSnapshot.docs.forEach((docSnap) => {
+      currentBatch.delete(docSnap.ref);
+      opCount++;
+      commitBatchIfNeeded();
+    });
+
+    followersSnapshot.docs.forEach((docSnap) => {
+      currentBatch.delete(docSnap.ref);
+      opCount++;
+      commitBatchIfNeeded();
+    });
+
+    if (opCount > 0) {
+      batches.push(currentBatch.commit());
+    }
+    await Promise.all(batches);
+
+    // Update counters safely one by one to avoid crashing the whole process
+    const updatePromises = [];
+    followingSnapshot.docs.forEach((docSnap) => {
+      const data = docSnap.data();
+      if (data.followingId) {
+        updatePromises.push(
+          updateDoc(doc(db, COLLECTIONS.users, data.followingId), {
+            followersCount: increment(-1)
+          }).catch(() => {})
+        );
+      }
+    });
+
+    followersSnapshot.docs.forEach((docSnap) => {
+      const data = docSnap.data();
+      if (data.followerId) {
+        updatePromises.push(
+          updateDoc(doc(db, COLLECTIONS.users, data.followerId), {
+            followingCount: increment(-1)
+          }).catch(() => {})
+        );
+      }
+    });
+
+    await Promise.all(updatePromises);
+
+    await this.clearLocationHistory(userId).catch(() => {});
+    await this.clearSharedLocation(userId).catch(() => {});
+    await deleteDoc(doc(db, COLLECTIONS.users, userId)).catch(() => {});
   },
 
   async getVenueStories(placeId) {
@@ -636,6 +699,50 @@ export const firestoreService = {
     );
 
     return profiles.filter(Boolean);
+  },
+
+  async syncSharedLocation(user, center) {
+    assertFirebaseConfigured();
+
+    if (!user?.uid || !center) {
+      return;
+    }
+
+    try {
+      let finalLocation = center;
+      
+      if (user.locationSharing === LOCATION_SHARING.neighborhood) {
+        finalLocation = blurCoordinate(center, 500);
+      } else if (
+        user.locationSharing === LOCATION_SHARING.city ||
+        user.locationSharing === LOCATION_SHARING.hidden
+      ) {
+        return;
+      }
+
+      const locationData = {
+        uid: user.uid,
+        ...createLocation(finalLocation),
+        updatedAt: serverTimestamp(),
+      };
+      
+      await setDoc(doc(db, COLLECTIONS.sharedLocations, user.uid), locationData, { merge: true });
+    } catch (error) {
+      console.warn('Failed to sync shared location:', error);
+      throw error;
+    }
+  },
+
+  async clearSharedLocation(userId) {
+    assertFirebaseConfigured();
+
+    if (!userId) return;
+
+    try {
+      await deleteDoc(doc(db, COLLECTIONS.sharedLocations, userId));
+    } catch (error) {
+      throw error;
+    }
   },
 
   async getMutualConnectionLocations(userId) {

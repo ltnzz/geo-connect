@@ -91,8 +91,7 @@ export default function EventScreen() {
     )
     : events;
 
-  const newEvents = filterRecentEvents(matchingReal);
-
+  // 1. Filter ALL search-matching events by distance first
   const nearbyEvents = location
     ? matchingReal
       .map((event) => {
@@ -110,9 +109,30 @@ export default function EventScreen() {
       .sort((a, b) => a.distance - b.distance)
     : [];
 
+  // 2. Filter places by distance
+  const nearbyPlaces = location
+    ? trendingPlaces
+      .map((place) => {
+        if (!place.location || !place.location.latitude || !place.location.longitude) return null;
+        const dist = calculateDistance(
+          location.latitude,
+          location.longitude,
+          place.location.latitude,
+          place.location.longitude
+        );
+        if (dist === null || dist > selectedRadius) return null;
+        return { ...place, distance: dist };
+      })
+      .filter(Boolean)
+      .sort((a, b) => a.distance - b.distance)
+    : [];
+
+  // 3. Derive section data from the distance-filtered arrays
+  const newEvents = filterRecentEvents(nearbyEvents);
+
   const featuredEvent = nearbyEvents.length > 0 ? nearbyEvents[0] : null;
 
-  const trendingEvents = matchingReal
+  const trendingEvents = nearbyEvents
     .filter(e => e.id !== featuredEvent?.id)
     .sort((a, b) => (b.participantCount || 0) - (a.participantCount || 0))
     .slice(0, 5);
@@ -212,70 +232,71 @@ export default function EventScreen() {
           <EmptyNewEvent />
         )}
 
-        {trendingPlaces.length > 0 ? (
-          <>
-            <EventSectionHeader
-              buttonText="View map"
-              onButtonPress={() => navigation.navigate('Maps')}
-              title="Trending Places Today"
-            />
-            <FlatList
-              contentContainerStyle={styles.trendingList}
-              data={trendingPlaces}
-              horizontal
-              keyExtractor={(place) => place.id}
-              renderItem={({ item }) => (
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={() =>
-                    navigation.navigate('VenueDetail', {
-                      place: item,
-                      placeId: item.id,
-                    })
-                  }
-                  style={styles.placeCard}
-                >
-                  {item.photoUrl ? (
-                    <Image source={{ uri: item.photoUrl }} style={styles.placeImage} />
-                  ) : (
-                    <View style={styles.placeImage}>
-                      <Ionicons color={colors.secondary} name="business" size={24} />
-                    </View>
-                  )}
-                  <Text numberOfLines={1} style={styles.placeTitle}>{item.name}</Text>
-                  <Text numberOfLines={1} style={styles.placeMeta}>
-                    {item.checkinsToday} check-ins today
-                  </Text>
-                </Pressable>
-              )}
-              showsHorizontalScrollIndicator={false}
-            />
-          </>
-        ) : null}
+        <EventSectionHeader
+          buttonText="View map"
+          onButtonPress={() => navigation.navigate('Maps')}
+          title="Trending Places Today"
+          showButton={nearbyPlaces.length > 0}
+        />
+        {nearbyPlaces.length > 0 ? (
+          <FlatList
+            contentContainerStyle={styles.trendingList}
+            data={nearbyPlaces}
+            horizontal
+            keyExtractor={(place) => place.id}
+            renderItem={({ item }) => (
+              <Pressable
+                accessibilityRole="button"
+                onPress={() =>
+                  navigation.navigate('VenueDetail', {
+                    place: item,
+                    placeId: item.id,
+                  })
+                }
+                style={styles.placeCard}
+              >
+                {item.photoUrl ? (
+                  <Image source={{ uri: item.photoUrl }} style={styles.placeImage} />
+                ) : (
+                  <View style={styles.placeImage}>
+                    <Ionicons color={colors.secondary} name="business" size={24} />
+                  </View>
+                )}
+                <Text numberOfLines={1} style={styles.placeTitle}>{item.name}</Text>
+                <Text numberOfLines={1} style={styles.placeMeta}>
+                  {item.checkinsToday} check-ins today
+                </Text>
+              </Pressable>
+            )}
+            showsHorizontalScrollIndicator={false}
+          />
+        ) : (
+          <Text style={styles.emptyNewEventsText}>No trending places in this radius.</Text>
+        )}
 
+        <EventSectionHeader
+          buttonText="View map"
+          onButtonPress={() => navigation.navigate('Maps')}
+          title="Trending Spots"
+          showButton={trendingEvents.length > 0}
+        />
         {trendingEvents.length > 0 ? (
-          <>
-            <EventSectionHeader
-              buttonText="View map"
-              onButtonPress={() => navigation.navigate('Maps')}
-              title="Trending Spots"
-            />
-
-            <ScrollView
-              contentContainerStyle={styles.trendingList}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-            >
-              {trendingEvents.map((item) => (
-                <TrendingEventCard
-                  key={item.id}
-                  event={item}
-                  onPress={() => navigation.navigate('EventDetail', { eventId: item.id })}
-                />
-              ))}
-            </ScrollView>
-          </>
-        ) : null}
+          <ScrollView
+            contentContainerStyle={styles.trendingList}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+          >
+            {trendingEvents.map((item) => (
+              <TrendingEventCard
+                key={item.id}
+                event={item}
+                onPress={() => navigation.navigate('EventDetail', { eventId: item.id })}
+              />
+            ))}
+          </ScrollView>
+        ) : (
+          <Text style={styles.emptyNewEventsText}>No trending events in this radius.</Text>
+        )}
       </ScrollView>
     </View>
   );

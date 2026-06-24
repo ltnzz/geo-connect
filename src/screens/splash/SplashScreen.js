@@ -1,6 +1,15 @@
-import { useEffect, useRef, useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { setAudioModeAsync, useAudioPlayer } from 'expo-audio';
-import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  withSpring,
+  withDelay,
+  Easing,
+  runOnJS,
+} from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import BrandMark from '../../components/common/BrandMark';
@@ -18,13 +27,16 @@ export default function SplashScreen({ onFinish }) {
   const colors = useColors();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const splashPlayer = useAudioPlayer(SPLASH_SOUND);
-  const logoOpacity = useRef(new Animated.Value(0)).current;
-  const logoScale = useRef(new Animated.Value(0.92)).current;
-  const logoTranslateY = useRef(new Animated.Value(12)).current;
-  const brandOpacity = useRef(new Animated.Value(0)).current;
-  const brandTranslateY = useRef(new Animated.Value(10)).current;
-  const taglineOpacity = useRef(new Animated.Value(0)).current;
-  const taglineTranslateY = useRef(new Animated.Value(8)).current;
+  
+  const logoOpacity = useSharedValue(0);
+  const logoScale = useSharedValue(0.92);
+  const logoTranslateY = useSharedValue(12);
+  
+  const brandOpacity = useSharedValue(0);
+  const brandTranslateY = useSharedValue(10);
+  
+  const taglineOpacity = useSharedValue(0);
+  const taglineTranslateY = useSharedValue(8);
 
   useEffect(() => {
     setAudioModeAsync({
@@ -57,76 +69,44 @@ export default function SplashScreen({ onFinish }) {
   }, [splashPlayer]);
 
   useEffect(() => {
-    const animation = Animated.sequence([
-      Animated.parallel([
-        Animated.timing(logoOpacity, {
-          toValue: 1,
-          duration: 420,
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: true,
-        }),
-        Animated.spring(logoScale, {
-          toValue: 1,
-          damping: 16,
-          stiffness: 130,
-          mass: 0.8,
-          useNativeDriver: true,
-        }),
-        Animated.timing(logoTranslateY, {
-          toValue: 0,
-          duration: 420,
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: true,
-        }),
-      ]),
-      Animated.parallel([
-        Animated.timing(brandOpacity, {
-          toValue: 1,
-          duration: 280,
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: true,
-        }),
-        Animated.timing(brandTranslateY, {
-          toValue: 0,
-          duration: 280,
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: true,
-        }),
-      ]),
-      Animated.parallel([
-        Animated.timing(taglineOpacity, {
-          toValue: 1,
-          duration: 260,
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: true,
-        }),
-        Animated.timing(taglineTranslateY, {
-          toValue: 0,
-          duration: 260,
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: true,
-        }),
-      ]),
-      Animated.delay(2040),
-    ]);
+    // Logo Sequence (starts immediately)
+    logoOpacity.value = withTiming(1, { duration: 420, easing: Easing.out(Easing.cubic) });
+    logoScale.value = withSpring(1, { damping: 16, stiffness: 130, mass: 0.8 });
+    logoTranslateY.value = withTiming(0, { duration: 420, easing: Easing.out(Easing.cubic) });
 
-    animation.start(({ finished }) => {
-      if (finished) {
-        onFinish();
-      }
-    });
+    // Brand Sequence (starts after a short delay to overlap with logo)
+    brandOpacity.value = withDelay(420, withTiming(1, { duration: 280, easing: Easing.out(Easing.cubic) }));
+    brandTranslateY.value = withDelay(420, withTiming(0, { duration: 280, easing: Easing.out(Easing.cubic) }));
 
-    return () => animation.stop();
-  }, [
-    brandOpacity,
-    brandTranslateY,
-    logoOpacity,
-    logoScale,
-    logoTranslateY,
-    onFinish,
-    taglineOpacity,
-    taglineTranslateY,
-  ]);
+    // Tagline Sequence (starts after brand)
+    taglineOpacity.value = withDelay(700, withTiming(1, { duration: 260, easing: Easing.out(Easing.cubic) }));
+    taglineTranslateY.value = withDelay(700, withTiming(0, { duration: 260, easing: Easing.out(Easing.cubic) }));
+
+    // Total sequence length was ~2040 in the old Animated implementation.
+    // Call onFinish after the delay.
+    setTimeout(() => {
+      onFinish();
+    }, 2040);
+
+  }, [onFinish]);
+
+  const logoAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: logoOpacity.value,
+    transform: [
+      { translateY: logoTranslateY.value },
+      { scale: logoScale.value },
+    ],
+  }));
+
+  const brandAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: brandOpacity.value,
+    transform: [{ translateY: brandTranslateY.value }],
+  }));
+
+  const taglineAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: taglineOpacity.value,
+    transform: [{ translateY: taglineTranslateY.value }],
+  }));
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -134,13 +114,7 @@ export default function SplashScreen({ onFinish }) {
         <Animated.View
           style={[
             styles.logoContainer,
-            {
-              opacity: logoOpacity,
-              transform: [
-                { translateY: logoTranslateY },
-                { scale: logoScale },
-              ],
-            },
+            logoAnimatedStyle,
           ]}
         >
           <BrandMark size={150} />
@@ -149,10 +123,7 @@ export default function SplashScreen({ onFinish }) {
         <Animated.Text
           style={[
             styles.brand,
-            {
-              opacity: brandOpacity,
-              transform: [{ translateY: brandTranslateY }],
-            },
+            brandAnimatedStyle,
           ]}
         >
           {BRAND_TEXT}
@@ -161,10 +132,7 @@ export default function SplashScreen({ onFinish }) {
         <Animated.Text
           style={[
             styles.tagline,
-            {
-              opacity: taglineOpacity,
-              transform: [{ translateY: taglineTranslateY }],
-            },
+            taglineAnimatedStyle,
           ]}
         >
           {TAGLINE_TEXT}

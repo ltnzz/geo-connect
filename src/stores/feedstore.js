@@ -281,10 +281,6 @@ export const useFeedStore = create((set, get) => ({
           recipientId: target.authorId,
           type: NOTIFICATION_TYPES.like,
         }).catch(() => {});
-        await notificationService.showLocalNotification({
-          title: 'Like sent',
-          body: 'Your like was saved.',
-        });
       }
     } catch (err) {
       set((s) => ({
@@ -323,10 +319,6 @@ export const useFeedStore = create((set, get) => ({
 
     try {
       await firestoreService.setBookmarked(userId, postId, nextBookmarked);
-      await notificationService.showLocalNotification({
-        title: nextBookmarked ? 'Post Bookmarked' : 'Post Unbookmarked',
-        body: nextBookmarked ? 'Saved to your bookmarks.' : 'Removed from your bookmarks.',
-      }).catch(() => {});
     } catch (err) {
       set((s) => ({
         posts: s.posts.map((p) =>
@@ -402,10 +394,6 @@ export const useFeedStore = create((set, get) => ({
           recipientId: post.authorId,
           type: NOTIFICATION_TYPES.comment,
         }).catch(() => {});
-        await notificationService.showLocalNotification({
-          title: 'Comment posted',
-          body: 'Your comment was added.',
-        });
       }
 
       set((s) => ({
@@ -489,10 +477,6 @@ export const useFeedStore = create((set, get) => ({
           recipientId: targetUserId,
           type: NOTIFICATION_TYPES.follow,
         }).catch(() => {});
-        await notificationService.showLocalNotification({
-          title: 'Follow updated',
-          body: 'You are now following this account.',
-        });
       }
       set((s) => ({
         posts: s.posts.map((post) =>

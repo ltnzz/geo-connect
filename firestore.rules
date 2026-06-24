@@ -100,7 +100,7 @@ service cloud.firestore {
       allow create: if isSignedIn()
         && request.resource.data.followerId == request.auth.uid;
       allow delete: if isSignedIn()
-        && resource.data.followerId == request.auth.uid;
+        && (resource.data.followerId == request.auth.uid || resource.data.followingId == request.auth.uid);
     }
 
     match /places/{placeId} {

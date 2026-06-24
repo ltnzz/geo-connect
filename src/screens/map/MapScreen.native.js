@@ -33,7 +33,7 @@ import { useColors, radius, spacing } from '../../utils/theme';
 
 import MapView, { Callout, Marker } from 'react-native-maps';
 
-const LOCATION_REFRESH_INTERVAL = 2 * 60 * 1000;
+const LOCATION_REFRESH_INTERVAL = 10 * 1000;
 
 const INITIAL_REGION = {
   ...DEFAULT_MAP_CENTER,
@@ -45,7 +45,7 @@ const RADIUS_OPTIONS = [
   { label: '1 km', value: 1000 },
   { label: '5 km', value: 5000 },
   { label: '10 km', value: 10000 },
-  { label: 'City', value: 25000 },
+  { label: 'City', value: 100000 },
 ];
 
 const TYPE_OPTIONS = [
@@ -264,6 +264,7 @@ export default function MapScreen() {
   const [isLoadingData, setIsLoadingData] = useState(false);
   const [locationError, setLocationError] = useState('');
   const [center, setCenter] = useState(DEFAULT_MAP_CENTER);
+  const [searchCenter, setSearchCenter] = useState(DEFAULT_MAP_CENTER);
   const [region, setRegion] = useState(INITIAL_REGION);
   const [radiusMeters, setRadiusMeters] = useState(5000);
   const [activeType, setActiveType] = useState('all');
@@ -409,7 +410,7 @@ export default function MapScreen() {
       return;
     }
 
-    firestoreService.syncSharedLocation(user, center).catch(() => {});
+    firestoreService.syncSharedLocation(user, center).catch(() => { });
   }, [
     center,
     hasResolvedLocation,
@@ -421,7 +422,7 @@ export default function MapScreen() {
   ]);
 
   useEffect(() => {
-    
+
     dataCache.current = {};
   }, [refreshVersion]);
 
@@ -431,7 +432,7 @@ export default function MapScreen() {
       return;
     }
 
-    const cacheKey = `${center.latitude.toFixed(3)}:${center.longitude.toFixed(3)}:${radiusMeters}`;
+    const cacheKey = `${searchCenter.latitude.toFixed(3)}:${searchCenter.longitude.toFixed(3)}:${radiusMeters}`;
     if (dataCache.current[cacheKey]) {
       setItems(dataCache.current[cacheKey]);
       return;
@@ -445,15 +446,15 @@ export default function MapScreen() {
         console.warn('Error fetching connections:', err);
         return [];
       }),
-      firestoreService.getNearbyPosts(center, radiusMeters, 40).catch((err) => {
+      firestoreService.getNearbyPosts(searchCenter, radiusMeters, 40).catch((err) => {
         console.warn('Error fetching posts:', err);
         return [];
       }),
-      firestoreService.getNearbyEvents(center, radiusMeters, 40).catch((err) => {
+      firestoreService.getNearbyEvents(searchCenter, radiusMeters, 40).catch((err) => {
         console.warn('Error fetching events:', err);
         return [];
       }),
-      firestoreService.getNearbyPlaces(center, radiusMeters, 30).catch((err) => {
+      firestoreService.getNearbyPlaces(searchCenter, radiusMeters, 30).catch((err) => {
         console.warn('Error fetching places:', err);
         return [];
       }),
@@ -467,7 +468,7 @@ export default function MapScreen() {
           .filter(
             (connection) =>
               connection.location &&
-              getDistanceMeters(center, connection.location) <= radiusMeters,
+              getDistanceMeters(searchCenter, connection.location) <= radiusMeters,
           )
           .map(normalizeConnection);
 
@@ -505,7 +506,7 @@ export default function MapScreen() {
     return () => {
       isActive = false;
     };
-  }, [center, isEnabled, radiusMeters, refreshVersion, user?.uid, eventsList]);
+  }, [searchCenter, isEnabled, radiusMeters, refreshVersion, user?.uid, eventsList]);
 
   const visibleItems = useMemo(
     () =>
@@ -548,7 +549,7 @@ export default function MapScreen() {
   const disableNearby = async () => {
     await locationService.setNearbyEnabled(false);
     if (user?.uid) {
-      await firestoreService.clearSharedLocation(user.uid).catch(() => {});
+      await firestoreService.clearSharedLocation(user.uid).catch(() => { });
     }
     setIsEnabled(false);
     setHasResolvedLocation(false);
@@ -660,7 +661,7 @@ export default function MapScreen() {
                       style={[
                         styles.filterText,
                         radiusMeters === option.value &&
-                          styles.filterTextActive,
+                        styles.filterTextActive,
                       ]}
                     >
                       {option.label}
@@ -731,6 +732,19 @@ export default function MapScreen() {
                 <Ionicons color={colors.danger} name="location-outline" size={22} />
               </Pressable>
             </View>
+
+            {getDistanceMeters(center, searchCenter) > 200 && !isLoadingData ? (
+              <Pressable
+                style={styles.searchAreaButton}
+                onPress={() => {
+                  setSearchCenter(center);
+                  setRefreshVersion((v) => v + 1);
+                }}
+              >
+                <Ionicons name="search" size={16} color="#FFFFFF" />
+                <Text style={styles.searchAreaText}>Search this area</Text>
+              </Pressable>
+            ) : null}
 
             {isLoadingData ? (
               <View style={styles.loadingBadge}>
@@ -1018,6 +1032,28 @@ const makeStyles = (colors) => StyleSheet.create({
     color: colors.text,
     fontFamily: 'Inter_600SemiBold',
     fontSize: 10,
+  },
+  searchAreaButton: {
+    alignItems: 'center',
+    alignSelf: 'center',
+    backgroundColor: colors.primary,
+    borderRadius: radius.full,
+    elevation: 4,
+    flexDirection: 'row',
+    gap: spacing.sm,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    position: 'absolute',
+    top: 100,
+    shadowColor: colors.primary,
+    shadowOffset: { height: 3, width: 0 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+  },
+  searchAreaText: {
+    color: '#FFFFFF',
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 12,
   },
   emptyBadge: {
     alignItems: 'center',

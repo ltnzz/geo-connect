@@ -185,7 +185,7 @@ export default function AuthScreen() {
       await GoogleSignin.hasPlayServices({
         showPlayServicesUpdateDialog: true,
       });
-      await GoogleSignin.signOut().catch(() => {});
+      await GoogleSignin.signOut().catch(() => { });
 
       const response = await GoogleSignin.signIn();
       if (!isSuccessResponse(response)) {
@@ -307,7 +307,7 @@ export default function AuthScreen() {
                 onChangeText={(value) => updateField('email', value)}
                 onFocus={() => setFocusedField('email')}
                 onSubmitEditing={() => passwordRef.current?.focus()}
-                placeholder="you@example.com"
+                placeholder="john@gmail.com"
                 placeholderTextColor={colors.neutral}
                 ref={emailRef}
                 returnKeyType="next"

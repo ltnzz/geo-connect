@@ -172,12 +172,12 @@ export default function ProfileScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      if (user?.uid && profilePosts.length === 0 && !isPostsLoading) {
+      if (user?.uid) {
         fetchProfileData();
         fetchEvents();
         fetchSavedData();
       }
-    }, [user?.uid, profilePosts.length, isPostsLoading, fetchProfileData, fetchEvents, fetchSavedData])
+    }, [user?.uid, fetchProfileData, fetchEvents, fetchSavedData])
   );
 
 

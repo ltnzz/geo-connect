@@ -1,3 +1,4 @@
+import 'react-native-gesture-handler';
 import { useCallback, useEffect, useState } from 'react';
 import {
   Poppins_400Regular,
@@ -13,6 +14,8 @@ import {
 } from '@expo-google-fonts/inter';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 
 import AuthScreen from './src/screens/auth/AuthScreen';
 import AppNavigator from './src/navigation/AppNavigator';
@@ -76,13 +79,17 @@ export default function App() {
   const content = user ? <AppNavigator /> : <AuthScreen />;
 
   return (
-    <SafeAreaProvider style={{ backgroundColor: colors.background, flex: 1 }}>
-      {isSplashVisible || !isInitialized ? (
-        <SplashScreen onFinish={handleSplashFinish} />
-      ) : (
-        content
-      )}
-      <StatusBar style={themeMode === 'light' ? 'dark' : 'light'} />
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider style={{ backgroundColor: colors.background, flex: 1 }}>
+        <BottomSheetModalProvider>
+          {isSplashVisible || !isInitialized ? (
+            <SplashScreen onFinish={handleSplashFinish} />
+          ) : (
+            content
+          )}
+          <StatusBar style={themeMode === 'light' ? 'dark' : 'light'} />
+        </BottomSheetModalProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }

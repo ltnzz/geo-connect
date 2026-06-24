@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import {
   memo,
@@ -165,19 +166,32 @@ const DiscoveryMarker = memo(
         onPress={() => onPress(cluster)}
         tracksViewChanges={tracksViewChanges}
       >
-        <View
-          style={[
-            styles.marker,
-            { backgroundColor: isCluster ? colors.text : meta.color },
-            isCluster && styles.clusterMarker,
-          ]}
-        >
-          {isCluster ? (
-            <Text style={[styles.clusterCount, { color: colors.surface }]}>{cluster.items.length}</Text>
-          ) : (
-            <Ionicons color="#FFFFFF" name={meta.icon} size={17} />
-          )}
-        </View>
+        {isCluster || !item.hasStory ? (
+          <View
+            style={[
+              styles.marker,
+              { backgroundColor: isCluster ? colors.text : meta.color },
+              isCluster && styles.clusterMarker,
+            ]}
+          >
+            {isCluster ? (
+              <Text style={[styles.clusterCount, { color: colors.surface }]}>{cluster.items.length}</Text>
+            ) : (
+              <Ionicons color="#FFFFFF" name={meta.icon} size={17} />
+            )}
+          </View>
+        ) : (
+          <LinearGradient
+            colors={['#2563EB', '#8B5CF6', '#EC4899']}
+            start={{ x: 0.0, y: 0.0 }}
+            end={{ x: 1.0, y: 1.0 }}
+            style={styles.storyRingOuter}
+          >
+            <View style={[styles.storyRingInner, { backgroundColor: meta.color }]}>
+              <Ionicons color="#FFFFFF" name={meta.icon} size={17} />
+            </View>
+          </LinearGradient>
+        )}
         {!isCluster ? (
           <Callout>
             <View style={styles.callout}>
@@ -458,11 +472,16 @@ export default function MapScreen() {
         console.warn('Error fetching places:', err);
         return [];
       }),
+      firestoreService.getAllActiveStories().catch(() => []),
     ])
-      .then(([connections, posts, events, places]) => {
+      .then(([connections, posts, events, places, activeStories]) => {
         if (!isActive) {
           return;
         }
+
+        const placeIdsWithStories = new Set(
+          (activeStories || []).filter(s => s.placeId).map(s => s.placeId)
+        );
 
         const normalizedConnections = (connections || [])
           .filter(
@@ -482,7 +501,10 @@ export default function MapScreen() {
 
         const normalizedPlaces = (places || [])
           .filter((place) => place.location)
-          .map(normalizePlace);
+          .map((place) => ({
+            ...normalizePlace(place),
+            hasStory: placeIdsWithStories.has(place.id),
+          }));
 
         const loadedItems = [
           ...normalizedConnections,
@@ -920,8 +942,24 @@ const makeStyles = (colors) => StyleSheet.create({
     width: 46,
   },
   clusterCount: {
-    fontFamily: 'Inter_700Bold',
-    fontSize: 13,
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 12,
+  },
+  storyRingOuter: {
+    alignItems: 'center',
+    borderRadius: 20,
+    height: 40,
+    justifyContent: 'center',
+    width: 40,
+  },
+  storyRingInner: {
+    alignItems: 'center',
+    borderColor: colors.surface,
+    borderRadius: 18,
+    borderWidth: 2,
+    height: 36,
+    justifyContent: 'center',
+    width: 36,
   },
   callout: {
     minWidth: 170,

@@ -11,6 +11,8 @@ export default function StoryRingRow({
   currentUserAvatar,
   currentUserStories = [],
   onCurrentUserRingPress,
+  currentUserLabel = 'Your Story',
+  addStoryLabel = 'Add Story',
   style,
 }) {
   const hasStories = currentUserStories && currentUserStories.length > 0;
@@ -82,7 +84,7 @@ export default function StoryRingRow({
             </Pressable>
           )}
           <Text numberOfLines={1} style={styles.ringLabel}>
-            {hasStories ? 'Your Story' : 'Add Story'}
+            {hasStories ? currentUserLabel : addStoryLabel}
           </Text>
         </View>
 

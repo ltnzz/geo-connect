@@ -126,6 +126,16 @@ export default function ProfileScreen() {
           followingCount: profile.followingCount ?? 0,
           postsCount: profile.postsCount ?? enrichedPosts.length,
         });
+        
+        // Sync follow counts in the background
+        firestoreService.syncUserFollowCounts(user.uid).then((counts) => {
+          if (counts && (counts.followersCount !== profile.followersCount || counts.followingCount !== profile.followingCount)) {
+            updateCurrentUser({
+              followersCount: counts.followersCount,
+              followingCount: counts.followingCount,
+            });
+          }
+        }).catch(() => {});
       }
       setProfilePosts(enrichedPosts);
     } catch (err) {

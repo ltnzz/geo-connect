@@ -25,7 +25,7 @@ const DEFAULT_REGION = {
   longitudeDelta: 0.04,
 };
 
-export default function LocationSelectModal({ visible, onClose, onSelect, currentUserLocation }) {
+export default function LocationSelectModal({ visible, onClose, onSelect, currentUserLocation, initialLocation }) {
   const colors = useColors();
   const styles = useMemo(() => makeStyles(colors), [colors]);
 
@@ -54,19 +54,20 @@ export default function LocationSelectModal({ visible, onClose, onSelect, curren
       setIsLoading(false);
       
 
-      if (currentUserLocation) {
+      const startLoc = initialLocation || currentUserLocation;
+      if (startLoc) {
         setMapRegion({
-          latitude: currentUserLocation.latitude,
-          longitude: currentUserLocation.longitude,
+          latitude: startLoc.latitude,
+          longitude: startLoc.longitude,
           latitudeDelta: 0.02,
           longitudeDelta: 0.02,
         });
         setSelectedCoord({
-          latitude: currentUserLocation.latitude,
-          longitude: currentUserLocation.longitude,
+          latitude: startLoc.latitude,
+          longitude: startLoc.longitude,
         });
-        setMapAddressLabel(currentUserLocation.address || 'Selected Location');
-        setMapCityLabel(currentUserLocation.city || '');
+        setMapAddressLabel(startLoc.address || 'Selected Location');
+        setMapCityLabel(startLoc.city || '');
       } else {
         setMapRegion(DEFAULT_REGION);
         setSelectedCoord(null);
@@ -193,14 +194,16 @@ export default function LocationSelectModal({ visible, onClose, onSelect, curren
     setError('');
     try {
       let data = [];
+      const searchCenter = selectedCoord || initialLocation || currentUserLocation;
+      
       if (searchQuery.trim()) {
-        data = await firestoreService.searchPlaces(searchQuery, currentUserLocation);
-      } else if (currentUserLocation) {
+        data = await firestoreService.searchPlaces(searchQuery, searchCenter);
+      } else if (searchCenter) {
 
         const nearby = await firestoreService.getNearbyPlaces(
           {
-            latitude: currentUserLocation.latitude,
-            longitude: currentUserLocation.longitude,
+            latitude: searchCenter.latitude,
+            longitude: searchCenter.longitude,
           },
           10000,
           30
@@ -216,7 +219,7 @@ export default function LocationSelectModal({ visible, onClose, onSelect, curren
     } finally {
       setIsFetchingVenues(false);
     }
-  }, [currentUserLocation]);
+  }, [currentUserLocation, initialLocation, selectedCoord]);
 
 
   useEffect(() => {
@@ -424,10 +427,11 @@ export default function LocationSelectModal({ visible, onClose, onSelect, curren
                 }
                 renderItem={({ item }) => {
                   let distanceText = '';
-                  if (currentUserLocation && item.location?.latitude && item.location?.longitude) {
+                  const distCenter = selectedCoord || initialLocation || currentUserLocation;
+                  if (distCenter && item.location?.latitude && item.location?.longitude) {
                     const d = calculateDistance(
-                      currentUserLocation.latitude,
-                      currentUserLocation.longitude,
+                      distCenter.latitude,
+                      distCenter.longitude,
                       item.location.latitude,
                       item.location.longitude
                     );

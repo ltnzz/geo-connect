@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   StyleSheet,
   Text,
@@ -7,14 +7,15 @@ import {
   Pressable,
   ActivityIndicator,
   Modal,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
+  TextInput,
 } from 'react-native';
-import BottomSheet, {
-  BottomSheetScrollView,
-  BottomSheetBackdrop,
-} from '@gorhom/bottom-sheet';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-
+import { firestoreService } from '../../services/firestoreService';
+import { useLocation } from '../../hooks/useLocation';
 import { useColors, radius, spacing } from '../../utils/theme';
 
 export default function CreateStoryModal({
@@ -25,168 +26,135 @@ export default function CreateStoryModal({
   onShare,
   isSharing,
 }) {
-  const [selectedEvent, setSelectedEvent] = useState(null);
+  const [selectedTarget, setSelectedTarget] = useState(null);
+  
   const colors = useColors();
+  const insets = useSafeAreaInsets();
   const styles = useMemo(() => makeStyles(colors), [colors]);
-
-  const bottomSheetRef = useRef(null);
-  const snapPoints = useMemo(() => ['85%'], []);
 
   useEffect(() => {
     if (visible) {
-      setSelectedEvent(null);
-      bottomSheetRef.current?.expand();
-    } else {
-      bottomSheetRef.current?.close();
+      setSelectedTarget(null);
     }
   }, [visible]);
 
-  const handleSheetChanges = useCallback((index) => {
-    if (index === -1) {
-      onClose();
-    }
-  }, [onClose]);
-
-  const renderBackdrop = useCallback(
-    (props) => (
-      <BottomSheetBackdrop
-        {...props}
-        disappearsOnIndex={-1}
-        appearsOnIndex={0}
-      />
-    ),
-    []
-  );
-
   const handleShare = () => {
-    if (!selectedEvent || !imageUri) return;
-    onShare(selectedEvent);
+    if (!selectedTarget || !imageUri) return;
+    onShare(selectedTarget);
+  };
+
+  const renderTargetItem = (item, isEvent) => {
+    const isSelected = selectedTarget?.id === item.id;
+    return (
+      <Pressable
+        key={item.id}
+        onPress={() => setSelectedTarget({ ...item, type: isEvent ? 'event' : 'place' })}
+        style={[
+          styles.eventCard,
+          isSelected && styles.eventCardActive,
+        ]}
+      >
+        {item.bannerUrl || item.photoUrl ? (
+          <Image source={{ uri: item.bannerUrl || item.photoUrl }} style={styles.eventBanner} />
+        ) : (
+          <View style={styles.eventBannerPlaceholder}>
+            <Ionicons name={isEvent ? "calendar" : "business"} size={20} color={colors.primary} />
+          </View>
+        )}
+        
+        <View style={styles.eventInfo}>
+          <Text numberOfLines={1} style={styles.eventTitle}>
+            {item.title || item.name}
+          </Text>
+          <Text numberOfLines={1} style={styles.eventLocation}>
+            {item.location?.city || item.address || 'Nearby'}
+          </Text>
+        </View>
+
+        <View style={[
+          styles.radioCircle,
+          isSelected && styles.radioCircleActive
+        ]}>
+          {isSelected && <View style={styles.radioInner} />}
+        </View>
+      </Pressable>
+    );
   };
 
   return (
-    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <View style={styles.modalOverlay}>
-          <BottomSheet
-            ref={bottomSheetRef}
-            index={0}
-            snapPoints={snapPoints}
-            onChange={handleSheetChanges}
-            backdropComponent={renderBackdrop}
-            handleIndicatorStyle={{ backgroundColor: colors.border }}
-            backgroundStyle={{ backgroundColor: colors.surface }}
-            enablePanDownToClose={true}
-          >
-            <View style={styles.modalContent}>
-              {}
-              <View style={styles.header}>
-                <Text style={styles.headerTitle}>New Story</Text>
-                <Pressable hitSlop={8} onPress={() => bottomSheetRef.current?.close()} style={styles.closeButton}>
-                  <Ionicons name="close" size={24} color={colors.text} />
-                </Pressable>
-              </View>
-
-              <BottomSheetScrollView
-                contentContainerStyle={styles.scrollContent}
-                showsVerticalScrollIndicator={false}
-              >
-                {}
-                <Text style={styles.sectionTitle}>Preview</Text>
-                <View style={styles.previewContainer}>
-                  {imageUri ? (
-                    <Image source={{ uri: imageUri }} style={styles.previewImage} />
-                  ) : (
-                    <View style={styles.previewPlaceholder}>
-                      <Ionicons name="image-outline" size={48} color={colors.neutral} />
-                    </View>
-                  )}
-                </View>
-
-                {}
-                <Text style={styles.sectionTitle}>Tag an Event</Text>
-                <Text style={styles.sectionSubtitle}>Select the event where you want to share this photo:</Text>
-                
-                {events.length === 0 ? (
-                  <View style={styles.emptyState}>
-                    <Ionicons name="calendar-outline" size={32} color={colors.neutral} />
-                    <Text style={styles.emptyText}>No events available to tag.</Text>
-                  </View>
-                ) : (
-                  <View style={styles.eventList}>
-                    {events.map((item) => {
-                      const isSelected = selectedEvent?.id === item.id;
-                      return (
-                        <Pressable
-                          key={item.id}
-                          onPress={() => setSelectedEvent(item)}
-                          style={[
-                            styles.eventCard,
-                            isSelected && styles.eventCardActive,
-                          ]}
-                        >
-                          {item.bannerUrl ? (
-                            <Image source={{ uri: item.bannerUrl }} style={styles.eventBanner} />
-                          ) : (
-                            <View style={styles.eventBannerPlaceholder}>
-                              <Ionicons name="calendar" size={20} color={colors.primary} />
-                            </View>
-                          )}
-                          
-                          <View style={styles.eventInfo}>
-                            <Text numberOfLines={1} style={styles.eventTitle}>
-                              {item.title}
-                            </Text>
-                            <Text numberOfLines={1} style={styles.eventLocation}>
-                              {item.location?.city || item.location?.address || 'Nearby'}
-                            </Text>
-                          </View>
-
-                          <View style={[
-                            styles.radioCircle,
-                            isSelected && styles.radioCircleActive
-                          ]}>
-                            {isSelected && <View style={styles.radioInner} />}
-                          </View>
-                        </Pressable>
-                      );
-                    })}
-                  </View>
-                )}
-              </BottomSheetScrollView>
-
-              {}
-              <View style={styles.footer}>
-                <Pressable
-                  disabled={!selectedEvent || isSharing}
-                  onPress={handleShare}
-                  style={[
-                    styles.shareButton,
-                    (!selectedEvent || isSharing) && styles.shareButtonDisabled,
-                  ]}
-                >
-                  {isSharing ? (
-                    <ActivityIndicator color="#FFFFFF" size="small" />
-                  ) : (
-                    <>
-                      <Ionicons name="paper-plane" size={16} color="#FFFFFF" />
-                      <Text style={styles.shareButtonText}>Share Story</Text>
-                    </>
-                  )}
-                </Pressable>
-              </View>
-            </View>
-          </BottomSheet>
+    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
+      <KeyboardAvoidingView
+        style={styles.modalContent}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <View style={[styles.header, { paddingTop: Math.max(insets.top, spacing.md) }]}>
+          <Pressable hitSlop={8} onPress={onClose} style={styles.closeButton}>
+            <Ionicons name="close" size={24} color={colors.text} />
+          </Pressable>
+          <Text style={styles.headerTitle}>New Story</Text>
+          <View style={{ width: 24 }} />
         </View>
-      </GestureHandlerRootView>
+
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <Text style={styles.sectionTitle}>Preview</Text>
+          <View style={styles.previewContainer}>
+            {imageUri ? (
+              <Image source={{ uri: imageUri }} style={styles.previewImage} />
+            ) : (
+              <View style={styles.previewPlaceholder}>
+                <Ionicons name="image-outline" size={48} color={colors.neutral} />
+              </View>
+            )}
+          </View>
+
+          {events.length > 0 && (
+            <>
+              <Text style={styles.sectionTitle}>Tag an Event</Text>
+              <Text style={styles.sectionSubtitle}>Select the event where you want to share this photo:</Text>
+              <View style={styles.eventList}>
+                {events.map((item) => renderTargetItem(item, true))}
+              </View>
+            </>
+          )}
+
+          {events.length === 0 && (
+            <View style={styles.emptyState}>
+              <Ionicons name="calendar-outline" size={32} color={colors.neutral} />
+              <Text style={styles.emptyText}>No events available to tag.</Text>
+            </View>
+          )}
+
+        </ScrollView>
+
+        <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 16) }]}>
+          <Pressable
+            disabled={!selectedTarget || isSharing}
+            onPress={handleShare}
+            style={[
+              styles.shareButton,
+              (!selectedTarget || isSharing) && styles.shareButtonDisabled,
+            ]}
+          >
+            {isSharing ? (
+              <ActivityIndicator color="#FFFFFF" size="small" />
+            ) : (
+              <>
+                <Ionicons name="paper-plane" size={16} color="#FFFFFF" />
+                <Text style={styles.shareButtonText}>Share Story</Text>
+              </>
+            )}
+          </Pressable>
+        </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
 
 const makeStyles = (colors) => StyleSheet.create({
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'transparent',
-  },
   modalContent: {
     backgroundColor: colors.surface,
     flex: 1,
@@ -196,7 +164,7 @@ const makeStyles = (colors) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
+    paddingBottom: spacing.md,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
   },

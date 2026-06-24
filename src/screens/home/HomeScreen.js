@@ -108,25 +108,33 @@ export default function HomeScreen() {
     }
   };
 
-  const handleShareStory = async (event) => {
+  const handleShareStory = async (target) => {
     setIsUploadingStory(true);
     try {
       const uploadResult = await cloudinaryService.uploadImage(pickedImageUri, { folder: 'stories' });
       const user = useAuthStore.getState().user;
 
-      await firestoreService.createStory({
+      const storyData = {
         userId: currentUserId,
         username: user?.username || 'aroundu',
         userAvatar: user?.avatarUrl || '',
         mediaUrl: uploadResult.url,
-        eventId: event.id,
-        eventTitle: event.title,
-      });
+      };
+
+      if (target.type === 'event') {
+        storyData.eventId = target.id;
+        storyData.eventTitle = target.title;
+      } else if (target.type === 'place') {
+        storyData.placeId = target.id;
+        storyData.placeName = target.name;
+      }
+
+      await firestoreService.createStory(storyData);
 
       loadStories();
       setIsCreateStoryVisible(false);
       setPickedImageUri(null);
-      Alert.alert('Story Shared', `Your story was shared in event: ${event.title}`);
+      Alert.alert('Story Shared', `Your story was shared at: ${target.title || target.name}`);
     } catch (err) {
       Alert.alert('Upload Failed', err.message || 'Something went wrong.');
     } finally {

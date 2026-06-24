@@ -17,6 +17,7 @@ import {
   orderBy,
   startAfter,
   Timestamp,
+  getCountFromServer,
 } from 'firebase/firestore';
 
 import { assertFirebaseConfigured, db } from '../config/firebase';
@@ -614,6 +615,32 @@ export const firestoreService = {
         authorAvatar,
       }))
       .sort((a, b) => getMillis(b.createdAt) - getMillis(a.createdAt));
+  },
+
+  async syncUserFollowCounts(userId) {
+    if (!userId) return;
+    try {
+      const followersQuery = query(collection(db, COLLECTIONS.follows), where('followingId', '==', userId));
+      const followingQuery = query(collection(db, COLLECTIONS.follows), where('followerId', '==', userId));
+
+      const [followersSnap, followingSnap] = await Promise.all([
+        getCountFromServer(followersQuery),
+        getCountFromServer(followingQuery)
+      ]);
+
+      const followersCount = followersSnap.data().count;
+      const followingCount = followingSnap.data().count;
+
+      await updateDoc(doc(db, COLLECTIONS.users, userId), {
+        followersCount,
+        followingCount
+      });
+
+      return { followersCount, followingCount };
+    } catch (error) {
+      console.warn('Failed to sync follow counts:', error);
+      throw error;
+    }
   },
 
   async setFollowing(followerId, followingId, shouldFollow) {
@@ -1326,6 +1353,7 @@ export const firestoreService = {
 
       const batch = writeBatch(db);
       let count = 0;
+      const mappedPlaces = [];
       
       for (const p of places) {
         if (count >= 400) break;
@@ -1341,8 +1369,8 @@ export const firestoreService = {
 
         if (lat === undefined || lng === undefined) continue;
 
-        const docRef = doc(db, COLLECTIONS.places, placeId.toString());
-        batch.set(docRef, {
+        const mappedPlace = {
+          id: placeId.toString(),
           name: name.trim(),
           category,
           address,
@@ -1350,15 +1378,21 @@ export const firestoreService = {
           location: createLocation({ latitude: lat, longitude: lng }),
           source: 'foursquare',
           status: 'active',
-        }, { merge: true });
+        };
+
+        const docRef = doc(db, COLLECTIONS.places, mappedPlace.id);
+        batch.set(docRef, mappedPlace, { merge: true });
+        mappedPlaces.push(mappedPlace);
         count++;
       }
 
       if (count > 0) {
         await batch.commit();
       }
+      return mappedPlaces;
     } catch (err) {
       console.warn('Failed to sync Foursquare places:', err);
+      return [];
     }
   },
 
@@ -1426,17 +1460,18 @@ export const firestoreService = {
 
   async getVenueStories(placeId) {
     assertFirebaseConfigured();
-    const since = Timestamp.fromMillis(Date.now() - 24 * 60 * 60 * 1000);
     const snapshot = await getDocs(
       query(
         collection(db, COLLECTIONS.stories),
-        where('placeId', '==', placeId),
-        where('createdAt', '>=', since),
-        orderBy('createdAt', 'asc'),
-        limit(50),
-      ),
+        where('placeId', '==', placeId)
+      )
     );
-    return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+
+    const since = Date.now() - 24 * 60 * 60 * 1000;
+    return snapshot.docs
+      .map((d) => ({ id: d.id, ...d.data({ serverTimestamps: 'estimate' }) }))
+      .filter((story) => !story.createdAt || getMillis(story.createdAt) >= since)
+      .sort((a, b) => getMillis(a.createdAt) - getMillis(b.createdAt));
   },
   async getFeedPosts({ pageSize = 10, cursor = null } = {}) {
     assertFirebaseConfigured();
@@ -1525,7 +1560,7 @@ export const firestoreService = {
     }
 
     if (location) {
-      await this._fetchAndSyncFoursquare(location, 10000, searchText);
+      const fsqPlaces = await this._fetchAndSyncFoursquare(location, 10000, searchText) || [];
       const nearbyDocs = await getNearbyDocuments({
         collectionName: COLLECTIONS.places,
         center: location,
@@ -1533,7 +1568,11 @@ export const firestoreService = {
         maxResults: 100,
       });
 
-      return nearbyDocs
+      const allPlacesMap = new Map();
+      nearbyDocs.forEach((p) => allPlacesMap.set(p.id, p));
+      fsqPlaces.forEach((p) => allPlacesMap.set(p.id, p));
+
+      return Array.from(allPlacesMap.values())
         .filter((place) =>
           [
             place.name,

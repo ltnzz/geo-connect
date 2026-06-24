@@ -423,6 +423,7 @@ export default function CreatePostScreen() {
           }
         }}
         currentUserLocation={userLocation}
+        initialLocation={postLocation}
       />
     </View>
   );

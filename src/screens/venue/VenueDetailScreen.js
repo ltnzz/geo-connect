@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useState, useMemo } from 'react';
 import {
   ActivityIndicator,
@@ -12,21 +13,30 @@ import {
 } from 'react-native';
 
 import ScreenHeader from '../../components/common/ScreenHeader';
+import StoryViewerModal from '../../components/story/StoryViewerModal';
+import CreateStoryModal from '../../components/story/CreateStoryModal';
+import StoryRingRow from '../../components/story/StoryRingRow';
 import { firestoreService } from '../../services/firestoreService';
+import { locationService } from '../../services/locationService';
+import { imagePickerService } from '../../services/imagePickerService';
+import { cloudinaryService } from '../../services/cloudinaryService';
 import { useAuthStore } from '../../stores/authStore';
 import { useLocation } from '../../hooks/useLocation';
-import { locationService } from '../../services/locationService';
 import { calculateDistance } from '../../utils/locationUtils';
 import { useColors, radius, spacing } from '../../utils/theme';
-
 
 export default function VenueDetailScreen({ navigation, route }) {
   const placeId = route.params?.placeId;
   const user = useAuthStore((state) => state.user);
   const { location, isFetchingLocation, handleGetLocation } = useLocation();
   const [place, setPlace] = useState(route.params?.place || null);
-  const [posts, setPosts] = useState([]);
   const [leaderboard, setLeaderboard] = useState([]);
+  const [venueStories, setVenueStories] = useState([]);
+  const [viewerStories, setViewerStories] = useState([]);
+  const [isStoryViewerVisible, setIsStoryViewerVisible] = useState(false);
+  const [isCreateStoryVisible, setIsCreateStoryVisible] = useState(false);
+  const [pickedImageUri, setPickedImageUri] = useState(null);
+  const [isUploadingStory, setIsUploadingStory] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isCheckingIn, setIsCheckingIn] = useState(false);
   const colors = useColors();
@@ -39,31 +49,67 @@ export default function VenueDetailScreen({ navigation, route }) {
 
     setIsLoading(true);
     try {
-      const [nextPlace, rawPosts, nextLeaderboard] = await Promise.all([
+      const [nextPlace, nextLeaderboard, nextStories] = await Promise.all([
         firestoreService.getPlace(placeId),
-        firestoreService.getPlacePosts(placeId),
         firestoreService.getPlaceLeaderboard(placeId),
+        firestoreService.getVenueStories(placeId).catch(() => []),
       ]);
 
-      const likedIds = rawPosts.length && user?.uid
-        ? await firestoreService.getLikedPostIds(rawPosts.map((p) => p.id), user.uid)
-        : new Set();
-
-      const bookmarkedIds = rawPosts.length && user?.uid
-        ? await firestoreService.getBookmarkedPostIds(user.uid)
-        : new Set();
-
-      const enrichedPosts = rawPosts.map((p) => ({
-        ...p,
-        isLiked: likedIds.has(p.id),
-        isBookmarked: bookmarkedIds.has(p.id),
-      }));
-
       setPlace(nextPlace);
-      setPosts(enrichedPosts);
       setLeaderboard(nextLeaderboard);
+      setVenueStories(nextStories);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleAddStory = async () => {
+    if (!user?.uid) {
+      Alert.alert('Login Required', 'Please log in to add stories.');
+      return;
+    }
+
+    try {
+      const picked = await imagePickerService.fromLibrary();
+      if (!picked) return;
+
+      setPickedImageUri(picked);
+      setIsCreateStoryVisible(true);
+    } catch (err) {
+      Alert.alert('Error', 'Failed to pick image.');
+    }
+  };
+
+  const handleShareStory = async (target) => {
+    setIsUploadingStory(true);
+    try {
+      const uploadResult = await cloudinaryService.uploadImage(pickedImageUri, { folder: 'stories' });
+
+      const storyData = {
+        userId: user.uid,
+        username: user?.username || 'aroundu',
+        userAvatar: user?.avatarUrl || '',
+        mediaUrl: uploadResult.url,
+      };
+
+      if (target.type === 'event') {
+        storyData.eventId = target.id;
+        storyData.eventTitle = target.title;
+      } else if (target.type === 'place') {
+        storyData.placeId = target.id;
+        storyData.placeName = target.name;
+      }
+
+      await firestoreService.createStory(storyData);
+
+      loadVenue();
+      setIsCreateStoryVisible(false);
+      setPickedImageUri(null);
+      Alert.alert('Story Shared', `Your story was shared at: ${target.title || target.name}`);
+    } catch (err) {
+      Alert.alert('Upload Failed', err.message || 'Something went wrong.');
+    } finally {
+      setIsUploadingStory(false);
     }
   };
 
@@ -133,6 +179,27 @@ export default function VenueDetailScreen({ navigation, route }) {
     }
   };
 
+  const groupStoriesByUser = (allStories) => {
+    const groups = {};
+    allStories.forEach((story) => {
+      if (!story.userId) return;
+      if (!groups[story.userId]) {
+        groups[story.userId] = {
+          userId: story.userId,
+          username: story.username || 'aroundu',
+          userAvatar: story.userAvatar || '',
+          stories: [],
+        };
+      }
+      groups[story.userId].stories.push(story);
+    });
+    return Object.values(groups);
+  };
+
+  const groupedVenueStories = groupStoriesByUser(venueStories);
+  const currentUserStoriesGroup = groupedVenueStories.find((g) => g.userId === user?.uid);
+  const otherUsersStoriesGroups = groupedVenueStories.filter((g) => g.userId !== user?.uid);
+
   return (
     <View style={styles.screen}>
       <ScreenHeader showBack title="Venue Profile" />
@@ -158,6 +225,24 @@ export default function VenueDetailScreen({ navigation, route }) {
             )}
           </View>
 
+          <StoryRingRow
+            style={styles.storyRow}
+            currentUserAvatar={user?.avatarUrl}
+            currentUserStories={currentUserStoriesGroup?.stories || []}
+            groupedStories={otherUsersStoriesGroups}
+            onCurrentUserRingPress={() => {
+              if (currentUserStoriesGroup) {
+                setViewerStories(currentUserStoriesGroup.stories);
+                setIsStoryViewerVisible(true);
+              }
+            }}
+            onRingPress={(group) => {
+              setViewerStories(group.stories);
+              setIsStoryViewerVisible(true);
+            }}
+            onAddStoryPress={handleAddStory}
+          />
+
           <Text style={styles.title}>{place?.name || 'Venue'}</Text>
           <Text style={styles.meta}>
             {[place?.category, place?.city].filter(Boolean).join(' - ') || 'Nearby place'}
@@ -174,10 +259,6 @@ export default function VenueDetailScreen({ navigation, route }) {
             <View style={styles.stat}>
               <Text style={styles.statValue}>{place?.checkinsCount || 0}</Text>
               <Text style={styles.statLabel}>Check-ins</Text>
-            </View>
-            <View style={styles.stat}>
-              <Text style={styles.statValue}>{posts.length}</Text>
-              <Text style={styles.statLabel}>Posts</Text>
             </View>
           </View>
 
@@ -210,36 +291,27 @@ export default function VenueDetailScreen({ navigation, route }) {
             <Text style={styles.emptyText}>No check-ins yet.</Text>
           )}
 
-          <Text style={styles.sectionTitle}>Posts from this venue</Text>
-          {posts.length ? (
-            <View style={styles.gridContainer}>
-              {posts.map((post) => (
-                <Pressable
-                  accessibilityRole="button"
-                  key={post.id}
-                  onPress={() =>
-                    navigation.navigate('PostDetail', {
-                      initialPostId: post.id,
-                      posts,
-                    })
-                  }
-                  style={styles.gridItem}
-                >
-                  {post.imageUrl ? (
-                    <Image source={{ uri: post.imageUrl }} style={styles.gridImage} />
-                  ) : (
-                    <View style={styles.gridPlaceholder}>
-                      <Ionicons color={colors.neutral} name="image-outline" size={16} />
-                    </View>
-                  )}
-                </Pressable>
-              ))}
-            </View>
-          ) : (
-            <Text style={styles.emptyText}>No posts tagged here yet.</Text>
-          )}
         </ScrollView>
       )}
+
+      <StoryViewerModal
+        visible={isStoryViewerVisible}
+        stories={viewerStories}
+        initialIndex={0}
+        onClose={() => setIsStoryViewerVisible(false)}
+      />
+
+      <CreateStoryModal
+        visible={isCreateStoryVisible}
+        imageUri={pickedImageUri?.uri}
+        places={place ? [{...place, type: 'place'}] : []}
+        onShare={handleShareStory}
+        isSharing={isUploadingStory}
+        onClose={() => {
+          setIsCreateStoryVisible(false);
+          setPickedImageUri(null);
+        }}
+      />
     </View>
   );
 }
@@ -257,6 +329,11 @@ const makeStyles = (colors) => StyleSheet.create({
   content: {
     padding: spacing.md,
     paddingBottom: spacing.lg,
+  },
+  storyRow: {
+    marginTop: spacing.md,
+    marginHorizontal: -spacing.md,
+    marginBottom: 0,
   },
   hero: {
     alignItems: 'center',
@@ -358,29 +435,6 @@ const makeStyles = (colors) => StyleSheet.create({
   leaderCount: {
     color: colors.neutral,
     fontFamily: 'Inter_600SemiBold',
-  },
-  gridContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 3,
-    marginTop: spacing.sm,
-  },
-  gridItem: {
-    aspectRatio: 1,
-    borderRadius: radius.sm,
-    overflow: 'hidden',
-    width: '19.3%',
-  },
-  gridImage: {
-    height: '100%',
-    width: '100%',
-  },
-  gridPlaceholder: {
-    alignItems: 'center',
-    backgroundColor: colors.border,
-    height: '100%',
-    justifyContent: 'center',
-    width: '100%',
   },
   emptyText: {
     color: colors.neutral,
